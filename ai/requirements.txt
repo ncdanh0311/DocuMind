@@ -1,0 +1,36 @@
+# Core dependencies
+torch>=2.0.0
+transformers>=4.30.0
+datasets>=2.10.0
+peft>=0.4.0
+accelerate>=0.20.0
+bitsandbytes>=0.39.0
+sentencepiece
+protobuf
+
+# Fix NumPy compatibility
+numpy<2.0.0
+
+# VietNLP specific
+pyvi>=0.1.0
+underthesea>=1.8.0
+pytorch-crf
+
+# Evaluation metrics
+rouge-score>=0.1.2
+bert-score>=0.3.13
+seqeval>=1.2.2
+
+# Training utilities
+tensorboard>=2.12.0
+wandb>=0.15.0
+omegaconf>=2.3.0
+
+# Data processing
+pandas>=1.5.0
+scikit-learn>=1.2.0
+
+# Web backend
+fastapi>=0.95.0
+uvicorn>=0.20.0
+pydantic>=1.10.0

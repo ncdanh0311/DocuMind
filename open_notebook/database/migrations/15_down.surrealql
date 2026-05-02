@@ -1,4 +1,0 @@
-
--- Migration 15 Down: Remove Vietnamese specialized transformations
-
-DELETE FROM transformation WHERE name IN ["VietSumBot Summary", "VietSumBot QA"];

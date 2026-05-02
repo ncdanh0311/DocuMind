@@ -142,3 +142,13 @@ specs/
 .harness/
 
 .mcp.json
+
+# AI/ML
+ai/checkpoints/
+ai/hf_cache/
+ai/results/
+ai/datasets/
+ai/wandb/
+
+# Scratch/Temp
+scratch/
