@@ -150,7 +150,16 @@ ai/results/
 ai/datasets/
 ai/wandb/
 
-# Scratch/Temp
-scratch/
+# Flutter/Dart
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/build/
+mobile/ios/Flutter/Generated.xcconfig
+mobile/ios/Flutter/flutter_export_environment.sh
+mobile/android/app/src/main/java/io/flutter/plugins/
+mobile/android/local.properties
+mobile/*.iml
 
 .python-version
