@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 
+import 'package:documind_mobile/features/auth/login_screen.dart';
+
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
 
@@ -19,39 +21,52 @@ class OnboardingScreen extends StatelessWidget {
               SizedBox(
                 height: 360,
                 child: Stack(
+                  clipBehavior: Clip.none, // Hard rule: prevent clipping for decor
                   alignment: Alignment.center,
                   children: [
                     // Decorations (Clouds spread out more)
                     Positioned(
-                      left: -50,
+                      left: -80,
                       top: 10,
                       child: Opacity(
                         opacity: 0.5,
                         child: Image.asset(
                           "assets/decor/clouds/decor-cloud-mint-01.png",
-                          width: 140,
+                          width: 180,
                         ),
                       ),
                     ),
                     Positioned(
-                      right: -70,
+                      right: -90,
                       bottom: 60,
                       child: Opacity(
                         opacity: 0.3,
                         child: Image.asset(
                           "assets/decor/clouds/decor-cloud-mint-01.png",
-                          width: 160,
+                          width: 200,
+                        ),
+                      ),
+                    ),
+                    // Botanical Decorations
+                    Positioned(
+                      left: -40,
+                      bottom: 40,
+                      child: Transform.rotate(
+                        angle: -0.5,
+                        child: Image.asset(
+                          "assets/decor/botanical/decor-leaf-sprig-01.png",
+                          width: 120,
                         ),
                       ),
                     ),
                     Positioned(
-                      left: 10,
-                      bottom: -20,
-                      child: Opacity(
-                        opacity: 0.2,
+                      right: -30,
+                      top: 60,
+                      child: Transform.rotate(
+                        angle: 0.5,
                         child: Image.asset(
-                          "assets/decor/clouds/decor-cloud-mint-01.png",
-                          width: 100,
+                          "assets/decor/botanical/decor-leaf-sprig-02.png",
+                          width: 110,
                         ),
                       ),
                     ),
@@ -102,7 +117,11 @@ class OnboardingScreen extends StatelessWidget {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Navigate to Authentication/Home
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const LoginScreen()),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -124,7 +143,11 @@ class OnboardingScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: () {
-                      // Navigate to Login
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const LoginScreen()),
+                      );
                     },
                     child: Text(
                       "Đăng nhập",

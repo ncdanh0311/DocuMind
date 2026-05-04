@@ -24,6 +24,7 @@ flutter:
   assets:
     - assets/mascot/
     - assets/decor/clouds/
+    - assets/decor/botanical/
     - assets/icons/actions/
     - assets/icons/categories/
     - assets/icons/navigations/
