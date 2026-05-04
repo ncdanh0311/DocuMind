@@ -2,152 +2,145 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
-
-  @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
-}
-
-class _OnboardingScreenState extends State<OnboardingScreen> {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
-
-  final List<Map<String, String>> _onboardingData = [
-    {
-      "image": "assets/mascot/mascot-owl-waving-backpack.png",
-      "title": "Chào bạn!\nMình giúp bạn học nhé!",
-      "desc":
-          "DocuMind đồng hành cùng bạn chinh phục kiến thức mọi lúc mọi nơi."
-    },
-    {
-      "image": "assets/mascot/mascot-owl-reading-on-books.png",
-      "title": "Tóm tắt thông minh\nHỏi đáp tức thì",
-      "desc":
-          "Sử dụng sức mạnh AI để thấu hiểu tài liệu của bạn trong tích tắc."
-    },
-    {
-      "image": "assets/mascot/mascot-owl-peeking-sticker.png",
-      "title": "Ghi chú khoa học\nQuản lý dễ dàng",
-      "desc":
-          "Tổ chức sổ tay học tập theo cách của riêng bạn một cách gọn gàng."
-    },
-  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              flex: 3,
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: (value) => setState(() => _currentPage = value),
-                itemCount: _onboardingData.length,
-                itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.all(40.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.asset(
-                        _onboardingData[index]["image"]!,
-                        height: 280,
-                      ),
-                      const SizedBox(height: 40),
-                      Text(
-                        _onboardingData[index]["title"]!,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40.0),
+          child: Column(
+            children: [
+              const Spacer(flex: 2),
+              // Image Area with Clouds
+              SizedBox(
+                height: 360,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Decorations (Clouds spread out more)
+                    Positioned(
+                      left: -50,
+                      top: 10,
+                      child: Opacity(
+                        opacity: 0.5,
+                        child: Image.asset(
+                          "assets/decor/clouds/decor-cloud-mint-01.png",
+                          width: 140,
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        _onboardingData[index]["desc"]!,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          color: AppColors.textDark.withOpacity(0.7),
+                    ),
+                    Positioned(
+                      right: -70,
+                      bottom: 60,
+                      child: Opacity(
+                        opacity: 0.3,
+                        child: Image.asset(
+                          "assets/decor/clouds/decor-cloud-mint-01.png",
+                          width: 160,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    Positioned(
+                      left: 10,
+                      bottom: -20,
+                      child: Opacity(
+                        opacity: 0.2,
+                        child: Image.asset(
+                          "assets/decor/clouds/decor-cloud-mint-01.png",
+                          width: 100,
+                        ),
+                      ),
+                    ),
+                    // Mascot
+                    Image.asset(
+                      "assets/mascot/mascot-owl-reading-on-books.png",
+                      height: 310,
+                      fit: BoxFit.contain,
+                    ),
+                  ],
                 ),
               ),
-            ),
-            Expanded(
-              child: Column(
+              const SizedBox(height: 30),
+              // Styled Title
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: GoogleFonts.outfit(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                  children: const [
+                    TextSpan(text: "Học tập thông minh\n"),
+                    TextSpan(
+                      text: "cùng AI",
+                      style: TextStyle(color: AppColors.primary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "Ghi chú, tóm tắt, hỏi đáp và ôn tập dễ dàng hơn bao giờ hết.",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  height: 1.5,
+                  color: AppColors.textDark.withOpacity(0.6),
+                ),
+              ),
+              const Spacer(flex: 3),
+              // Buttons
+              Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      _onboardingData.length,
-                      (index) => buildDot(index),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Navigate to Authentication/Home
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(28),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        "Bắt đầu",
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
-                  const Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 40, vertical: 20),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_currentPage == _onboardingData.length - 1) {
-                            // Chuyển đến màn hình chính
-                          } else {
-                            _pageController.nextPage(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.ease,
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          _currentPage == _onboardingData.length - 1
-                              ? "Bắt đầu ngay"
-                              : "Tiếp theo",
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () {
+                      // Navigate to Login
+                    },
+                    child: Text(
+                      "Đăng nhập",
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget buildDot(int index) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      margin: const EdgeInsets.only(right: 8),
-      height: 8,
-      width: _currentPage == index ? 24 : 8,
-      decoration: BoxDecoration(
-        color: _currentPage == index
-            ? AppColors.primary
-            : AppColors.primary.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(4),
       ),
     );
   }
