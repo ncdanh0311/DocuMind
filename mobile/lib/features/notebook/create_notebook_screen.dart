@@ -42,7 +42,7 @@ class _CreateNotebookScreenState extends State<CreateNotebookScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 12),
-            _buildInfoBanner(),
+            _buildMascotBanner(),
             const SizedBox(height: 24),
             _buildFormSection(),
             const SizedBox(height: 24),
@@ -86,31 +86,48 @@ class _CreateNotebookScreenState extends State<CreateNotebookScreen> {
     );
   }
 
-  Widget _buildInfoBanner() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F8F7),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
+  Widget _buildMascotBanner() {
+    return SizedBox(
+      height: 170,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Image.asset("assets/mascot/mascot-owl-reading-book.png", width: 80, height: 80),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Tạo một sổ tay mới",
-                  style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF00695C)),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "để lưu ghi chú của bạn nhé!",
-                  style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF4DB6AC)),
-                ),
-              ],
+          // Background Container
+          Positioned.fill(
+            child: Container(
+              padding: const EdgeInsets.only(left: 160, right: 20, top: 24, bottom: 24),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F8F7),
+                borderRadius: BorderRadius.circular(32),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Tạo một sổ tay mới",
+                    style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF00695C)),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "để lưu ghi chú của bạn nhé!",
+                    style: GoogleFonts.inter(fontSize: 15, color: const Color(0xFF4DB6AC)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Enlarged and Centered Mascot
+          Positioned(
+            left: -25,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Image.asset(
+                "assets/mascot/mascot-owl-reading-book.png",
+                width: 200,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ],

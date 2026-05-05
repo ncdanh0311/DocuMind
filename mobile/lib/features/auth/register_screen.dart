@@ -67,7 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _buildDecorImage("assets/decor/clouds/decor-cloud-mint-01.png", right: -110, bottom: -20, width: 180, opacity: 0.2),
           _buildDecorImage("assets/decor/botanical/decor-leaf-double-01.png", left: -80, bottom: 20, width: 150, angle: -0.6),
           _buildDecorImage("assets/decor/botanical/decor-leaf-sprig-02.png", right: -70, top: 40, width: 140, angle: 0.4),
-          Image.asset("assets/mascot/mascot-owl-avatar-circle.png", height: 180, fit: BoxFit.contain),
+          Image.asset("assets/mascot/mascot-owl-avatar-circle.png", height: 220, fit: BoxFit.contain),
         ],
       ),
     );
