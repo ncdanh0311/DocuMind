@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
+import 'package:documind_mobile/features/notebook/notebook_screen.dart'; // Import màn hình Sổ tay
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -36,7 +37,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 12),
                     _buildQuickActions(),
                     const SizedBox(height: 32),
-                    _buildSectionHeader("Sổ tay của bạn", showSeeAll: true),
+                    _buildSectionHeader(
+                      "Sổ tay của bạn", 
+                      showSeeAll: true,
+                      onSeeAllTap: () {
+                        // Điều hướng sang trang Danh sách Sổ tay
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const NotebookScreen()),
+                        );
+                      },
+                    ),
                     const SizedBox(height: 6),
                     _buildFolderGrid(),
                     const SizedBox(height: 32),
@@ -53,12 +64,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       extendBody: true,
       bottomNavigationBar: _buildCustomBottomNav(),
-      floatingActionButton: _buildFloatingActionButton(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 
-  /// HEADER DÙNG ASSET UTILITY CHÍNH CHỦ
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: EdgeInsets.only(
@@ -70,7 +78,6 @@ class _HomeScreenState extends State<HomeScreen> {
       color: Colors.white,
       child: Row(
         children: [
-          // Icon Menu Utility
           Image.asset("assets/icons/utility/icon-utility-menu.png", width: 32, height: 32),
           const Spacer(),
           Column(
@@ -88,7 +95,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const Spacer(),
-          // Icon Bell Utility
           Image.asset("assets/icons/utility/icon-utility-bell.png", width: 32, height: 32),
         ],
       ),
@@ -131,7 +137,6 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Mây rải rác bên trái
           Positioned(
             left: -20,
             top: 10,
@@ -140,8 +145,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Image.asset("assets/decor/clouds/decor-cloud-mint-01.png", width: 140),
             ),
           ),
-          
-          // Mây ở vùng khoanh đỏ phía trên
           Positioned(
             left: 160,
             top: 5,
@@ -150,8 +153,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Image.asset("assets/decor/clouds/decor-cloud-mint-01.png", width: 130),
             ),
           ),
-
-          // Mây ở vùng khoanh đỏ phía dưới
           Positioned(
             left: 140,
             bottom: 5,
@@ -160,8 +161,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Image.asset("assets/decor/clouds/decor-cloud-mint-01.png", width: 110),
             ),
           ),
-
-          // Lá cây phủ góc trái trên
           Positioned(
             left: -10,
             top: -15,
@@ -170,7 +169,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Image.asset("assets/decor/botanical/decor-leaf-sprig-03.png", width: 100),
             ),
           ),
-
           Positioned(
             left: 20,
             bottom: -5,
@@ -179,8 +177,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Image.asset("assets/decor/botanical/decor-leaf-sprig-02.png", width: 70),
             ),
           ),
-
-          // Nội dung Text
           Padding(
             padding: const EdgeInsets.only(left: 24, top: 10),
             child: Column(
@@ -193,8 +189,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-
-          // Mây lót sau Mascot
           Positioned(
             right: 0,
             top: 15,
@@ -203,8 +197,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Image.asset("assets/decor/clouds/decor-cloud-mint-01.png", width: 130),
             ),
           ),
-
-          // MASCOT SÁT LỀ PHẢI
           Positioned(
             right: -45,
             bottom: -35,
@@ -214,8 +206,6 @@ class _HomeScreenState extends State<HomeScreen> {
               fit: BoxFit.contain,
             ),
           ),
-
-          // Lá cây phủ góc phải dưới
           Positioned(
             right: 0,
             bottom: -15,
@@ -224,8 +214,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Image.asset("assets/decor/botanical/decor-leaf-double-01.png", width: 90),
             ),
           ),
-          
-          // Lá cây góc trái dưới
           Positioned(
             left: -5,
             bottom: -5,
@@ -239,13 +227,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, {bool showSeeAll = false}) {
+  Widget _buildSectionHeader(String title, {bool showSeeAll = false, VoidCallback? onSeeAllTap}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title, style: GoogleFonts.outfit(fontSize: 19, fontWeight: FontWeight.bold, color: AppColors.textDark)),
         if (showSeeAll)
-          Text("Xem tất cả", style: GoogleFonts.inter(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.bold)),
+          GestureDetector(
+            onTap: onSeeAllTap,
+            child: Text(
+              "Xem tất cả", 
+              style: GoogleFonts.inter(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.bold)
+            ),
+          ),
       ],
     );
   }
@@ -276,10 +270,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFolderGrid() {
     final items = [
-      {"title": "Toán học", "count": 24, "icon": "assets/icons/categories/icon-category-study.png"},
-      {"title": "Vật lý", "count": 18, "icon": "assets/icons/categories/icon-category-research.png"},
-      {"title": "Tiếng Anh", "count": 16, "icon": "assets/icons/categories/icon-category-project.png"},
-      {"title": "Lịch sử", "count": 10, "icon": "assets/icons/categories/icon-category-personal.png"},
+      {"title": "Học tập", "count": 24, "icon": "assets/icons/categories/icon-category-study.png"},
+      {"title": "Dự án", "count": 18, "icon": "assets/icons/categories/icon-category-project.png"},
+      {"title": "Nghiên cứu", "count": 16, "icon": "assets/icons/categories/icon-category-research.png"},
+      {"title": "Cá nhân", "count": 10, "icon": "assets/icons/categories/icon-category-personal.png"},
     ];
 
     return GridView.builder(
@@ -355,18 +349,44 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCustomBottomNav() {
-    return BottomAppBar(
-      color: Colors.white,
-      elevation: 20,
-      notchMargin: 12,
+    return Container(
       height: 95,
-      shape: const CircularNotchedRectangle(),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -5))
+        ],
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           Expanded(child: _buildNavItem(0, "assets/icons/navigations/icon-nav-home-outline.png", "Trang chủ")),
           Expanded(child: _buildNavItem(1, "assets/icons/navigations/icon-nav-notebook-outline.png", "Số tay")),
-          const SizedBox(width: 50),
+          
+          Expanded(
+            child: Center(
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFF4DB6AC)]),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))
+                  ],
+                ),
+                child: Center(
+                  child: Image.asset(
+                    "assets/icons/navigations/icon-nav-plus-outline.png", 
+                    width: 30, 
+                    height: 30, 
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
           Expanded(child: _buildNavItem(2, "assets/icons/navigations/icon-nav-ai-outline.png", "AI")),
           Expanded(child: _buildNavItem(3, "assets/icons/navigations/icon-nav-profile-outline.png", "Cá nhân")),
         ],
@@ -377,7 +397,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildNavItem(int index, String iconPath, String label) {
     bool isActive = _currentIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () {
+        setState(() => _currentIndex = index);
+        // Nếu ấn vào Sổ tay trên thanh Nav cũng điều hướng sang NotebookScreen
+        if (index == 1) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const NotebookScreen()),
+          );
+        }
+      },
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -402,30 +431,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildFloatingActionButton() {
-    return Container(
-      width: 68,
-      height: 68,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFF4DB6AC)]),
-        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 18, offset: const Offset(0, 8))],
-      ),
-      child: FloatingActionButton(
-        onPressed: () {},
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        shape: const CircleBorder(),
-        child: Image.asset(
-          "assets/icons/navigations/icon-nav-plus-outline.png", 
-          width: 34, 
-          height: 34, 
-          color: Colors.white,
-        ),
       ),
     );
   }
