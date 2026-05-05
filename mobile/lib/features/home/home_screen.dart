@@ -5,6 +5,7 @@ import 'package:documind_mobile/features/notebook/notebook_screen.dart';
 import 'package:documind_mobile/features/notebook/notebook_detail_screen.dart';
 import 'package:documind_mobile/features/ai/ai_chat_screen.dart';
 import 'package:documind_mobile/features/ai/summary_screen.dart';
+import 'package:documind_mobile/features/profile/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,49 +21,50 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          _buildHeader(context),
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 8),
-                    _buildSearchBar(),
-                    const SizedBox(height: 16),
-                    _buildBanner(),
-                    const SizedBox(height: 32),
-                    _buildSectionHeader("Hành động nhanh"),
-                    const SizedBox(height: 12),
-                    _buildQuickActions(),
-                    const SizedBox(height: 32),
-                    _buildSectionHeader(
-                      "Sổ tay của bạn", 
-                      showSeeAll: true,
-                      onSeeAllTap: () {
-                        // Điều hướng sang trang Danh sách Sổ tay
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const NotebookScreen()),
-                        );
-                      },
+      body: _currentIndex == 3
+          ? const ProfileScreen()
+          : Column(
+              children: [
+                _buildHeader(context),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 8),
+                          _buildSearchBar(),
+                          const SizedBox(height: 16),
+                          _buildBanner(),
+                          const SizedBox(height: 32),
+                          _buildSectionHeader("Hành động nhanh"),
+                          const SizedBox(height: 12),
+                          _buildQuickActions(),
+                          const SizedBox(height: 32),
+                          _buildSectionHeader(
+                            "Sổ tay của bạn",
+                            showSeeAll: true,
+                            onSeeAllTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const NotebookScreen()),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 6),
+                          _buildFolderGrid(),
+                          const SizedBox(height: 32),
+                          _buildSectionHeader("Ghi chú gần đây", showSeeAll: true),
+                          const SizedBox(height: 8),
+                          _buildRecentNoteCard(),
+                          const SizedBox(height: 100),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 6),
-                    _buildFolderGrid(),
-                    const SizedBox(height: 32),
-                    _buildSectionHeader("Ghi chú gần đây", showSeeAll: true),
-                    const SizedBox(height: 8),
-                    _buildRecentNoteCard(),
-                    const SizedBox(height: 140),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ),
         ],
       ),
       extendBody: true,
@@ -420,6 +422,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavItem(int index, String iconPath, String label) {
     bool isActive = _currentIndex == index;
+    // Không chuyển sang filled cho icon Trang chủ (index 0)
+    String finalIconPath = (isActive && index != 0) ? iconPath.replaceAll("outline", "filled") : iconPath;
     return GestureDetector(
       onTap: () {
         // Nếu ấn vào Sổ tay thì chỉ chuyển trang, không đổi Index của Home
@@ -437,14 +441,11 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Opacity(
-            opacity: isActive ? 1.0 : 0.5,
-            child: Image.asset(
-              iconPath, 
-              width: 36,
-              height: 36, 
-              fit: BoxFit.contain,
-            ),
+          Image.asset(
+            finalIconPath, 
+            width: 36,
+            height: 36, 
+            fit: BoxFit.contain,
           ),
           const SizedBox(height: 2),
           Text(
