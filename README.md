@@ -1,0 +1,93 @@
+<p align="center">
+  <a href="https://huit.edu.vn/" title="Ho Chi Minh City University of Industry and Trade">
+    <img src="./assets/Logo%20HUIT-03.png" alt="Ho Chi Minh City University of Industry and Trade (HUIT)" width="400">
+  </a>
+</p>
+
+<h1 align="center"><b>DEEP LEARNING FINAL PROJECT - DOCUMIND</b></h1>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
+  <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+</p>
+
+<!-- Contact section: centered, single row of badges, short intro -->
+<div align="center">
+
+<!-- HEADER BANNER -->
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:00B4D8,100:0077B6&height=220&section=header&text=Doan%20Tan%20Minh%20Tan&fontSize=50&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=AI%20Engineer%20%7C%20Fullstack%20Engineer&descSize=20&descAlignY=55&descAlign=50" width="100%"/>
+
+<br/>
+
+[![Portfolio](https://img.shields.io/badge/Portfolio-667eea?style=for-the-badge&logo=vercel&logoColor=white)](#)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/tandoanminh/)
+[![Email](https://img.shields.io/badge/Email-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:doanminhtan.dev@gmail.com)
+[![Facebook](https://img.shields.io/badge/Facebook-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](#)
+
+<br/>
+
+
+</div>
+
+
+
+<p align="center">
+  <img src="./assets/thumbnail.png" alt="Project thumbnail" width="600">
+</p>
+
+## Product Demo
+
+<table align="center">
+  <tr>
+    <td align="center"><img src="./assets/onboarding.png" width="200px"/><br/><b>Onboarding</b></td>
+    <td align="center"><img src="./assets/login.png" width="200px"/><br/><b>Login</b></td>
+    <td align="center"><img src="./assets/register.png" width="200px"/><br/><b>Register</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="./assets/home.png" width="200px"/><br/><b>Home Screen</b></td>
+    <td align="center"><img src="./assets/notebook_list.png" width="200px"/><br/><b>Notebook List</b></td>
+    <td align="center"><img src="./assets/notebook_detail.png" width="200px"/><br/><b>Notebook Detail</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="./assets/ai_chat.png" width="200px"/><br/><b>AI Chat</b></td>
+    <td align="center"><img src="./assets/summary.png" width="200px"/><br/><b>Summary</b></td>
+    <td align="center"><img src="./assets/personal.png" width="200px"/><br/><b>Profile</b></td>
+  </tr>
+</table>
+
+<p align="center"><i>And more features like Settings, Notifications...</i></p>
+
+
+---
+
+## Student information
+
+| Student ID | Full name        | GitHub                                  | Email                  |
+|:----------:|------------------|-----------------------------------------|------------------------|
+| 2001230791   | Doan Tan Minh Tan | [TanDoan1234](https://github.com/TanDoan1234) | doanminhtan.dev@gmail.com |
+
+---
+
+## Purpose
+
+**DocuMind** is an AI-powered personal notebook assistant designed to help students and researchers manage, summarize, and interact with their documents efficiently. By leveraging advanced **Deep Learning** techniques and **RAG (Retrieval-Augmented Generation)**, DocuMind allows users to upload documents (PDF, Docx) and ask questions directly to their content, ensuring accurate answers with proper citations and eliminating AI hallucinations.
+
+---
+
+## Directory layout
+
+```text
+DocuMind/
+├── mobile/                      ← Flutter mobile application
+├── ai/                          ← AI models and core processing logic
+├── assets/                      ← Project assets (logos, demo screenshots)
+├── scripts/                     ← Automation and utility scripts
+├── tests/                       ← Testing suite (QA, Summarization tests)
+├── README.md                    ← Project overview
+├── requirements.txt             ← Python dependencies
+└── thumbnail.png                ← Project thumbnail image
+```
+
+---
