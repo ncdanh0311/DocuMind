@@ -81,13 +81,39 @@
 ```text
 DocuMind/
 ├── mobile/                      ← Flutter mobile application
-├── ai/                          ← AI models and core processing logic
+├── backend/                     ← Custom Backend API (FastAPI) & AI Logic
 ├── assets/                      ← Project assets (logos, demo screenshots)
-├── scripts/                     ← Automation and utility scripts
-├── tests/                       ← Testing suite (QA, Summarization tests)
-├── README.md                    ← Project overview
-├── requirements.txt             ← Python dependencies
-└── thumbnail.png                ← Project thumbnail image
+├── docs/                        ← Documentation and architecture design
+├── pyproject.toml               ← Python project management (uv)
+└── README.md                    ← Project overview
 ```
+
+---
+
+## 🛠️ Development Setup
+
+Dự án sử dụng **`uv`** để quản lý môi trường và thư viện Python.
+
+### Prerequisites
+- Python 3.10+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
+### Backend Setup
+1. Cài đặt các thư viện và khởi tạo môi trường ảo:
+   ```bash
+   uv sync
+   ```
+2. Chạy server Backend (FastAPI):
+   ```bash
+   uv run python backend/main.py
+   ```
+
+### Mobile Setup
+1. Đảm bảo đã cài đặt Flutter SDK.
+2. Chạy ứng dụng:
+   ```bash
+   cd mobile
+   flutter run
+   ```
 
 ---
