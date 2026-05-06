@@ -82,8 +82,8 @@ The project applies state-of-the-art Deep Learning techniques to optimize Vietna
 - **Document Processing:** Uses [IBM Docling](https://github.com/DS4SD/docling) for advanced layout analysis and high-quality Markdown extraction from complex documents (PDF, Docx, Pptx).
 - **Text Embedding:** Uses the [Vietnamese-SBERT](https://huggingface.co/keepitreal/vietnamese-sbert) (768 dims) model for semantic vectorization, supporting accurate RAG search.
 - **Large Language Models (LLM):** 
-  - **Summarization:** [ViT5](https://huggingface.co/VietAI/vit5-base-vietnamese-summarization) model for automatic document summarization.
-  - **Question Answering:** Specialized ViT5 model for context-aware QA.
+  - **Summarization:** Evaluated using both [BARTpho](https://huggingface.co/vinai/bartpho-word) and [ViT5](https://huggingface.co/VietAI/vit5-base) for optimal performance.
+  - **Question Answering:** Comparative implementation of [PhoBERT](https://huggingface.co/vinai/phobert-base) and [XLM-RoBERTa](https://huggingface.co/facebook/xlm-roberta-base) for context-aware extraction.
 
 ---
 
