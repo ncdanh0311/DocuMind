@@ -71,7 +71,7 @@
 
 ## Purpose
 
-**DocuMind** is an AI-powered personal notebook assistant designed to help students and researchers manage, summarize, and interact with their documents efficiently. By leveraging advanced **Deep Learning** techniques and **RAG (Retrieval-Augmented Generation)**, DocuMind allows users to upload documents (PDF, Docx) and ask questions directly to their content, ensuring accurate answers with proper citations and eliminating AI hallucinations.
+**DocuMind** is an AI-powered personal notebook assistant designed to help students and researchers manage and summarize their documents efficiently. By leveraging advanced **Deep Learning** techniques, DocuMind allows users to upload documents (PDF, Docx) and receive high-quality summaries and context-aware insights, ensuring accurate information processing.
 
 ---
 
@@ -80,7 +80,6 @@
 The project applies state-of-the-art Deep Learning techniques to optimize Vietnamese document processing:
 
 - **Document Processing:** Uses [IBM Docling](https://github.com/DS4SD/docling) for advanced layout analysis and high-quality Markdown extraction from complex documents (PDF, Docx, Pptx).
-- **Text Embedding:** Uses the [Vietnamese-SBERT](https://huggingface.co/keepitreal/vietnamese-sbert) (768 dims) model for semantic vectorization, supporting accurate RAG search.
 - **Large Language Models (LLM):** 
   - **Summarization:** Evaluated using both [BARTpho](https://huggingface.co/vinai/bartpho-word) and [ViT5](https://huggingface.co/VietAI/vit5-base) for optimal performance.
   - **Question Answering:** Comparative implementation of [PhoBERT](https://huggingface.co/vinai/phobert-base) and [XLM-RoBERTa](https://huggingface.co/facebook/xlm-roberta-base) for context-aware extraction.
@@ -140,10 +139,21 @@ The project uses **`uv`** for extremely fast and consistent Python environment m
 
 ## 📚 Documentation
 
-Detailed technical documentation can be found in the `docs/` directory:
+### Getting Started
+- 📖 **[Introduction](./docs/en/INSTALLATION.md#introduction)** - Learn what DocuMind offers.
+- ⚡ **[Quick Start](./docs/en/INSTALLATION.md#quick-start)** - Get up and running in 5 minutes.
+- 🔧 **[Installation](./docs/en/INSTALLATION.md#installation)** - Comprehensive setup guide.
 
-- **[AI Models Guide](./docs/en/AI_MODELS_GUIDE.md)**: Details on BARTpho, ViT5, PhoBERT, and more.
-- **[AI Directory Guide](./docs/en/AI_DIRECTORY_GUIDE.md)**: Understanding the `ai/` folder structure and research workflow.
-- **[System Architecture](./docs/en/ARCHITECTURE.md)**: Deep dive into the RAG pipeline and system design.
+### User Guide
+- 📱 **[Interface Overview](./docs/en/FEATURES.md#interface-overview)** - Understanding the layout.
+- 📚 **[Notebooks](./docs/en/FEATURES.md#notebooks)** - Organizing your research.
+- ✍️ **[Summarization](./docs/en/FEATURES.md#summarization)** - Document summary features.
+- 💬 **[AI Chat](./docs/en/FEATURES.md#chat)** - AI conversations with your files.
+
+### Advanced Topics
+- ⚙️ **[Document Processor](./docs/en/DOCUMENT_PROCESSOR.md)** - Technical deep-dive into document processing.
+- 🤖 **[AI Models](./docs/en/AI_MODELS.md)** - AI model configuration and details.
+- 📂 **[AI Directory](./docs/en/AI_DIRECTORY.md)** - Understanding the AI research folder.
+- 🚀 **[Deployment](./docs/en/DOCUMENT_PROCESSOR.md#deployment)** - Production deployment guides.
 
 ---

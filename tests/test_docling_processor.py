@@ -31,8 +31,6 @@ def test_docling():
         for i, chunk in enumerate(chunks[:3]):
             print(f"\n--- Mảnh #{i+1} ---")
             print(f"Nguồn: {chunk['metadata']['source']}")
-            print(f"Kích thước vector: {len(chunk['embedding'])}")
-            print(f"Đầu vector (3 giá trị): {chunk['embedding'][:3]}...")
             print(f"Nội dung (định dạng Markdown):")
             print("-" * 20)
             print(chunk['content'])

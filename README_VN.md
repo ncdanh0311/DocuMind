@@ -71,7 +71,7 @@
 
 ## Mục tiêu
 
-**DocuMind** là trợ lý sổ tay cá nhân hỗ trợ bởi AI, được thiết kế để giúp sinh viên và nhà nghiên cứu quản lý, tóm tắt và tương tác với tài liệu một cách hiệu quả. Bằng cách tận dụng các kỹ thuật **Deep Learning** tiên tiến và **RAG (Retrieval-Augmented Generation)**, DocuMind cho phép người dùng tải lên tài liệu (PDF, Docx) và đặt câu hỏi trực tiếp trên nội dung đó, đảm bảo câu trả lời chính xác với các trích dẫn rõ ràng, loại bỏ hiện tượng "ảo giác" của AI.
+**DocuMind** là trợ lý sổ tay cá nhân hỗ trợ bởi AI, được thiết kế để giúp sinh viên và nhà nghiên cứu quản lý và tóm tắt tài liệu một cách hiệu quả. Bằng cách tận dụng các kỹ thuật **Deep Learning** tiên tiến, DocuMind cho phép người dùng tải lên tài liệu (PDF, Docx) và nhận lại các bản tóm tắt chất lượng cao cùng các phân tích chuyên sâu, đảm bảo quá trình xử lý thông tin chính xác.
 
 ---
 
@@ -80,7 +80,6 @@
 Dự án áp dụng các kỹ thuật Deep Learning tiên tiến nhất để tối ưu hóa việc xử lý tài liệu tiếng Việt:
 
 - **Xử lý tài liệu:** Sử dụng [IBM Docling](https://github.com/DS4SD/docling) để phân tích bố cục (Layout Analysis) và trích xuất Markdown từ tài liệu phức tạp (PDF, Docx, Pptx).
-- **Text Embedding:** Sử dụng model [Vietnamese-SBERT](https://huggingface.co/keepitreal/vietnamese-sbert) (768 dims) để chuyển đổi văn bản sang vector ngữ nghĩa, hỗ trợ tìm kiếm RAG chính xác.
 - **Mô hình ngôn ngữ lớn (LLM):** 
   - **Tóm tắt văn bản:** Đánh giá và sử dụng cả [BARTpho](https://huggingface.co/vinai/bartpho-word) và [ViT5](https://huggingface.co/VietAI/vit5-base) để đạt hiệu quả tối ưu.
   - **Hỏi đáp AI:** Triển khai so sánh giữa [PhoBERT](https://huggingface.co/vinai/phobert-base) và [XLM-RoBERTa](https://huggingface.co/facebook/xlm-roberta-base) cho việc trích xuất câu trả lời theo ngữ cảnh.
@@ -140,10 +139,21 @@ Dự án sử dụng **`uv`** để quản lý môi trường và thư viện Py
 
 ## 📚 Tài liệu Hướng dẫn
 
-Bạn có thể tìm thấy các tài liệu hướng dẫn kỹ thuật chi tiết trong thư mục `docs/`:
+### Bắt đầu nhanh
+- 📖 **[Giới thiệu](./docs/vi/INSTALLATION.md#introduction)** - Tìm hiểu về những gì DocuMind cung cấp.
+- ⚡ **[Bắt đầu nhanh](./docs/vi/INSTALLATION.md#quick-start)** - Khởi chạy dự án trong 5 phút.
+- 🔧 **[Cài đặt](./docs/vi/INSTALLATION.md#installation)** - Hướng dẫn thiết lập toàn diện.
 
-- **[Hướng dẫn các Mô hình AI](./docs/vi/AI_MODELS_GUIDE.md)**: Chi tiết về BARTpho, ViT5, PhoBERT, và nhiều hơn nữa.
-- **[Hướng dẫn Thư mục AI](./docs/vi/AI_DIRECTORY_GUIDE.md)**: Hiểu về cấu trúc thư mục `ai/` và quy trình nghiên cứu.
-- **[Kiến trúc Hệ thống](./docs/en/ARCHITECTURE.md)**: Phân tích sâu về RAG pipeline và thiết kế hệ thống (Bản tiếng Anh).
+### Hướng dẫn sử dụng
+- 📱 **[Tổng quan giao diện](./docs/vi/FEATURES.md#interface-overview)** - Hiểu về bố cục ứng dụng.
+- 📚 **[Vở bài tập](./docs/vi/FEATURES.md#notebooks)** - Cách tổ chức nghiên cứu của bạn.
+- ✍️ **[Tóm tắt tài liệu](./docs/vi/FEATURES.md#summarization)** - Các tính năng tóm tắt tự động.
+- 💬 **[AI Chat](./docs/vi/FEATURES.md#chat)** - Trò chuyện AI với tài liệu của bạn.
+
+### Chủ đề nâng cao
+- ⚙️ **[Quy trình xử lý](./docs/vi/DOCUMENT_PROCESSOR.md)** - Phân tích kỹ thuật sâu về quy trình xử lý tài liệu.
+- 🤖 **[Mô hình AI](./docs/vi/AI_MODELS.md)** - Cấu hình và chi tiết về các model AI.
+- 📂 **[Hướng dẫn thư mục AI](./docs/vi/AI_DIRECTORY.md)** - Hiểu về thư mục nghiên cứu AI.
+- 🚀 **[Triển khai](./docs/vi/DOCUMENT_PROCESSOR.md#deployment)** - Hướng dẫn triển khai hệ thống.
 
 ---
