@@ -1,9 +1,9 @@
-<p align="center">
-  <img src="./assets/logo.png" alt="DocuMind Logo" width="200">
-</p>
-
-<h1 align="center">DOCUMIND</h1>
-<p align="center"><b>DEEP LEARNING FINAL PROJECT</b></p>
+<div align="center">
+  <img src="./assets/logo.png" alt="DocuMind Logo" width="350">
+  <h1>DOCUMIND</h1>
+  <h3>Deep Learning Final Project</h3>
+  <p>IBM Docling • BARTpho & ViT5 • PhoBERT & XLM-RoBERTa • Sentence Transformers</p>
+</div>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.24+-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
