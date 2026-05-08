@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import 'package:documind_mobile/shared/widgets/molecules/custom_text_field.dart';
+import 'package:documind_mobile/core/api_service.dart';
+import 'package:documind_mobile/shared/utils/notification_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -15,6 +17,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _isAgreed = false;
+  
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  final ApiService _apiService = ApiService();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _handleRegister() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty || _nameController.text.isEmpty) {
+      _showSnackBar("Vui lòng nhập đầy đủ thông tin");
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showSnackBar("Mật khẩu xác nhận không khớp");
+      return;
+    }
+
+    if (!_isAgreed) {
+      _showSnackBar("Bạn cần đồng ý với điều khoản sử dụng");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final result = await _apiService.register(
+      _emailController.text.trim(),
+      _passwordController.text,
+      _nameController.text.trim(),
+    );
+    setState(() => _isLoading = false);
+
+    if (result["success"]) {
+      _showSnackBar("Đăng ký thành công! Vui lòng đăng nhập.");
+      Navigator.pop(context);
+    } else {
+      _showSnackBar(result["message"]);
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    NotificationService.show(context, message, isError: isError);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,9 +153,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildRegisterForm() {
     return Column(
       children: [
-        CustomTextField(hint: "Họ và tên", icon: Icons.person_outline),
+        CustomTextField(
+          hint: "Họ và tên", 
+          icon: Icons.person_outline,
+          controller: _nameController,
+        ),
         const SizedBox(height: 10),
-        CustomTextField(hint: "Email", icon: Icons.email_outlined),
+        CustomTextField(
+          hint: "Email", 
+          icon: Icons.email_outlined,
+          controller: _emailController,
+        ),
         const SizedBox(height: 10),
         CustomTextField(
           hint: "Mật khẩu",
@@ -109,6 +171,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           isPassword: true,
           isPasswordVisible: _isPasswordVisible,
           onToggleVisibility: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+          controller: _passwordController,
         ),
         const SizedBox(height: 10),
         CustomTextField(
@@ -117,6 +180,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           isPassword: true,
           isPasswordVisible: _isConfirmPasswordVisible,
           onToggleVisibility: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+          controller: _confirmPasswordController,
         ),
       ],
     );
@@ -145,7 +209,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildActionButtons() {
     return Column(
       children: [
-        PrimaryButton(text: "Tạo tài khoản", onPressed: () {}),
+        _isLoading 
+          ? const CircularProgressIndicator()
+          : PrimaryButton(
+              text: "Tạo tài khoản", 
+              onPressed: _handleRegister,
+            ),
         const SizedBox(height: 12),
         _buildSocialDivider(),
         const SizedBox(height: 12),

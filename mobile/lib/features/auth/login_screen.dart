@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import 'package:documind_mobile/shared/widgets/molecules/custom_text_field.dart';
+import 'package:documind_mobile/core/api_service.dart';
+import 'package:documind_mobile/shared/utils/notification_service.dart';
 import 'register_screen.dart';
 import '../home/home_screen.dart';
 
@@ -15,6 +17,42 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final ApiService _apiService = ApiService();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _handleLogin() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Vui lòng nhập đầy đủ thông tin")),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final result = await _apiService.login(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
+    setState(() => _isLoading = false);
+
+    if (result["success"]) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } else {
+      NotificationService.show(context, result["message"], isError: true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +136,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLoginForm() {
     return Column(
       children: [
-        CustomTextField(hint: "Email", icon: Icons.email_outlined),
+        CustomTextField(
+          hint: "Email", 
+          icon: Icons.email_outlined,
+          controller: _emailController,
+        ),
         const SizedBox(height: 12),
         CustomTextField(
           hint: "Mật khẩu",
@@ -106,6 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
           isPassword: true,
           isPasswordVisible: _isPasswordVisible,
           onToggleVisibility: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+          controller: _passwordController,
         ),
         Align(
           alignment: Alignment.centerRight,
@@ -121,15 +164,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildActionButtons() {
     return Column(
       children: [
-        PrimaryButton(
-          text: "Đăng nhập",
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const HomeScreen()),
-            );
-          },
-        ),
+        _isLoading 
+          ? const CircularProgressIndicator()
+          : PrimaryButton(
+              text: "Đăng nhập",
+              onPressed: _handleLogin,
+            ),
         const SizedBox(height: 12),
         _buildSocialDivider(),
         const SizedBox(height: 12),

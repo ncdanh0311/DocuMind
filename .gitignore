@@ -163,3 +163,4 @@ mobile/android/local.properties
 mobile/*.iml
 
 .python-version
+open-notebook/*

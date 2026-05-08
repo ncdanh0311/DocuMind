@@ -10,6 +10,7 @@ class CustomTextField extends StatelessWidget {
   final VoidCallback? onToggleVisibility;
   final double borderRadius;
   final double fontSize;
+  final TextEditingController? controller;
 
   const CustomTextField({
     super.key,
@@ -20,6 +21,7 @@ class CustomTextField extends StatelessWidget {
     this.onToggleVisibility,
     this.borderRadius = 20,
     this.fontSize = 14,
+    this.controller,
   });
 
   @override
@@ -37,6 +39,7 @@ class CustomTextField extends StatelessWidget {
         ],
       ),
       child: TextField(
+        controller: controller,
         obscureText: isPassword && !isPasswordVisible,
         style: TextStyle(fontSize: fontSize),
         decoration: InputDecoration(

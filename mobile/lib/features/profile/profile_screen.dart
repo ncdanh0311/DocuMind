@@ -2,9 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/features/profile/settings_screen.dart';
+import 'package:documind_mobile/core/api_service.dart';
+import 'package:documind_mobile/features/auth/login_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final ApiService _apiService = ApiService();
+  String _fullName = "Người dùng";
+  String _email = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final name = await _apiService.getUserName();
+    // In a real app, we might also store the email or fetch it from a /me endpoint
+    if (mounted) {
+      setState(() {
+        if (name != null) _fullName = name;
+      });
+    }
+  }
+
+  void _handleLogout() async {
+    await _apiService.logout();
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +82,7 @@ class ProfileScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Linh Nguyễn",
+              _fullName,
               style: GoogleFonts.outfit(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -53,7 +91,7 @@ class ProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              "linhnguyen@gmail.com",
+              "Thành viên DocuMind",
               style: GoogleFonts.inter(
                 fontSize: 14,
                 color: Colors.grey.shade500,
@@ -69,9 +107,9 @@ class ProfileScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildStatItem("32", "Sổ tay"),
-        _buildStatItem("156", "Ghi chú"),
-        _buildStatItem("48h", "Thời gian học"),
+        _buildStatItem("0", "Sổ tay"),
+        _buildStatItem("0", "Ghi chú"),
+        _buildStatItem("0h", "Thời gian"),
       ],
     );
   }
@@ -86,7 +124,7 @@ class ProfileScreen extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -127,7 +165,37 @@ class ProfileScreen extends StatelessWidget {
         }),
         _buildMenuItem(Icons.language_outlined, "Ngôn ngữ", trailing: "Tiếng Việt"),
         _buildMenuItem(Icons.dark_mode_outlined, "Chế độ", trailing: "Sáng"),
+        const SizedBox(height: 20),
+        _buildLogoutItem(),
       ],
+    );
+  }
+
+  Widget _buildLogoutItem() {
+    return GestureDetector(
+      onTap: _handleLogout,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.logout_rounded, color: Colors.red, size: 24),
+            const SizedBox(width: 12),
+            Text(
+              "Đăng xuất",
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

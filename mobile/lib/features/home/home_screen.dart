@@ -6,6 +6,7 @@ import 'package:documind_mobile/features/notebook/notebook_detail_screen.dart';
 import 'package:documind_mobile/features/ai/ai_chat_screen.dart';
 import 'package:documind_mobile/features/ai/summary_screen.dart';
 import 'package:documind_mobile/features/profile/profile_screen.dart';
+import 'package:documind_mobile/core/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,6 +17,24 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  String _displayName = "Linh"; // Default fallback
+  final ApiService _apiService = ApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final fullName = await _apiService.getUserName();
+    if (fullName != null && fullName.isNotEmpty) {
+      setState(() {
+        // Lấy chữ cuối cùng của họ tên
+        _displayName = fullName.trim().split(' ').last;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -90,9 +109,9 @@ class _HomeScreenState extends State<HomeScreen> {
               RichText(
                 text: TextSpan(
                   style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textDark),
-                  children: const [
+                  children: [
                     const TextSpan(text: "Chào bạn, "),
-                    const TextSpan(text: "Linh!", style: TextStyle(color: AppColors.primary)),
+                    TextSpan(text: "$_displayName!", style: const TextStyle(color: AppColors.primary)),
                   ],
                 ),
               ),
