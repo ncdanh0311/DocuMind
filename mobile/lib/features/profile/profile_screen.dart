@@ -15,7 +15,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final ApiService _apiService = ApiService();
   String _fullName = "Người dùng";
-  String _email = "";
+  bool _isLoggingOut = false; // Trạng thái đang đăng xuất
 
   @override
   void initState() {
@@ -25,7 +25,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUserData() async {
     final name = await _apiService.getUserName();
-    // In a real app, we might also store the email or fetch it from a /me endpoint
     if (mounted) {
       setState(() {
         if (name != null) _fullName = name;
@@ -34,7 +33,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _handleLogout() async {
+    setState(() => _isLoggingOut = true);
+    
+    // Giả lập độ trễ 1.5s cho mượt mà
+    await Future.delayed(const Duration(milliseconds: 1500));
+    
     await _apiService.logout();
+    
     if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,
@@ -173,7 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildLogoutItem() {
     return GestureDetector(
-      onTap: _handleLogout,
+      onTap: _isLoggingOut ? null : _handleLogout,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
@@ -183,10 +188,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.logout_rounded, color: Colors.red, size: 24),
+            if (_isLoggingOut)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                ),
+              )
+            else
+              const Icon(Icons.logout_rounded, color: Colors.red, size: 24),
             const SizedBox(width: 12),
             Text(
-              "Đăng xuất",
+              _isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất",
               style: GoogleFonts.inter(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,

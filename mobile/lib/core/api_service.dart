@@ -1,16 +1,20 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'constants.dart';
+import 'package:documind_mobile/core/constants.dart';
+import 'package:documind_mobile/core/base_api_service.dart';
 
-class ApiService {
-  final _storage = const FlutterSecureStorage();
+class ApiService extends BaseApiService {
+  // Cache in-memory to avoid frequent disk reads
+  String? _cachedToken;
+  String? _cachedName;
 
+  // --- AUTH METHODS ---
+  
   Future<Map<String, dynamic>> register(String email, String password, String? fullName) async {
     try {
       final response = await http.post(
         Uri.parse("${ApiConstants.baseUrl}${ApiConstants.registerEndpoint}"),
-        headers: {"Content-Type": "application/json"},
+        headers: await getHeaders(isAuth: false),
         body: jsonEncode({
           "email": email,
           "password": password,
@@ -18,14 +22,17 @@ class ApiService {
         }),
       );
 
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return {"success": true, "data": data};
-      } else {
-        return {"success": false, "message": data["detail"] ?? "Đăng ký thất bại"};
+      final result = handleResponse(response);
+      if (result["success"]) {
+        final data = result["data"];
+        _cachedToken = data['access_token'];
+        _cachedName = data['full_name'];
+        await storage.write(key: 'access_token', value: _cachedToken);
+        await storage.write(key: 'full_name', value: _cachedName);
       }
+      return result;
     } catch (e) {
-      return {"success": false, "message": "Lỗi kết nối: $e"};
+      return handleError(e);
     }
   }
 
@@ -33,39 +40,45 @@ class ApiService {
     try {
       final response = await http.post(
         Uri.parse("${ApiConstants.baseUrl}${ApiConstants.loginEndpoint}"),
-        headers: {"Content-Type": "application/json"},
+        headers: await getHeaders(isAuth: false),
         body: jsonEncode({
           "email": email,
           "password": password,
         }),
       );
 
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        // Lưu token và tên vào bộ nhớ bảo mật
-        await _storage.write(key: "access_token", value: data["access_token"]);
-        if (data["full_name"] != null) {
-          await _storage.write(key: "full_name", value: data["full_name"]);
+      final result = handleResponse(response);
+      if (result["success"]) {
+        final data = result["data"];
+        _cachedToken = data['access_token'];
+        _cachedName = data['full_name'];
+        await storage.write(key: "access_token", value: _cachedToken);
+        if (_cachedName != null) {
+          await storage.write(key: "full_name", value: _cachedName);
         }
-        return {"success": true, "data": data};
-      } else {
-        return {"success": false, "message": data["detail"] ?? "Đăng nhập thất bại"};
       }
+      return result;
     } catch (e) {
-      return {"success": false, "message": "Lỗi kết nối: $e"};
+      return handleError(e);
     }
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: "access_token");
-    await _storage.delete(key: "full_name");
+    _cachedToken = null;
+    _cachedName = null;
+    await storage.delete(key: "access_token");
+    await storage.delete(key: "full_name");
+  }
+
+  // --- STORAGE HELPERS ---
+
+  Future<String?> getToken() async {
+    _cachedToken ??= await storage.read(key: "access_token");
+    return _cachedToken;
   }
 
   Future<String?> getUserName() async {
-    return await _storage.read(key: "full_name");
-  }
-
-  Future<String?> getToken() async {
-    return await _storage.read(key: "access_token");
+    _cachedName ??= await storage.read(key: "full_name");
+    return _cachedName;
   }
 }

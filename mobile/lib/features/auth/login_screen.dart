@@ -5,6 +5,7 @@ import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import 'package:documind_mobile/shared/widgets/molecules/custom_text_field.dart';
 import 'package:documind_mobile/core/api_service.dart';
 import 'package:documind_mobile/shared/utils/notification_service.dart';
+import 'package:documind_mobile/core/app_strings.dart';
 import 'register_screen.dart';
 import '../home/home_screen.dart';
 
@@ -31,8 +32,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleLogin() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Vui lòng nhập đầy đủ thông tin")),
+      NotificationService.show(
+        context,
+        AppStrings.fillAllFields,
+        type: NotificationType.error,
       );
       return;
     }
@@ -50,7 +53,11 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
     } else {
-      NotificationService.show(context, result["message"], isError: true);
+      NotificationService.show(
+        context,
+        result["message"],
+        type: NotificationType.error,
+      );
     }
   }
 
@@ -87,7 +94,8 @@ class _LoginScreenState extends State<LoginScreen> {
       elevation: 0,
       toolbarHeight: 40,
       leading: IconButton(
-        icon: const Icon(Icons.chevron_left, color: AppColors.textDark, size: 28),
+        icon:
+            const Icon(Icons.chevron_left, color: AppColors.textDark, size: 28),
         onPressed: () => Navigator.pop(context),
       ),
     );
@@ -100,19 +108,34 @@ class _LoginScreenState extends State<LoginScreen> {
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          _buildDecorImage("assets/decor/clouds/decor-cloud-mint-01.png", left: -110, top: -10, width: 220, opacity: 0.3),
-          _buildDecorImage("assets/decor/clouds/decor-cloud-mint-01.png", right: -100, top: 60, width: 240, opacity: 0.2),
-          _buildDecorImage("assets/decor/botanical/decor-leaf-sprig-03.png", left: -60, bottom: 10, width: 150, angle: -0.4),
-          _buildDecorImage("assets/decor/botanical/decor-leaf-single-01.png", right: -50, top: 40, width: 120, angle: 0.6),
-          Image.asset("assets/mascot/mascot-owl-reading-book.png", height: 250, fit: BoxFit.contain),
+          _buildDecorImage("assets/decor/clouds/decor-cloud-mint-01.png",
+              left: -110, top: -10, width: 220, opacity: 0.3),
+          _buildDecorImage("assets/decor/clouds/decor-cloud-mint-01.png",
+              right: -100, top: 60, width: 240, opacity: 0.2),
+          _buildDecorImage("assets/decor/botanical/decor-leaf-sprig-03.png",
+              left: -60, bottom: 10, width: 150, angle: -0.4),
+          _buildDecorImage("assets/decor/botanical/decor-leaf-single-01.png",
+              right: -50, top: 40, width: 120, angle: 0.6),
+          Image.asset("assets/mascot/mascot-owl-reading-book.png",
+              height: 250, fit: BoxFit.contain),
         ],
       ),
     );
   }
 
-  Widget _buildDecorImage(String path, {double? left, double? right, double? top, double? bottom, required double width, double opacity = 1.0, double angle = 0.0}) {
+  Widget _buildDecorImage(String path,
+      {double? left,
+      double? right,
+      double? top,
+      double? bottom,
+      required double width,
+      double opacity = 1.0,
+      double angle = 0.0}) {
     return Positioned(
-      left: left, right: right, top: top, bottom: bottom,
+      left: left,
+      right: right,
+      top: top,
+      bottom: bottom,
       child: Opacity(
         opacity: opacity,
         child: Transform.rotate(
@@ -126,9 +149,16 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildHeaderSection() {
     return Column(
       children: [
-        Text("Đăng nhập", style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+        Text("Đăng nhập",
+            style: GoogleFonts.outfit(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark)),
         const SizedBox(height: 4),
-        Text("Chào mừng bạn quay lại", style: GoogleFonts.inter(fontSize: 16, color: AppColors.textDark.withValues(alpha: 0.6))),
+        Text("Chào mừng bạn quay lại",
+            style: GoogleFonts.inter(
+                fontSize: 16,
+                color: AppColors.textDark.withValues(alpha: 0.6))),
       ],
     );
   }
@@ -137,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       children: [
         CustomTextField(
-          hint: "Email", 
+          hint: "Email",
           icon: Icons.email_outlined,
           controller: _emailController,
         ),
@@ -147,14 +177,19 @@ class _LoginScreenState extends State<LoginScreen> {
           icon: Icons.lock_outline,
           isPassword: true,
           isPasswordVisible: _isPasswordVisible,
-          onToggleVisibility: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+          onToggleVisibility: () =>
+              setState(() => _isPasswordVisible = !_isPasswordVisible),
           controller: _passwordController,
         ),
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: () {},
-            child: Text("Quên mật khẩu?", style: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
+            child: Text("Quên mật khẩu?",
+                style: GoogleFonts.inter(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13)),
           ),
         ),
       ],
@@ -164,12 +199,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildActionButtons() {
     return Column(
       children: [
-        _isLoading 
-          ? const CircularProgressIndicator()
-          : PrimaryButton(
-              text: "Đăng nhập",
-              onPressed: _handleLogin,
-            ),
+        _isLoading
+            ? const CircularProgressIndicator()
+            : PrimaryButton(
+                text: "Đăng nhập",
+                onPressed: _handleLogin,
+              ),
         const SizedBox(height: 12),
         _buildSocialDivider(),
         const SizedBox(height: 12),
@@ -184,7 +219,8 @@ class _LoginScreenState extends State<LoginScreen> {
         const Expanded(child: Divider()),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text("hoặc", style: GoogleFonts.inter(color: Colors.grey, fontSize: 13)),
+          child: Text("hoặc",
+              style: GoogleFonts.inter(color: Colors.grey, fontSize: 13)),
         ),
         const Expanded(child: Divider()),
       ],
@@ -197,10 +233,15 @@ class _LoginScreenState extends State<LoginScreen> {
       height: 52,
       child: OutlinedButton.icon(
         onPressed: () {},
-        icon: Image.network("https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png", height: 22),
-        label: Text("Đăng nhập với Google", style: GoogleFonts.inter(color: AppColors.textDark, fontWeight: FontWeight.w600)),
+        icon: Image.network(
+            "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png",
+            height: 22),
+        label: Text("Đăng nhập với Google",
+            style: GoogleFonts.inter(
+                color: AppColors.textDark, fontWeight: FontWeight.w600)),
         style: OutlinedButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           side: BorderSide(color: Colors.grey.shade300),
         ),
       ),
@@ -211,10 +252,16 @@ class _LoginScreenState extends State<LoginScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Chưa có tài khoản? ", style: GoogleFonts.inter(color: Colors.grey, fontSize: 14)),
+        Text("Chưa có tài khoản? ",
+            style: GoogleFonts.inter(color: Colors.grey, fontSize: 14)),
         GestureDetector(
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegisterScreen())),
-          child: Text("Đăng ký", style: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14)),
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (context) => const RegisterScreen())),
+          child: Text("Đăng ký",
+              style: GoogleFonts.inter(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14)),
         ),
       ],
     );

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
-import 'package:documind_mobile/features/onboarding/onboarding_screen.dart';
+import 'package:documind_mobile/features/auth/auth_wrapper.dart';
 
 void main() {
   runApp(const DocuMindApp());
@@ -24,7 +24,7 @@ class DocuMindApp extends StatelessWidget {
         textTheme: GoogleFonts.interTextTheme(),
         useMaterial3: true,
       ),
-      home: const OnboardingScreen(),
+      home: const AuthWrapper(),
     );
   }
 }

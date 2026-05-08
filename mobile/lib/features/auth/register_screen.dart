@@ -5,6 +5,8 @@ import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import 'package:documind_mobile/shared/widgets/molecules/custom_text_field.dart';
 import 'package:documind_mobile/core/api_service.dart';
 import 'package:documind_mobile/shared/utils/notification_service.dart';
+import 'package:documind_mobile/features/home/home_screen.dart';
+import 'package:documind_mobile/core/app_strings.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,11 +19,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _isAgreed = false;
-  
+
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
 
@@ -35,18 +38,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _handleRegister() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty || _nameController.text.isEmpty) {
-      _showSnackBar("Vui lòng nhập đầy đủ thông tin");
+    if (_emailController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
+        _nameController.text.isEmpty) {
+      NotificationService.show(
+        context,
+        AppStrings.fillAllFields,
+        type: NotificationType.error,
+      );
       return;
     }
 
     if (_passwordController.text != _confirmPasswordController.text) {
-      _showSnackBar("Mật khẩu xác nhận không khớp");
+      NotificationService.show(
+        context,
+        AppStrings.passwordMismatch,
+        type: NotificationType.error,
+      );
       return;
     }
 
     if (!_isAgreed) {
-      _showSnackBar("Bạn cần đồng ý với điều khoản sử dụng");
+      NotificationService.show(
+        context,
+        AppStrings.agreeToTerms,
+        type: NotificationType.error,
+      );
       return;
     }
 
@@ -59,16 +76,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = false);
 
     if (result["success"]) {
-      _showSnackBar("Đăng ký thành công! Vui lòng đăng nhập.");
-      Navigator.pop(context);
+      NotificationService.show(
+        context,
+        AppStrings.registerSuccess,
+        type: NotificationType.success,
+      );
+      
+      // Giả lập lazy loading một chút cho mượt mà (0.8s)
+      await Future.delayed(const Duration(milliseconds: 800));
+      
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      }
     } else {
-      _showSnackBar(result["message"]);
+      NotificationService.show(
+        context,
+        result["message"],
+        type: NotificationType.error,
+      );
     }
   }
 
-  void _showSnackBar(String message, {bool isError = false}) {
-    NotificationService.show(context, message, isError: isError);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +136,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       elevation: 0,
       toolbarHeight: 40,
       leading: IconButton(
-        icon: const Icon(Icons.chevron_left, color: AppColors.textDark, size: 28),
+        icon:
+            const Icon(Icons.chevron_left, color: AppColors.textDark, size: 28),
         onPressed: () => Navigator.pop(context),
       ),
     );
@@ -117,19 +150,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          _buildDecorImage("assets/decor/clouds/decor-cloud-mint-01.png", left: -120, top: -30, width: 200, opacity: 0.3),
-          _buildDecorImage("assets/decor/clouds/decor-cloud-mint-01.png", right: -110, bottom: -20, width: 180, opacity: 0.2),
-          _buildDecorImage("assets/decor/botanical/decor-leaf-double-01.png", left: -80, bottom: 20, width: 150, angle: -0.6),
-          _buildDecorImage("assets/decor/botanical/decor-leaf-sprig-02.png", right: -70, top: 40, width: 140, angle: 0.4),
-          Image.asset("assets/mascot/mascot-owl-avatar-circle.png", height: 220, fit: BoxFit.contain),
+          _buildDecorImage("assets/decor/clouds/decor-cloud-mint-01.png",
+              left: -120, top: -30, width: 200, opacity: 0.3),
+          _buildDecorImage("assets/decor/clouds/decor-cloud-mint-01.png",
+              right: -110, bottom: -20, width: 180, opacity: 0.2),
+          _buildDecorImage("assets/decor/botanical/decor-leaf-double-01.png",
+              left: -80, bottom: 20, width: 150, angle: -0.6),
+          _buildDecorImage("assets/decor/botanical/decor-leaf-sprig-02.png",
+              right: -70, top: 40, width: 140, angle: 0.4),
+          Image.asset("assets/mascot/mascot-owl-avatar-circle.png",
+              height: 220, fit: BoxFit.contain),
         ],
       ),
     );
   }
 
-  Widget _buildDecorImage(String path, {double? left, double? right, double? top, double? bottom, required double width, double opacity = 1.0, double angle = 0.0}) {
+  Widget _buildDecorImage(String path,
+      {double? left,
+      double? right,
+      double? top,
+      double? bottom,
+      required double width,
+      double opacity = 1.0,
+      double angle = 0.0}) {
     return Positioned(
-      left: left, right: right, top: top, bottom: bottom,
+      left: left,
+      right: right,
+      top: top,
+      bottom: bottom,
       child: Opacity(
         opacity: opacity,
         child: Transform.rotate(
@@ -143,9 +191,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildHeaderSection() {
     return Column(
       children: [
-        Text("Đăng ký", style: GoogleFonts.outfit(fontSize: 30, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+        Text("Đăng ký",
+            style: GoogleFonts.outfit(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark)),
         const SizedBox(height: 4),
-        Text("Tạo tài khoản mới để bắt đầu", style: GoogleFonts.inter(fontSize: 16, color: AppColors.textDark.withValues(alpha: 0.6))),
+        Text("Tạo tài khoản mới để bắt đầu",
+            style: GoogleFonts.inter(
+                fontSize: 16,
+                color: AppColors.textDark.withValues(alpha: 0.6))),
       ],
     );
   }
@@ -154,13 +209,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       children: [
         CustomTextField(
-          hint: "Họ và tên", 
+          hint: "Họ và tên",
           icon: Icons.person_outline,
           controller: _nameController,
         ),
         const SizedBox(height: 10),
         CustomTextField(
-          hint: "Email", 
+          hint: "Email",
           icon: Icons.email_outlined,
           controller: _emailController,
         ),
@@ -170,7 +225,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           icon: Icons.lock_outline,
           isPassword: true,
           isPasswordVisible: _isPasswordVisible,
-          onToggleVisibility: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+          onToggleVisibility: () =>
+              setState(() => _isPasswordVisible = !_isPasswordVisible),
           controller: _passwordController,
         ),
         const SizedBox(height: 10),
@@ -179,7 +235,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           icon: Icons.lock_outline,
           isPassword: true,
           isPasswordVisible: _isConfirmPasswordVisible,
-          onToggleVisibility: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+          onToggleVisibility: () => setState(
+              () => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
           controller: _confirmPasswordController,
         ),
       ],
@@ -196,12 +253,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
             value: _isAgreed,
             onChanged: (val) => setState(() => _isAgreed = val ?? false),
             activeColor: AppColors.primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           ),
         ),
         const SizedBox(width: 8),
-        Text("Tôi đồng ý với ", style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
-        Text("Điều khoản sử dụng", style: GoogleFonts.inter(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.bold)),
+        Text("Tôi đồng ý với ",
+            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+        Text("Điều khoản sử dụng",
+            style: GoogleFonts.inter(
+                fontSize: 12,
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -209,12 +272,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildActionButtons() {
     return Column(
       children: [
-        _isLoading 
-          ? const CircularProgressIndicator()
-          : PrimaryButton(
-              text: "Tạo tài khoản", 
-              onPressed: _handleRegister,
-            ),
+        _isLoading
+            ? const CircularProgressIndicator()
+            : PrimaryButton(
+                text: "Tạo tài khoản",
+                onPressed: _handleRegister,
+              ),
         const SizedBox(height: 12),
         _buildSocialDivider(),
         const SizedBox(height: 12),
@@ -229,7 +292,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const Expanded(child: Divider()),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text("hoặc", style: GoogleFonts.inter(color: Colors.grey, fontSize: 13)),
+          child: Text("hoặc",
+              style: GoogleFonts.inter(color: Colors.grey, fontSize: 13)),
         ),
         const Expanded(child: Divider()),
       ],
@@ -242,10 +306,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       height: 52,
       child: OutlinedButton.icon(
         onPressed: () {},
-        icon: Image.network("https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png", height: 20),
-        label: Text("Đăng ký với Google", style: GoogleFonts.inter(color: AppColors.textDark, fontWeight: FontWeight.w600, fontSize: 16)),
+        icon: Image.network(
+            "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png",
+            height: 20),
+        label: Text("Đăng ký với Google",
+            style: GoogleFonts.inter(
+                color: AppColors.textDark,
+                fontWeight: FontWeight.w600,
+                fontSize: 16)),
         style: OutlinedButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           side: BorderSide(color: Colors.grey.shade300),
         ),
       ),
@@ -256,10 +327,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Đã có tài khoản? ", style: GoogleFonts.inter(color: Colors.grey, fontSize: 14)),
+        Text("Đã có tài khoản? ",
+            style: GoogleFonts.inter(color: Colors.grey, fontSize: 14)),
         GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: Text("Đăng nhập", style: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14)),
+          child: Text("Đăng nhập",
+              style: GoogleFonts.inter(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14)),
         ),
       ],
     );
