@@ -18,8 +18,13 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "documind"
     POSTGRES_PORT: str = "5432"
     
+    # Custom direct URL
+    DATABASE_URL_OVERRIDE: Optional[str] = None
+    
     @property
     def DATABASE_URL(self) -> str:
+        if self.DATABASE_URL_OVERRIDE:
+            return self.DATABASE_URL_OVERRIDE
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)

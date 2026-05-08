@@ -99,20 +99,27 @@ The project applies state-of-the-art Deep Learning techniques to optimize Vietna
 DocuMind/
 ├── mobile/                      ← Flutter mobile application
 ├── backend/                     
+│   ├── app/                     ← Application logic (API, Core, Models)
 │   ├── processor/               ← AI Pipeline (Docling, Embedding, Summarizer)
-│   └── main.py                  ← FastAPI entry point
+│   ├── main.py                  ← FastAPI entry point
+│   └── Dockerfile               ← Backend container definition
+├── docs/                        ← Setup guides and documentation
 ├── tests/                       ← Backend & AI testing scripts
 ├── ai/                          ← Pre-trained models and training results
 ├── assets/                      ← Project assets (logos, demo screenshots)
+├── docker-compose.yml           ← Service orchestration (Backend & DB)
 ├── pyproject.toml               ← Dependency management (uv)
-└── README.md                    ← Project overview (English)
+└── .env                         ← Environment variables (DB, Keys)
 ```
 
 ---
 
 ## 🛠️ Development Setup
 
-The project uses **`uv`** for extremely fast and consistent Python environment management.
+We provide two ways to set up the DocuMind development environment. Choose the one that best fits your workflow:
+
+*   🚀 **[Docker Setup Guide (Recommended)](./docs/docker_setup.md)**: Get up and running in minutes with a fully containerized environment (Backend + Database).
+*   🔧 **[Local Setup Guide](./docs/local_setup.md)**: Manual installation for those who want to run services directly on their machine.
 
 ### Prerequisites
 - Python 3.12+
