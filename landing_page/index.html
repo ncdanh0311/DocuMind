@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuMind - Người bạn học tập thông minh cho tài liệu của bạn</title>
+
+    <!-- Meta SEO -->
+    <meta name="description"
+        content="Tổ chức sổ tay, tải lên hàng loạt tài liệu và để AI giúp bạn tóm tắt, tạo flashcard và trả lời câu hỏi dựa trên nội dung.">
+    <meta property="og:title" content="DocuMind - Trợ lý AI cho tài liệu">
+    <meta property="og:image" content="./assets/logo-documind-full.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header id="header">
+        <nav class="container">
+            <div class="logo">
+                <img src="./assets/logo-documind-full.png" alt="DocuMind Logo">
+            </div>
+            <ul class="nav-links">
+                <li><a href="#features">Tính năng</a></li>
+                <li><a href="#how-it-works">Cách hoạt động</a></li>
+                <li><a href="#audience">Cho ai?</a></li>
+                <li><a href="#community">Cộng đồng</a></li>
+                <li><a href="https://github.com/TanDoan1234/DocuMind" target="_blank">GitHub</a></li>
+                <li><a href="../docs/docker_setup_vn.md">Docs</a></li>
+            </ul>
+            <div class="nav-actions">
+                <button class="btn btn-primary">Bắt đầu miễn phí</button>
+            </div>
+            <button class="mobile-menu-btn">
+                <i data-lucide="menu"></i>
+            </button>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero">
+            <!-- Background Decorations -->
+            <img src="../mobile/assets/decor/clouds/decor-cloud-mint-01.png" class="hero-bg-decor cloud-bg-1">
+            <img src="../mobile/assets/decor/clouds/decor-cloud-mint-01.png" class="hero-bg-decor cloud-bg-2">
+            <img src="../mobile/assets/decor/clouds/decor-cloud-mint-01.png" class="hero-bg-decor cloud-bg-3">
+            <img src="../mobile/assets/decor/clouds/decor-cloud-mint-01.png" class="hero-bg-decor cloud-bg-4">
+            <img src="../mobile/assets/decor/clouds/decor-cloud-mint-01.png" class="hero-bg-decor cloud-bg-5">
+            
+            <div class="container hero-grid">
+                <div class="hero-content">
+                    <div class="badge">
+                        ✨ AI học tập riêng tư • Mã nguồn mở • Hoạt động cục bộ
+                    </div>
+                    <h1>Người bạn học tập <span>thông minh</span> cho tài liệu của bạn</h1>
+                    <p class="subtitle">
+                        Tổ chức sổ tay, tải lên hàng loạt tài liệu và để AI giúp bạn tóm tắt, tạo flashcard và trả lời
+                        câu hỏi dựa trên nội dung.
+                    </p>
+                    <div class="hero-cta">
+                        <a href="#" class="btn btn-primary">Tạo notebook đầu tiên <i data-lucide="arrow-right"></i></a>
+                        <a href="#" class="btn btn-outline"><i data-lucide="github"></i> Xem repo / website</a>
+                    </div>
+                    <div class="hero-trust">
+                        <span><i data-lucide="shield-check"></i> Riêng tư 100%</span>
+                        <span><i data-lucide="database"></i> Dữ liệu nằm trên máy của bạn</span>
+                        <span><i data-lucide="code"></i> Mã nguồn mở</span>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <div class="mascot-wrapper">
+                        <img src="./assets/mascot-owl-reading-on-books.png" alt="Mascot Owl" class="mascot-img">
+                        
+                        <!-- Botanical Decor -->
+                        <img src="../mobile/assets/decor/botanical/decor-leaf-sprig-01.png" class="decor-item leaf-1">
+                        <img src="../mobile/assets/decor/botanical/decor-leaf-sprig-02.png" class="decor-item leaf-2">
+                        
+                        <!-- Clouds -->
+                        <img src="../mobile/assets/decor/clouds/decor-cloud-mint-01.png" class="decor-item cloud-1">
+                        
+                        <!-- Sparkles around head -->
+                        <img src="../mobile/assets/decor/sparkles/decor-sparkle-mint-01.png" class="decor-item sparkle-mint-1">
+                        <img src="../mobile/assets/decor/sparkles/decor-sparkle-mint-01.png" class="decor-item sparkle-mint-2">
+                        <img src="../mobile/assets/decor/sparkles/decor-sparkle-yellow-01.png" class="decor-item sparkle-yellow-1">
+                        <img src="../mobile/assets/decor/sparkles/decor-sparkle-yellow-01.png" class="decor-item sparkle-yellow-2">
+                    </div>
+                    <img src="./assets/landing-hero-dashboard.png" alt="Dashboard Preview" class="dashboard-img-hero">
+                </div>
+            </div>
+        </section>
+
+        <!-- Formats Section -->
+        <section class="formats section-padding">
+            <div class="container">
+                <h3 class="section-tag">Các định dạng hỗ trợ</h3>
+                <div class="formats-grid">
+                    <div class="format-card pdf">
+                        <div class="format-icon"><i data-lucide="file-text"></i></div>
+                        <div class="format-info">
+                            <h4>PDF</h4>
+                            <p>Tài liệu học tập, giáo trình, slide, báo cáo...</p>
+                        </div>
+                    </div>
+                    <div class="format-card docx">
+                        <div class="format-icon"><i data-lucide="file-edit"></i></div>
+                        <div class="format-info">
+                            <h4>DOCX</h4>
+                            <p>Tài liệu Word, bài tập, luận văn, báo cáo...</p>
+                        </div>
+                    </div>
+                    <div class="format-card txt">
+                        <div class="format-icon"><i data-lucide="file-code"></i></div>
+                        <div class="format-info">
+                            <h4>TXT</h4>
+                            <p>Ghi chú, code, log, plain text...</p>
+                        </div>
+                    </div>
+                </div>
+                <p class="formats-footer">Và nhiều định dạng khác sẽ được hỗ trợ trong tương lai!</p>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="features section-padding">
+            <div class="container">
+                <div class="section-header">
+                    <h2 class="section-title"><i data-lucide="sparkles"></i> Khám phá tính năng</h2>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card feature-mint">
+                        <h4>Tóm tắt thông minh</h4>
+                        <p>AI tóm tắt nội dung dài thành những ý chính dễ hiểu.</p>
+                        <div class="feature-preview">
+                            <div class="skeleton-line"></div>
+                            <div class="skeleton-line short"></div>
+                            <img src="../mobile/assets/mascot/mascot-owl-reading-book.png" alt="Summarize"
+                                class="feature-img">
+                        </div>
+                    </div>
+                    <div class="feature-card feature-blue">
+                        <h4>Flashcard tự động</h4>
+                        <p>Tự động tạo thẻ học từ nội dung để ôn tập hiệu quả hơn.</p>
+                        <div class="flashcard-preview">
+                            <div class="card-item">Q: Quang hợp cần những yếu tố nào?</div>
+                            <div class="card-item answer">Ánh sáng, CO2, H2O, diệp lục.</div>
+                        </div>
+                    </div>
+                    <div class="feature-card feature-yellow">
+                        <h4>Hỏi đáp với AI</h4>
+                        <p>Đặt câu hỏi và nhận câu trả lời chính xác từ tài liệu của bạn.</p>
+                        <div class="chat-preview">
+                            <div class="chat-bubble user">Quang hợp diễn ra ở đâu?</div>
+                            <div class="chat-bubble bot">
+                                <img src="../mobile/assets/mascot/mascot-owl-avatar-circle.png" alt="AI">
+                                Quang hợp diễn ra chủ yếu trong lục lạp của tế bào lá.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feature-card feature-red">
+                        <h4>Tổ chức dễ dàng</h4>
+                        <p>Sổ tay, thư mục, gắn thẻ và tìm kiếm cực nhanh.</p>
+                        <div class="folder-preview">
+                            <div class="folder-item"><i data-lucide="folder" class="text-yellow"></i> Sinh học</div>
+                            <div class="folder-item nested"><i data-lucide="folder" class="text-blue"></i> Chương 4
+                            </div>
+                            <div class="folder-item double-nested"><i data-lucide="file" class="text-mint"></i> Ôn tập
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Process Section -->
+        <section id="how-it-works" class="process section-padding">
+            <div class="container">
+                <h2 class="section-title">Quy trình học tập hiệu quả với DocuMind</h2>
+                <div class="process-steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-icon"><i data-lucide="upload-cloud"></i></div>
+                        <h5>Tải tài liệu</h5>
+                        <p>Kéo thả hoặc chọn nhiều file vào notebook.</p>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-icon"><i data-lucide="zap"></i></div>
+                        <h5>Tóm tắt</h5>
+                        <p>AI phân tích và tóm tắt nội dung nhanh chóng.</p>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-icon"><i data-lucide="message-square"></i></div>
+                        <h5>Hỏi AI</h5>
+                        <p>Đặt câu hỏi và nhận câu trả lời từ tài liệu của bạn.</p>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <div class="step-icon"><i data-lucide="check-circle"></i></div>
+                        <h5>Ôn tập</h5>
+                        <p>Ôn lại với flashcard và ghi chú thông minh.</p>
+                        <img src="../mobile/assets/mascot/mascot-owl-peeking-sticker.png" alt="Owl" class="step-mascot">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Audience Section -->
+        <section id="audience" class="audience section-padding">
+            <div class="container">
+                <h2 class="section-title"><i data-lucide="leaf"></i> Dành cho mọi nhu cầu học tập và nghiên cứu</h2>
+                <div class="audience-grid">
+                    <div class="audience-card student">
+                        <div class="audience-info">
+                            <h4 class="text-mint">Sinh viên</h4>
+                            <p>Ôn tập nhanh, hiểu sâu, tiết kiệm thời gian học.</p>
+                        </div>
+                        <img src="./assets/landing-illustration-student.png" alt="Student" class="audience-img">
+                    </div>
+                    <div class="audience-card researcher">
+                        <div class="audience-info">
+                            <h4 class="text-blue">Nghiên cứu sinh</h4>
+                            <p>Quản lý tài liệu khoa học, trích xuất ý chính dễ dàng.</p>
+                        </div>
+                        <img src="./assets/landing-illustration-researcher.png" alt="Researcher" class="audience-img">
+                    </div>
+                    <div class="audience-card team">
+                        <div class="audience-info">
+                            <h4 class="text-orange">Làm việc & Dự án</h4>
+                            <p>Tổng hợp tài liệu, chia sẻ kiến thức trong nhóm.</p>
+                        </div>
+                        <img src="./assets/landing-illustration-teamwork.png" alt="Work" class="audience-img">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Community Section -->
+        <section id="community" class="community section-padding">
+            <div class="container">
+                <h2 class="section-title">Cộng đồng nói gì về DocuMind? ❤️</h2>
+                <div class="testimonials">
+                    <div class="testimonial-card">
+                        <div class="user-info">
+                            <div class="avatar">MA</div>
+                            <div>
+                                <h5>Minh Anh</h5>
+                                <span>Sinh viên Y khoa</span>
+                            </div>
+                        </div>
+                        <div class="stars">⭐⭐⭐⭐⭐</div>
+                        <p>"DocuMind giúp mình tóm tắt giáo trình dài chỉ trong vài phút. Flashcard cực kỳ hữu ích cho
+                            kỳ thi!"</p>
+                    </div>
+                    <div class="testimonial-card">
+                        <div class="user-info">
+                            <div class="avatar blue">QH</div>
+                            <div>
+                                <h5>Quang Huy</h5>
+                                <span>Nghiên cứu sinh</span>
+                            </div>
+                        </div>
+                        <div class="stars">⭐⭐⭐⭐⭐</div>
+                        <p>"Tính năng Hỏi AI trả lời rất chính xác từ tài liệu của mình. Riêng tư và mạnh mẽ!"</p>
+                    </div>
+                    <div class="testimonial-card">
+                        <div class="user-info">
+                            <div class="avatar pink">TV</div>
+                            <div>
+                                <h5>Thảo Vy</h5>
+                                <span>Sinh viên CNTT</span>
+                            </div>
+                        </div>
+                        <div class="stars">⭐⭐⭐⭐⭐</div>
+                        <p>"Giao diện đẹp, dễ dùng và chạy mượt trên máy mình. Mình rất thích owl mascot nữa!"</p>
+                    </div>
+                </div>
+                <p class="community-footer">Tham gia cộng đồng trên GitHub và đóng góp để DocuMind ngày càng tốt hơn! 🌱
+                </p>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="final-cta">
+            <div class="container cta-box">
+                <div class="cta-content">
+                    <img src="../mobile/assets/mascot/mascot-owl-waving-backpack.png" alt="Owl" class="cta-mascot">
+                    <div class="cta-text">
+                        <h3>Sẵn sàng để học tập thông minh hơn?</h3>
+                        <p>Tạo notebook đầu tiên và khám phá sức mạnh AI ngay hôm nay.</p>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-lg">Bắt đầu miễn phí <i data-lucide="chevron-right"></i></button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container footer-grid">
+            <div class="footer-brand">
+                <img src="./assets/logo-documind-full.png" alt="DocuMind">
+                <p>Hiểu sâu hơn, học thông minh hơn.</p>
+            </div>
+            <div class="footer-links">
+                <div class="link-group">
+                    <h5>Sản phẩm</h5>
+                    <ul>
+                        <li><a href="#">Tính năng</a></li>
+                        <li><a href="#">Lộ trình</a></li>
+                        <li><a href="#">Mã nguồn</a></li>
+                    </ul>
+                </div>
+                <div class="link-group">
+                    <h5>Tài nguyên</h5>
+                    <ul>
+                        <li><a href="#">Tài liệu</a></li>
+                        <li><a href="#">Hỗ trợ</a></li>
+                        <li><a href="#">API</a></li>
+                    </ul>
+                </div>
+                <div class="link-group">
+                    <h5>Cộng đồng</h5>
+                    <ul>
+                        <li><a href="#">GitHub</a></li>
+                        <li><a href="#">Discord</a></li>
+                        <li><a href="#">Threads</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="container copyright">
+            <p>&copy; 2024 DocuMind. All rights reserved.</p>
+            <div class="social-links">
+                <a href="#"><i data-lucide="github"></i></a>
+                <a href="#"><i data-lucide="twitter"></i></a>
+                <a href="#"><i data-lucide="linkedin"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+</body>
+
+</html>
