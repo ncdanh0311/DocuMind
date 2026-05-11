@@ -5,6 +5,7 @@ import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import 'package:documind_mobile/shared/widgets/molecules/custom_text_field.dart';
 import 'package:documind_mobile/core/api_service.dart';
 import 'package:documind_mobile/shared/utils/notification_service.dart';
+import 'package:documind_mobile/features/auth/check_email_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -42,10 +43,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     if (mounted) {
       setState(() => _isLoading = false);
-      NotificationService.show(
+      
+      Navigator.push(
         context,
-        "Link đặt lại mật khẩu đã được gửi vào email của bạn",
-        type: NotificationType.success,
+        MaterialPageRoute(
+          builder: (context) => CheckEmailScreen(email: email),
+        ),
       );
     }
   }
