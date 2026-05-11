@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import 'package:documind_mobile/shared/utils/notification_service.dart';
+import 'package:documind_mobile/features/auth/reset_password_screen.dart';
 
 class CheckEmailScreen extends StatefulWidget {
   final String email;
@@ -264,6 +265,23 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ResetPasswordScreen()),
+            );
+          },
+          child: Text(
+            "Tiếp tục (Mô phỏng nhấn link email)",
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: AppColors.primary.withValues(alpha: 0.5),
+              decoration: TextDecoration.underline,
             ),
           ),
         ),
