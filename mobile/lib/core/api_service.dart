@@ -70,6 +70,51 @@ class ApiService extends BaseApiService {
     await storage.delete(key: "full_name");
   }
 
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${ApiConstants.baseUrl}${ApiConstants.authEndpoint}/forgot-password"),
+        headers: await getHeaders(isAuth: false),
+        body: jsonEncode({"email": email}),
+      );
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyOtp(String email, String otpCode) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${ApiConstants.baseUrl}${ApiConstants.authEndpoint}/verify-otp"),
+        headers: await getHeaders(isAuth: false),
+        body: jsonEncode({
+          "email": email,
+          "otp_code": otpCode,
+        }),
+      );
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> resetPassword(String token, String newPassword) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${ApiConstants.baseUrl}${ApiConstants.authEndpoint}/reset-password"),
+        headers: await getHeaders(isAuth: false),
+        body: jsonEncode({
+          "token": token,
+          "new_password": newPassword,
+        }),
+      );
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
+
   Future<Map<String, dynamic>> getProfile() async {
     try {
       final response = await http.get(

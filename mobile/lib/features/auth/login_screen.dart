@@ -32,10 +32,23 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
       NotificationService.show(
         context,
         AppStrings.fillAllFields,
+        type: NotificationType.error,
+      );
+      return;
+    }
+
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      NotificationService.show(
+        context,
+        AppStrings.invalidEmailFormat,
         type: NotificationType.error,
       );
       return;

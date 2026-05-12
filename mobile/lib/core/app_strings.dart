@@ -5,18 +5,20 @@ class AppStrings {
   static const String registerSuccess = "Đăng ký thành công!";
   static const String registerFailed = "Đăng ký thất bại";
   static const String logoutLoading = "Đang đăng xuất...";
-  
+
   // --- AUTH SPECIFIC ERRORS ---
   static const String emailAlreadyExists = "Email này đã được sử dụng.";
-  static const String incorrectEmailPassword = "Email hoặc mật khẩu không chính xác.";
+  static const String incorrectEmailPassword =
+      "Email hoặc mật khẩu không chính xác.";
   static const String userNotFound = "Không tìm thấy người dùng.";
-  
+
   // --- VALIDATION MESSAGES ---
   static const String fillAllFields = "Vui lòng nhập đầy đủ thông tin";
   static const String passwordMismatch = "Mật khẩu xác nhận không khớp";
   static const String agreeToTerms = "Bạn cần đồng ý với điều khoản sử dụng";
-  static const String invalidEmail = "Email không hợp lệ";
-  
+  static const String invalidEmailFormat = "Email không đúng định dạng";
+  static const String passwordTooShort = "Mật khẩu dài ít nhất 8 ký tự";
+
   // --- SYSTEM MESSAGES ---
   static const String connectionError = "Lỗi kết nối, vui lòng thử lại";
   static const String serverError = "Lỗi máy chủ, vui lòng liên hệ hỗ trợ";

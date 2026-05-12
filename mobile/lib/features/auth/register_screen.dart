@@ -38,12 +38,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _handleRegister() async {
-    if (_emailController.text.isEmpty ||
-        _passwordController.text.isEmpty ||
-        _nameController.text.isEmpty) {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final name = _nameController.text.trim();
+
+    if (email.isEmpty || password.isEmpty || name.isEmpty) {
       NotificationService.show(
         context,
         AppStrings.fillAllFields,
+        type: NotificationType.error,
+      );
+      return;
+    }
+
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      NotificationService.show(
+        context,
+        AppStrings.invalidEmailFormat,
+        type: NotificationType.error,
+      );
+      return;
+    }
+
+    if (password.length < 8) {
+      NotificationService.show(
+        context,
+        AppStrings.passwordTooShort,
         type: NotificationType.error,
       );
       return;

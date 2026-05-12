@@ -5,6 +5,8 @@ import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import 'package:documind_mobile/shared/utils/notification_service.dart';
 import 'package:documind_mobile/features/auth/reset_password_screen.dart';
 
+import 'package:documind_mobile/core/api_service.dart';
+
 class CheckEmailScreen extends StatefulWidget {
   final String email;
   const CheckEmailScreen({super.key, required this.email});
@@ -14,21 +16,62 @@ class CheckEmailScreen extends StatefulWidget {
 }
 
 class _CheckEmailScreenState extends State<CheckEmailScreen> {
-  bool _isResending = false;
+  bool _isLoading = false;
+  final List<TextEditingController> _controllers = List.generate(6, (index) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
+  final ApiService _apiService = ApiService();
 
-  void _handleResendLink() async {
-    setState(() => _isResending = true);
-    
-    // Giả lập gửi lại link
-    await Future.delayed(const Duration(milliseconds: 1500));
-    
+  @override
+  void dispose() {
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
+    for (var node in _focusNodes) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  void _handleResendCode() async {
+    setState(() => _isLoading = true);
+    final result = await _apiService.forgotPassword(widget.email);
     if (mounted) {
-      setState(() => _isResending = false);
+      setState(() => _isLoading = false);
       NotificationService.show(
         context,
-        "Đã gửi lại link mới đến ${widget.email}",
-        type: NotificationType.success,
+        result["message"] ?? "Đã gửi lại mã mới!",
+        type: result["success"] ? NotificationType.success : NotificationType.error,
       );
+    }
+  }
+
+  void _handleVerify() async {
+    String otp = _controllers.map((e) => e.text).join();
+    if (otp.length < 6) {
+      NotificationService.show(context, "Vui lòng nhập đủ 6 chữ số", type: NotificationType.error);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final result = await _apiService.verifyOtp(widget.email, otp);
+    
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (result["success"]) {
+        final resetToken = result["data"]["reset_token"];
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ResetPasswordScreen(token: resetToken),
+          ),
+        );
+      } else {
+        NotificationService.show(
+          context,
+          result["message"] ?? "Mã xác thực không đúng hoặc đã hết hạn",
+          type: NotificationType.error,
+        );
+      }
     }
   }
 
@@ -38,15 +81,16 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
       backgroundColor: AppColors.background,
       appBar: _buildAppBar(context),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 30),
           child: Column(
             children: [
+              const SizedBox(height: 10),
               _buildMascotSection(),
               _buildHeaderSection(),
-              const SizedBox(height: 24),
-              _buildInfoSection(),
-              const Spacer(),
+              const SizedBox(height: 32),
+              _buildOtpInputSection(),
+              const SizedBox(height: 32),
               _buildActionButtons(),
               const SizedBox(height: 24),
             ],
@@ -69,8 +113,8 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
   }
 
   Widget _buildMascotSection() {
-    return Expanded(
-      flex: 10,
+    return SizedBox(
+      height: 240,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.center,
@@ -84,7 +128,7 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
           _buildDecorImage("assets/decor/botanical/decor-leaf-single-01.png",
               right: -50, top: 40, width: 120, angle: 0.6),
           Image.asset("assets/mascot/mascot-auth-check-email.png",
-              height: 280, fit: BoxFit.contain),
+              height: 240, fit: BoxFit.contain),
         ],
       ),
     );
@@ -117,7 +161,7 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
     return Column(
       children: [
         Text(
-          "Kiểm tra email của bạn",
+          "Xác thực mã OTP",
           style: GoogleFonts.outfit(
             fontSize: 28,
             fontWeight: FontWeight.bold,
@@ -126,25 +170,24 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          "Chúng tôi đã gửi link đặt lại mật khẩu\nđến email:",
+          "Chúng tôi đã gửi mã 6 chữ số đến email:",
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
-            fontSize: 15,
+            fontSize: 14,
             color: AppColors.textDark.withValues(alpha: 0.6),
-            height: 1.5,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: const Color(0xFFF1F8F7),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(15),
           ),
           child: Text(
             widget.email,
             style: GoogleFonts.inter(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
               color: AppColors.primary,
             ),
@@ -154,83 +197,66 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
     );
   }
 
-  Widget _buildInfoSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildInfoItem(
-            Icons.email_outlined,
-            "Không thấy email?",
-            "Kiểm tra hộp thư đến hoặc thư rác.",
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1),
-          ),
-          _buildInfoItem(
-            Icons.access_time_rounded,
-            "Link sẽ hết hạn sau 15 phút",
-            "Vui lòng đặt lại mật khẩu sớm.",
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1),
-          ),
-          _buildInfoItem(
-            Icons.refresh_rounded,
-            "Chưa nhận được email?",
-            "Bạn có thể gửi lại link mới.",
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoItem(IconData icon, String title, String subtitle) {
-    return Row(
+  Widget _buildOtpInputSection() {
+    return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: AppColors.textDark, size: 22),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(6, (index) {
+            return Container(
+              width: 48,
+              height: 58,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _controllers[index],
+                focusNode: _focusNodes[index],
+                textAlign: TextAlign.center,
+                keyboardType: TextInputType.number,
+                maxLength: 1,
+                style: GoogleFonts.outfit(
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
+                  color: AppColors.primary,
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: AppColors.textDark.withValues(alpha: 0.5),
+                decoration: InputDecoration(
+                  counterText: "",
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
+                onChanged: (value) {
+                  if (value.isNotEmpty && index < 5) {
+                    _focusNodes[index + 1].requestFocus();
+                  } else if (value.isEmpty && index > 0) {
+                    _focusNodes[index - 1].requestFocus();
+                  }
+                  if (_controllers.every((c) => c.text.isNotEmpty)) {
+                    _handleVerify();
+                  }
+                },
               ),
-            ],
+            );
+          }),
+        ),
+        const SizedBox(height: 32),
+        GestureDetector(
+          onTap: _handleResendCode,
+          child: Text(
+            "Chưa nhận được mã? Gửi lại mã mới",
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
           ),
         ),
       ],
@@ -240,48 +266,33 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
   Widget _buildActionButtons() {
     return Column(
       children: [
-        _isResending
+        _isLoading
             ? const CircularProgressIndicator(color: AppColors.primary)
             : PrimaryButton(
-                text: "Gửi lại link",
-                onPressed: _handleResendLink,
+                text: "Xác nhận mã",
+                onPressed: _handleVerify,
               ),
         const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
-          height: 52,
+          height: 54,
           child: OutlinedButton.icon(
             onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
-            icon: const Icon(Icons.verified_user_outlined, size: 20, color: AppColors.textDark),
+            icon: const Icon(Icons.login_rounded, size: 20, color: AppColors.textDark),
             label: Text(
               "Quay lại đăng nhập",
               style: GoogleFonts.inter(
                 color: AppColors.textDark,
                 fontWeight: FontWeight.w600,
+                fontSize: 15,
               ),
             ),
             style: OutlinedButton.styleFrom(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
               ),
-              side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ResetPasswordScreen()),
-            );
-          },
-          child: Text(
-            "Tiếp tục (Mô phỏng nhấn link email)",
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: AppColors.primary.withValues(alpha: 0.5),
-              decoration: TextDecoration.underline,
+              side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
+              backgroundColor: Colors.white.withValues(alpha: 0.5),
             ),
           ),
         ),

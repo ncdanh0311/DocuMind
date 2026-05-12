@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     # Custom direct URL
     DATABASE_URL_OVERRIDE: Optional[str] = None
     
+    # Email Configuration
+    EMAILS_FROM_EMAIL: str = "inhtan810@gmail.com"
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = "inhtan810@gmail.com"
+    SMTP_PASSWORD: str = ""
+    SMTP_TLS: bool = True
+    SMTP_SSL: bool = False
+    
     @property
     def DATABASE_URL(self) -> str:
         if self.DATABASE_URL_OVERRIDE:

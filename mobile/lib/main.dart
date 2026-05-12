@@ -3,16 +3,31 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/features/auth/auth_wrapper.dart';
 
+
+
 void main() {
   runApp(const DocuMindApp());
 }
 
-class DocuMindApp extends StatelessWidget {
+class DocuMindApp extends StatefulWidget {
   const DocuMindApp({super.key});
+
+  @override
+  State<DocuMindApp> createState() => _DocuMindAppState();
+}
+
+class _DocuMindAppState extends State<DocuMindApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'DocuMind',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

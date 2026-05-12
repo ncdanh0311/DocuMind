@@ -6,6 +6,7 @@ import 'package:documind_mobile/shared/widgets/molecules/custom_text_field.dart'
 import 'package:documind_mobile/core/api_service.dart';
 import 'package:documind_mobile/shared/utils/notification_service.dart';
 import 'package:documind_mobile/features/auth/check_email_screen.dart';
+import 'package:documind_mobile/core/app_strings.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -30,7 +31,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (email.isEmpty) {
       NotificationService.show(
         context,
-        "Vui lòng nhập email của bạn",
+        AppStrings.fillAllFields,
+        type: NotificationType.error,
+      );
+      return;
+    }
+
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      NotificationService.show(
+        context,
+        AppStrings.invalidEmailFormat,
         type: NotificationType.error,
       );
       return;
@@ -38,18 +49,25 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     setState(() => _isLoading = true);
 
-    // TODO: Implement actual API call
-    await Future.delayed(const Duration(milliseconds: 1500));
+    final result = await _apiService.forgotPassword(email);
 
     if (mounted) {
       setState(() => _isLoading = false);
-      
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CheckEmailScreen(email: email),
-        ),
-      );
+
+      if (result["success"]) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CheckEmailScreen(email: email),
+          ),
+        );
+      } else {
+        NotificationService.show(
+          context,
+          result["message"] ?? "Có lỗi xảy ra, vui lòng thử lại.",
+          type: NotificationType.error,
+        );
+      }
     }
   }
 
@@ -85,7 +103,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       elevation: 0,
       toolbarHeight: 40,
       leading: IconButton(
-        icon: const Icon(Icons.chevron_left, color: AppColors.textDark, size: 28),
+        icon:
+            const Icon(Icons.chevron_left, color: AppColors.textDark, size: 28),
         onPressed: () => Navigator.pop(context),
       ),
     );
@@ -148,7 +167,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Text(
-            "Đừng lo! Nhập email của bạn để chúng tôi gửi link đặt lại mật khẩu.",
+            "Đừng lo! Nhập email của bạn để chúng tôi gửi mã xác thực đặt lại mật khẩu.",
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
                 fontSize: 15,
@@ -189,7 +208,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _isLoading
             ? const CircularProgressIndicator(color: AppColors.primary)
             : PrimaryButton(
-                text: "Gửi link đặt lại mật khẩu",
+                text: "Gửi mã xác thực",
                 onPressed: _handleResetPassword,
               ),
         const SizedBox(height: 24),
@@ -210,7 +229,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           height: 52,
           child: OutlinedButton.icon(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.verified_user_outlined, size: 20, color: AppColors.textDark),
+            icon: const Icon(Icons.verified_user_outlined,
+                size: 20, color: AppColors.textDark),
             label: Text(
               "Quay lại đăng nhập",
               style: GoogleFonts.inter(
@@ -252,7 +272,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
                 children: [
                   const TextSpan(
-                      text: "Vì lý do bảo mật, link đặt lại mật khẩu sẽ hết hạn sau "),
+                      text:
+                          "Vì lý do bảo mật, code đặt lại mật khẩu sẽ hết hạn sau "),
                   const TextSpan(
                     text: "15 phút.",
                     style: TextStyle(

@@ -13,6 +13,10 @@ class User(SQLModel, table=True):
     hashed_password: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
+    # OTP for Password Reset
+    otp_code: Optional[str] = None
+    otp_expiry: Optional[datetime] = None
+    
     # Relationships
     notebooks: List["Notebook"] = Relationship(back_populates="user")
 
