@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import '../auth/login_screen.dart';
@@ -104,9 +105,9 @@ class OnboardingScreen extends StatelessWidget {
               color: AppColors.textDark,
             ),
             children: [
-              const TextSpan(text: "Học tập thông minh\n"),
+              TextSpan(text: "onboarding.title".tr()),
               TextSpan(
-                text: "cùng AI",
+                text: "onboarding.title_highlight".tr(),
                 style: GoogleFonts.outfit(color: AppColors.primary),
               ),
             ],
@@ -114,7 +115,7 @@ class OnboardingScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          "Ghi chú, tóm tắt, hỏi đáp và ôn tập dễ dàng hơn bao giờ hết.",
+          "onboarding.subtitle".tr(),
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 16,
@@ -129,7 +130,7 @@ class OnboardingScreen extends StatelessWidget {
 
   Widget _buildActionSection(BuildContext context) {
     return PrimaryButton(
-      text: "Bắt đầu",
+      text: "onboarding.start".tr(),
       height: 60,
       borderRadius: 30,
       onPressed: () {
@@ -141,3 +142,4 @@ class OnboardingScreen extends StatelessWidget {
     );
   }
 }
+

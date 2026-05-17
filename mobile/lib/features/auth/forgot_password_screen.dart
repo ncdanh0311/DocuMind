@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import 'package:documind_mobile/shared/widgets/molecules/custom_text_field.dart';
@@ -64,7 +65,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       } else {
         NotificationService.show(
           context,
-          result["message"] ?? "Có lỗi xảy ra, vui lòng thử lại.",
+          result["message"] ?? AppStrings.unknownError,
           type: NotificationType.error,
         );
       }
@@ -158,7 +159,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget _buildHeaderSection() {
     return Column(
       children: [
-        Text("Quên mật khẩu?",
+        Text("auth.forgot_title".tr(),
             style: GoogleFonts.outfit(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
@@ -167,7 +168,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Text(
-            "Đừng lo! Nhập email của bạn để chúng tôi gửi mã xác thực đặt lại mật khẩu.",
+            "auth.forgot_desc".tr(),
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
                 fontSize: 15,
@@ -184,7 +185,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Email",
+          "auth.email_label".tr(),
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.bold,
@@ -193,7 +194,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 10),
         CustomTextField(
-          hint: "Nhập email của bạn",
+          hint: "auth.email_input_hint".tr(),
           icon: Icons.email_outlined,
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
@@ -208,7 +209,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _isLoading
             ? const CircularProgressIndicator(color: AppColors.primary)
             : PrimaryButton(
-                text: "Gửi mã xác thực",
+                text: "auth.send_otp".tr(),
                 onPressed: _handleResetPassword,
               ),
         const SizedBox(height: 24),
@@ -217,7 +218,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             const Expanded(child: Divider()),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text("hoặc",
+              child: Text("auth.or_divider".tr(),
                   style: GoogleFonts.inter(color: Colors.grey, fontSize: 13)),
             ),
             const Expanded(child: Divider()),
@@ -232,7 +233,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             icon: const Icon(Icons.verified_user_outlined,
                 size: 20, color: AppColors.textDark),
             label: Text(
-              "Quay lại đăng nhập",
+              "auth.back_to_login".tr(),
               style: GoogleFonts.inter(
                 color: AppColors.textDark,
                 fontWeight: FontWeight.w600,
@@ -271,12 +272,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   height: 1.5,
                 ),
                 children: [
-                  const TextSpan(
-                      text:
-                          "Vì lý do bảo mật, code đặt lại mật khẩu sẽ hết hạn sau "),
-                  const TextSpan(
-                    text: "15 phút.",
-                    style: TextStyle(
+                  TextSpan(
+                      text: "auth.security_notice".tr()),
+                  TextSpan(
+                    text: "auth.expires_time".tr(),
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AppColors.primary,
                     ),
@@ -290,3 +290,4 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 }
+

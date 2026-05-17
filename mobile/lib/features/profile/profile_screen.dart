@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/features/profile/settings_screen.dart';
 import 'package:documind_mobile/core/api_service.dart';
@@ -42,10 +43,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void _showLanguagePicker() {
+    String? changingLocale;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "settings.language_selection".tr(),
+                    style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    title: Text("settings.vietnamese".tr(), style: GoogleFonts.inter(fontSize: 16)),
+                    trailing: changingLocale == 'vi'
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                          )
+                        : (context.locale.languageCode == 'vi' ? const Icon(Icons.check, color: AppColors.primary) : null),
+                    onTap: changingLocale != null ? null : () async {
+                      setModalState(() => changingLocale = 'vi');
+                      await Future.delayed(const Duration(milliseconds: 600));
+                      if (context.mounted) {
+                        await context.setLocale(const Locale('vi'));
+                        if (mounted) setState(() {});
+                        if (context.mounted) Navigator.pop(context);
+                      }
+                    },
+                  ),
+                  const Divider(),
+                  ListTile(
+                    title: Text("settings.english".tr(), style: GoogleFonts.inter(fontSize: 16)),
+                    trailing: changingLocale == 'en'
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                          )
+                        : (context.locale.languageCode == 'en' ? const Icon(Icons.check, color: AppColors.primary) : null),
+                    onTap: changingLocale != null ? null : () async {
+                      setModalState(() => changingLocale = 'en');
+                      await Future.delayed(const Duration(milliseconds: 600));
+                      if (context.mounted) {
+                        await context.setLocale(const Locale('en'));
+                        if (mounted) setState(() {});
+                        if (context.mounted) Navigator.pop(context);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _handleLogout() async {
     setState(() => _isLoggingOut = true);
 
-    // Giả lập độ trễ 1.5s cho mượt mà
     await Future.delayed(const Duration(milliseconds: 1500));
 
     await _apiService.logout();
@@ -71,16 +141,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               const SizedBox(height: 24),
               _buildHeader(),
-              const SizedBox(height: 16), // Reduced from 32
+              const SizedBox(height: 16),
 
-              // Thống kê Section
-              _buildSectionTitle("Thống kê học tập"),
+              _buildSectionTitle("profile.stats_title".tr()),
               const SizedBox(height: 16),
               _buildStatsGrid(),
               const SizedBox(height: 32),
 
-              // Cài đặt Section
-              _buildSectionTitle("Tài khoản & Tùy chọn"),
+              _buildSectionTitle("profile.title".tr()),
               const SizedBox(height: 16),
               _buildMenuSection(context),
               const SizedBox(height: 40),
@@ -128,10 +196,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                "Thành viên DocuMind",
+                "profile.joined_date".tr(),
                 style: GoogleFonts.inter(
                   fontSize: 16,
-                  color: const Color(0xFF64748B), // Slate Gray from guide
+                  color: const Color(0xFF64748B),
                 ),
               ),
             ],
@@ -145,11 +213,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildStatItem("0", "Sổ tay", Icons.book_outlined,
+        _buildStatItem("0", "profile.stat_notebooks".tr(), Icons.book_outlined,
             AppColors.categoryStudy, AppColors.primary),
-        _buildStatItem("0", "Ghi chú", Icons.note_alt_outlined,
+        _buildStatItem("0", "profile.stat_notes".tr(), Icons.note_alt_outlined,
             AppColors.categoryProject, Colors.blue),
-        _buildStatItem("0h", "Thời gian", Icons.access_time,
+        _buildStatItem("0h", "profile.stat_time".tr(), Icons.access_time,
             AppColors.categoryPersonal, Colors.orange),
       ],
     );
@@ -221,14 +289,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           _buildMenuItem(
             Icons.cloud_outlined,
-            "Dữ liệu của tôi",
+            "profile.my_data".tr(),
             iconBg: AppColors.categoryStudy,
             iconColor: AppColors.primary,
           ),
           _buildDivider(),
           _buildMenuItem(
             Icons.settings_outlined,
-            "Cài đặt",
+            "profile.settings".tr(),
             iconBg: AppColors.categoryProject,
             iconColor: Colors.blue,
             onTap: () {
@@ -241,10 +309,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildDivider(),
           _buildMenuItem(
             Icons.language_outlined,
-            "Ngôn ngữ",
+            "profile.language".tr(),
             iconBg: AppColors.categoryPersonal,
             iconColor: Colors.orange,
-            trailing: "Tiếng Việt",
+            trailing: context.locale.languageCode == 'vi' ? "settings.vietnamese".tr() : "settings.english".tr(),
+            onTap: _showLanguagePicker,
           ),
           const SizedBox(height: 12),
           _buildLogoutItem(),
@@ -288,7 +357,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const Icon(Icons.logout_rounded, color: Colors.red, size: 24),
             const SizedBox(width: 12),
             Text(
-              _isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất",
+              _isLoggingOut ? "profile.logout_progress".tr() : "profile.logout".tr(),
               style: GoogleFonts.inter(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -350,3 +419,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+

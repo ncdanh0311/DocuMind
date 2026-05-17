@@ -65,7 +65,7 @@ def register(user_in: UserCreate, session: Session = Depends(get_session)):
     if user:
         raise HTTPException(
             status_code=400,
-            detail="Email này đã được sử dụng."
+            detail="ERR_EMAIL_TAKEN"
         )
     
     db_user = User(
@@ -94,7 +94,7 @@ def login(user_in: UserLogin, session: Session = Depends(get_session)):
     if not user or not verify_password(user_in.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email hoặc mật khẩu không chính xác.",
+            detail="ERR_INVALID_CREDENTIALS",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -111,7 +111,7 @@ async def forgot_password(data: ForgotPassword, session: Session = Depends(get_s
     if not user:
         raise HTTPException(
             status_code=404, 
-            detail="Email này chưa được đăng ký trong hệ thống."
+            detail="ERR_EMAIL_NOT_FOUND"
         )
     
     # Tạo mã OTP 6 số
@@ -125,16 +125,16 @@ async def forgot_password(data: ForgotPassword, session: Session = Depends(get_s
     # Gửi email chứa OTP
     await send_reset_otp_email(data.email, otp)
     
-    return {"message": "Mã xác thực đã được gửi vào email của bạn."}
+    return {"message": "MSG_OTP_SENT"}
 
 @router.post("/verify-otp")
 def verify_otp(data: VerifyOTP, session: Session = Depends(get_session)):
     user = session.exec(select(User).where(User.email == data.email)).first()
     if not user or user.otp_code != data.otp_code:
-        raise HTTPException(status_code=400, detail="Mã xác thực không chính xác.")
+        raise HTTPException(status_code=400, detail="ERR_OTP_INVALID")
     
     if datetime.utcnow() > user.otp_expiry:
-        raise HTTPException(status_code=400, detail="Mã xác thực đã hết hạn.")
+        raise HTTPException(status_code=400, detail="ERR_OTP_EXPIRED")
     
     # Mã đúng -> Tạo token tạm thời để đặt lại mật khẩu (hết hạn sau 10 phút)
     reset_token = create_access_token(
@@ -156,14 +156,14 @@ def reset_password(data: ResetPassword, session: Session = Depends(get_session))
         payload = jwt.decode(data.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
-            raise HTTPException(status_code=400, detail="Token không hợp lệ.")
+            raise HTTPException(status_code=400, detail="ERR_TOKEN_INVALID")
     except JWTError:
-        raise HTTPException(status_code=400, detail="Token đã hết hạn hoặc không hợp lệ.")
+        raise HTTPException(status_code=400, detail="ERR_TOKEN_EXPIRED")
     
     # Tìm user và cập nhật mật khẩu
     user = session.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng.")
+        raise HTTPException(status_code=404, detail="ERR_USER_NOT_FOUND")
     
     # Cập nhật mật khẩu mới
     user.hashed_password = get_password_hash(data.new_password)
@@ -175,7 +175,7 @@ def reset_password(data: ResetPassword, session: Session = Depends(get_session))
     access_token = create_access_token(subject=str(user.user_id))
 
     return {
-        "message": "Mật khẩu của bạn đã được cập nhật thành công!",
+        "message": "MSG_PASSWORD_RESET_SUCCESS",
         "access_token": access_token,
         "full_name": user.full_name
     }

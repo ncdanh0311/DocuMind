@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import 'package:documind_mobile/shared/utils/notification_service.dart';
@@ -39,7 +40,7 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
       setState(() => _isLoading = false);
       NotificationService.show(
         context,
-        result["message"] ?? "Đã gửi lại mã mới!",
+        result["message"] ?? "auth.resend_success".tr(),
         type: result["success"] ? NotificationType.success : NotificationType.error,
       );
     }
@@ -48,7 +49,7 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
   void _handleVerify() async {
     String otp = _controllers.map((e) => e.text).join();
     if (otp.length < 6) {
-      NotificationService.show(context, "Vui lòng nhập đủ 6 chữ số", type: NotificationType.error);
+      NotificationService.show(context, "auth.otp_length_error".tr(), type: NotificationType.error);
       return;
     }
 
@@ -68,7 +69,7 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
       } else {
         NotificationService.show(
           context,
-          result["message"] ?? "Mã xác thực không đúng hoặc đã hết hạn",
+          result["message"] ?? "auth.invalid_otp".tr(),
           type: NotificationType.error,
         );
       }
@@ -161,7 +162,7 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
     return Column(
       children: [
         Text(
-          "Xác thực mã OTP",
+          "auth.check_email_title".tr(),
           style: GoogleFonts.outfit(
             fontSize: 28,
             fontWeight: FontWeight.bold,
@@ -170,7 +171,7 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          "Chúng tôi đã gửi mã 6 chữ số đến email:",
+          "auth.check_email_desc".tr(),
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 14,
@@ -228,10 +229,10 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
                 ),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   counterText: "",
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  contentPadding: EdgeInsets.symmetric(vertical: 12),
                 ),
                 onChanged: (value) {
                   if (value.isNotEmpty && index < 5) {
@@ -251,7 +252,7 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
         GestureDetector(
           onTap: _handleResendCode,
           child: Text(
-            "Chưa nhận được mã? Gửi lại mã mới",
+            "auth.resend_code".tr(),
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -269,7 +270,7 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
         _isLoading
             ? const CircularProgressIndicator(color: AppColors.primary)
             : PrimaryButton(
-                text: "Xác nhận mã",
+                text: "auth.verify_button".tr(),
                 onPressed: _handleVerify,
               ),
         const SizedBox(height: 16),
@@ -280,7 +281,7 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
             onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
             icon: const Icon(Icons.login_rounded, size: 20, color: AppColors.textDark),
             label: Text(
-              "Quay lại đăng nhập",
+              "auth.back_to_login".tr(),
               style: GoogleFonts.inter(
                 color: AppColors.textDark,
                 fontWeight: FontWeight.w600,
@@ -300,3 +301,4 @@ class _CheckEmailScreenState extends State<CheckEmailScreen> {
     );
   }
 }
+

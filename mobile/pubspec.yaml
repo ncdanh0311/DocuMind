@@ -17,6 +17,7 @@ dependencies:
   shimmer: ^3.0.0
   app_links: ^7.0.0
   file_picker: ^11.0.2
+  easy_localization: ^3.0.8
 
 dev_dependencies:
   flutter_test:
@@ -34,3 +35,4 @@ flutter:
     - assets/icons/categories/
     - assets/icons/navigations/
     - assets/icons/utility/
+    - assets/translations/

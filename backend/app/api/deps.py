@@ -24,15 +24,15 @@ def get_current_user(
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Could not validate credentials",
+                detail="ERR_UNAUTHORIZED",
             )
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Could not validate credentials",
+            detail="ERR_UNAUTHORIZED",
         )
     
     user = session.get(User, uuid.UUID(user_id))
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="ERR_USER_NOT_FOUND")
     return user

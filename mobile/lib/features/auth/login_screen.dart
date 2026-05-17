@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import 'package:documind_mobile/shared/widgets/molecules/custom_text_field.dart';
@@ -163,13 +164,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildHeaderSection() {
     return Column(
       children: [
-        Text("Đăng nhập",
+        Text("auth.login_title".tr(),
             style: GoogleFonts.outfit(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark)),
         const SizedBox(height: 4),
-        Text("Chào mừng bạn quay lại",
+        Text("auth.login_subtitle".tr(),
             style: GoogleFonts.inter(
                 fontSize: 16,
                 color: AppColors.textDark.withValues(alpha: 0.6))),
@@ -181,13 +182,13 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       children: [
         CustomTextField(
-          hint: "Email",
+          hint: "auth.email_hint".tr(),
           icon: Icons.email_outlined,
           controller: _emailController,
         ),
         const SizedBox(height: 12),
         CustomTextField(
-          hint: "Mật khẩu",
+          hint: "auth.password_hint".tr(),
           icon: Icons.lock_outline,
           isPassword: true,
           isPasswordVisible: _isPasswordVisible,
@@ -206,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               );
             },
-            child: Text("Quên mật khẩu?",
+            child: Text("auth.forgot_password_link".tr(),
                 style: GoogleFonts.inter(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w600,
@@ -223,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading
             ? const CircularProgressIndicator()
             : PrimaryButton(
-                text: "Đăng nhập",
+                text: "auth.login_button".tr(),
                 onPressed: _handleLogin,
               ),
         const SizedBox(height: 12),
@@ -240,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const Expanded(child: Divider()),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text("hoặc",
+          child: Text("auth.or_divider".tr(),
               style: GoogleFonts.inter(color: Colors.grey, fontSize: 13)),
         ),
         const Expanded(child: Divider()),
@@ -257,7 +258,7 @@ class _LoginScreenState extends State<LoginScreen> {
         icon: Image.network(
             "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png",
             height: 22),
-        label: Text("Đăng nhập với Google",
+        label: Text("auth.google_login".tr(),
             style: GoogleFonts.inter(
                 color: AppColors.textDark, fontWeight: FontWeight.w600)),
         style: OutlinedButton.styleFrom(
@@ -273,12 +274,12 @@ class _LoginScreenState extends State<LoginScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Chưa có tài khoản? ",
+        Text("auth.no_account".tr(),
             style: GoogleFonts.inter(color: Colors.grey, fontSize: 14)),
         GestureDetector(
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (context) => const RegisterScreen())),
-          child: Text("Đăng ký",
+          child: Text("auth.register_link".tr(),
               style: GoogleFonts.inter(
                   color: AppColors.primary,
                   fontWeight: FontWeight.bold,
@@ -288,3 +289,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

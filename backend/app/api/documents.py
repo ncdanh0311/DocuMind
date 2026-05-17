@@ -28,7 +28,7 @@ async def upload_document(
     if not notebook or notebook.user_id != current_user.user_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Không tìm thấy sổ tay hoặc bạn không có quyền truy cập."
+            detail="ERR_NOTEBOOK_NOT_FOUND"
         )
 
     # 2. Tạo bản ghi Document trước để lấy document_id chuẩn xác
@@ -79,7 +79,7 @@ def list_documents(
     if not notebook or notebook.user_id != current_user.user_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Không tìm thấy sổ tay hoặc bạn không có quyền truy cập."
+            detail="ERR_NOTEBOOK_NOT_FOUND"
         )
 
     documents = session.exec(
@@ -104,14 +104,14 @@ def delete_document(
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Không tìm thấy tài liệu."
+            detail="ERR_DOC_NOT_FOUND"
         )
 
     notebook = session.get(Notebook, document.notebook_id)
     if not notebook or notebook.user_id != current_user.user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Bạn không có quyền xóa tài liệu này."
+            detail="ERR_DOC_FORBIDDEN"
         )
 
     # 1. Xóa file vật lý trên ổ cứng nếu tồn tại

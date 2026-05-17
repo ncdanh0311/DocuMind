@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import 'package:documind_mobile/shared/widgets/molecules/custom_text_field.dart';
@@ -83,7 +84,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       if (result["success"]) {
         final data = result["data"];
         
-        // Lưu token để đăng nhập tự động
         final storage = _apiService.storage;
         await storage.write(key: 'access_token', value: data['access_token']);
         if (data['full_name'] != null) {
@@ -92,7 +92,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
         NotificationService.show(
           context,
-          "Đổi mật khẩu thành công!",
+          "auth.reset_success".tr(),
           type: NotificationType.success,
         );
 
@@ -101,7 +101,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         MascotLoadingOverlay.hide();
 
         if (mounted) {
-          // Điều hướng thẳng vào HomeScreen
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (context) => const HomeScreen()),
             (route) => false,
@@ -110,7 +109,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       } else {
         NotificationService.show(
           context,
-          result["message"] ?? "Token không hợp lệ hoặc đã hết hạn.",
+          result["message"] ?? "auth.invalid_token".tr(),
           type: NotificationType.error,
         );
       }
@@ -205,7 +204,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     return Column(
       children: [
         Text(
-          "Tạo mật khẩu mới",
+          "auth.reset_title".tr(),
           style: GoogleFonts.outfit(
             fontSize: 32,
             fontWeight: FontWeight.bold,
@@ -214,7 +213,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          "Vui lòng tạo mật khẩu mới\nđể bảo mật tài khoản của bạn.",
+          "auth.reset_desc".tr(),
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 15,
@@ -230,10 +229,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Hidden token field (already filled from OTP step)
         const SizedBox(height: 16),
         Text(
-          "Mật khẩu mới",
+          "auth.new_password_label".tr(),
           style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: FontWeight.bold,
@@ -241,7 +239,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         ),
         const SizedBox(height: 8),
         CustomTextField(
-          hint: "Nhập mật khẩu mới",
+          hint: "auth.new_password_hint".tr(),
           icon: Icons.lock_outline,
           isPassword: true,
           isPasswordVisible: _isPasswordVisible,
@@ -252,7 +250,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         ),
         const SizedBox(height: 16),
         Text(
-          "Xác nhận mật khẩu",
+          "auth.confirm_new_password_label".tr(),
           style: GoogleFonts.inter(
               fontSize: 13,
               fontWeight: FontWeight.bold,
@@ -260,7 +258,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         ),
         const SizedBox(height: 8),
         CustomTextField(
-          hint: "Nhập lại mật khẩu mới",
+          hint: "auth.confirm_new_password_hint".tr(),
           icon: Icons.lock_outline,
           isPassword: true,
           isPasswordVisible: _isConfirmPasswordVisible,
@@ -289,33 +287,35 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     final password = _passwordController.text;
     final score = _calculatePasswordStrength(password);
     
-    String label = "Yếu";
+    String labelKey = "strength_weak";
     Color activeColor = Colors.redAccent;
     int bars = 1;
 
     if (score >= 4) {
-      label = "Rất mạnh";
+      labelKey = "strength_very_strong";
       activeColor = AppColors.primary;
       bars = 3;
     } else if (score >= 3) {
-      label = "Mạnh";
+      labelKey = "strength_strong";
       activeColor = Colors.teal;
       bars = 3;
     } else if (score >= 2) {
-      label = "Trung bình";
+      labelKey = "strength_medium";
       activeColor = Colors.orangeAccent;
       bars = 2;
     } else if (password.isEmpty) {
-      label = "Chưa nhập";
+      labelKey = "strength_empty";
       activeColor = Colors.grey.shade300;
       bars = 0;
     }
+
+    final strengthText = "auth.$labelKey".tr();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Độ mạnh mật khẩu: $label",
+          "auth.strength_label".tr().replaceFirst("{}", strengthText),
           style: GoogleFonts.inter(
             fontSize: 12, 
             fontWeight: FontWeight.w600,
@@ -361,16 +361,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Mật khẩu phải có:",
+            "auth.requirements_title".tr(),
             style: GoogleFonts.inter(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary),
           ),
           const SizedBox(height: 10),
-          _buildRequirementItem("Tối thiểu 8 ký tự"),
-          _buildRequirementItem("Bao gồm chữ hoa và chữ thường"),
-          _buildRequirementItem("Bao gồm số hoặc ký tự đặc biệt"),
+          _buildRequirementItem("auth.req_length".tr()),
+          _buildRequirementItem("auth.req_case".tr()),
+          _buildRequirementItem("auth.req_special".tr()),
         ],
       ),
     );
@@ -400,7 +400,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         _isLoading
             ? const CircularProgressIndicator(color: AppColors.primary)
             : PrimaryButton(
-                text: "Đặt lại mật khẩu",
+                text: "auth.reset_button".tr(),
                 onPressed: _handleResetPassword,
               ),
         const SizedBox(height: 12),
@@ -413,7 +413,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             icon: const Icon(Icons.login_rounded,
                 size: 20, color: AppColors.textDark),
             label: Text(
-              "Quay lại đăng nhập",
+              "auth.back_to_login".tr(),
               style: GoogleFonts.inter(
                 color: AppColors.textDark,
                 fontWeight: FontWeight.w600,
@@ -433,3 +433,4 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     );
   }
 }
+

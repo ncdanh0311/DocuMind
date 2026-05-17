@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/features/notebook/notebook_screen.dart';
 import 'package:documind_mobile/features/notebook/notebook_detail_screen.dart';
@@ -33,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadInitialData() async {
     setState(() => _isLoadingContent = true);
-    // 1. Tải tên người dùng
     final fullName = await _apiService.getUserName();
     if (fullName != null && fullName.isNotEmpty) {
       if (mounted) {
@@ -43,13 +43,11 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    // 2. Tải dữ liệu sổ tay thực tế
     final result = await _apiService.getNotebooks();
 
     if (mounted) {
       if (result["success"]) {
         final List<dynamic> data = result["data"];
-        // Sắp xếp theo id hoặc thời gian nếu có (giả định notebook_id tăng dần hoặc dùng created_at)
         data.sort(
             (a, b) => (b["created_at"] ?? "").compareTo(a["created_at"] ?? ""));
 
@@ -59,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
             return {
               "id": item["notebook_id"],
               "title": item["title"],
-              "count": 0, // Tạm thời
+              "count": 0,
               "icon": item["icon_path"] ?? _getCategoryIcon(item["title"]),
             };
           }).toList();
@@ -92,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _buildHomeContent(context),
           NotebookScreen(onNotebookCreated: _loadInitialData),
-          const AIChatScreen(), // Placeholder cho tab AI
+          const AIChatScreen(),
           const ProfileScreen(),
         ],
       ),
@@ -120,15 +118,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 16),
                   _buildBanner(),
                   const SizedBox(height: 32),
-                  _buildSectionHeader("Hành động nhanh"),
+                  _buildSectionHeader("home.quick_actions".tr()),
                   const SizedBox(height: 12),
                   _buildQuickActions(),
                   const SizedBox(height: 32),
 
-                  // Chỉ hiện phần Sổ tay nếu đang load (hiện skeleton) hoặc đã có dữ liệu
                   if (_isLoadingContent || _notebooks.isNotEmpty) ...[
                     _buildSectionHeader(
-                      "Sổ tay gần đây",
+                      "home.recent_notebooks".tr(),
                       showSeeAll: true,
                       onSeeAllTap: () {
                         setState(() => _currentIndex = 1);
@@ -141,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 32),
                   ],
 
-                  _buildSectionHeader("Ghi chú gần đây", showSeeAll: true),
+                  _buildSectionHeader("home.recent_notes".tr(), showSeeAll: true),
                   const SizedBox(height: 8),
                   _isLoadingContent
                       ? _buildNoteSkeleton()
@@ -199,14 +196,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.bold,
                       color: AppColors.textDark),
                   children: [
-                    const TextSpan(text: "Chào bạn, "),
+                    TextSpan(text: "home.greeting".tr()),
                     TextSpan(
                         text: "$_displayName!",
                         style: const TextStyle(color: AppColors.primary)),
                   ],
                 ),
               ),
-              Text("Hôm nay bạn muốn học gì?",
+              Text("home.subtitle".tr(),
                   style: GoogleFonts.inter(
                       fontSize: 14, color: Colors.grey.shade500)),
             ],
@@ -229,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: TextField(
         decoration: InputDecoration(
-          hintText: "Tìm kiếm ghi chú, sổ tay...",
+          hintText: "home.search_placeholder".tr(),
           hintStyle:
               GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 14),
           prefixIcon:
@@ -248,8 +245,8 @@ class _HomeScreenState extends State<HomeScreen> {
       width: double.infinity,
       height: 160,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [const Color(0xFFE0F2F1), const Color(0xFFF1F8F7)],
+        gradient: const LinearGradient(
+          colors: [Color(0xFFE0F2F1), Color(0xFFF1F8F7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -311,13 +308,13 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text("Cùng AI học tập",
+                Text("home.banner_title".tr(),
                     style: GoogleFonts.outfit(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF00695C))),
                 const SizedBox(height: 6),
-                Text("thông minh hơn mỗi ngày!",
+                Text("home.banner_subtitle".tr(),
                     style: GoogleFonts.inter(
                         fontSize: 15, color: const Color(0xFF4DB6AC))),
               ],
@@ -379,7 +376,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (showSeeAll)
           GestureDetector(
             onTap: onSeeAllTap,
-            child: Text("Xem tất cả",
+            child: Text("home.see_all".tr(),
                 style: GoogleFonts.inter(
                     fontSize: 14,
                     color: AppColors.primary,
@@ -393,17 +390,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final actions = [
       {
         "icon": "assets/icons/actions/icon-actions-summary.png",
-        "label": "Tóm tắt"
+        "key": "action_summary"
       },
       {
         "icon": "assets/icons/actions/icon-actions-ai-chat.png",
-        "label": "Hỏi AI"
+        "key": "action_ai_chat"
       },
       {
         "icon": "assets/icons/actions/icon-actions-flashcards.png",
-        "label": "Flashcard"
+        "key": "action_flashcard"
       },
-      {"icon": "assets/icons/actions/icon-action-more.png", "label": "Thêm"},
+      {"icon": "assets/icons/actions/icon-action-more.png", "key": "action_more"},
     ];
 
     return Row(
@@ -412,12 +409,12 @@ class _HomeScreenState extends State<HomeScreen> {
         return Expanded(
           child: GestureDetector(
             onTap: () {
-              if (item["label"] == "Hỏi AI") {
+              if (item["key"] == "action_ai_chat") {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (context) => const AIChatScreen()));
-              } else if (item["label"] == "Tóm tắt") {
+              } else if (item["key"] == "action_summary") {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -429,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Image.asset(item["icon"] as String,
                     width: 72, height: 72, fit: BoxFit.contain),
                 const SizedBox(height: 6),
-                Text(item["label"] as String,
+                Text(("home.${item["key"]}").tr(),
                     style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -448,7 +445,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Text(
-            "Chưa có sổ tay hiển thị ở đây",
+            "home.empty_notebooks".tr(),
             style: GoogleFonts.inter(color: Colors.grey.shade500),
           ),
         ),
@@ -504,7 +501,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               fontWeight: FontWeight.bold,
                               color: AppColors.textDark),
                           overflow: TextOverflow.ellipsis),
-                      Text("${folder["count"]} ghi chú",
+                      Text("home.notes_count".tr().replaceFirst("{}", "${folder["count"]}"),
                           style: GoogleFonts.inter(
                               fontSize: 11, color: Colors.grey.shade500)),
                     ],
@@ -541,12 +538,12 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Định luật Newton",
+                Text("home.sample_note_title".tr(),
                     style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textDark)),
-                Text("Vật lý • 12 phút trước",
+                Text("home.sample_note_desc".tr(),
                     style: GoogleFonts.inter(
                         fontSize: 12, color: Colors.grey.shade500)),
               ],
@@ -577,12 +574,12 @@ class _HomeScreenState extends State<HomeScreen> {
               child: _buildNavItem(
                   0,
                   "assets/icons/navigations/icon-nav-home-outline.png",
-                  "Trang chủ")),
+                  "nav.home".tr())),
           Expanded(
               child: _buildNavItem(
                   1,
                   "assets/icons/navigations/icon-nav-notebook-outline.png",
-                  "Số tay")),
+                  "nav.notebook".tr())),
           Expanded(
             child: Center(
               child: GestureDetector(
@@ -624,12 +621,12 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Expanded(
               child: _buildNavItem(
-                  2, "assets/icons/navigations/icon-nav-ai-outline.png", "AI")),
+                  2, "assets/icons/navigations/icon-nav-ai-outline.png", "nav.ai".tr())),
           Expanded(
               child: _buildNavItem(
                   3,
                   "assets/icons/navigations/icon-nav-profile-outline.png",
-                  "Cá nhân")),
+                  "nav.profile".tr())),
         ],
       ),
     );
@@ -667,3 +664,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+

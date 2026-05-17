@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/features/auth/auth_wrapper.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await EasyLocalization.ensureInitialized();
 
-
-void main() {
-  runApp(const DocuMindApp());
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [Locale('vi'), Locale('en')],
+      path: 'assets/translations',
+      fallbackLocale: const Locale('vi'),
+      child: const DocuMindApp(),
+    ),
+  );
 }
 
 class DocuMindApp extends StatefulWidget {
@@ -30,6 +39,9 @@ class _DocuMindAppState extends State<DocuMindApp> {
       navigatorKey: _navigatorKey,
       title: 'DocuMind',
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: context.localizationDelegates,
+      supportedLocales: context.supportedLocales,
+      locale: context.locale,
       theme: ThemeData(
         scaffoldBackgroundColor: AppColors.background,
         colorScheme: ColorScheme.fromSeed(
@@ -43,3 +55,4 @@ class _DocuMindAppState extends State<DocuMindApp> {
     );
   }
 }
+

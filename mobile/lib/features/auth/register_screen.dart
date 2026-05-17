@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/shared/widgets/atoms/primary_button.dart';
 import 'package:documind_mobile/shared/widgets/molecules/custom_text_field.dart';
@@ -103,7 +104,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         type: NotificationType.success,
       );
       
-      // Giả lập lazy loading một chút cho mượt mà (0.8s)
       await Future.delayed(const Duration(milliseconds: 800));
       
       if (mounted) {
@@ -212,13 +212,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildHeaderSection() {
     return Column(
       children: [
-        Text("Đăng ký",
+        Text("auth.register_title".tr(),
             style: GoogleFonts.outfit(
                 fontSize: 30,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark)),
         const SizedBox(height: 4),
-        Text("Tạo tài khoản mới để bắt đầu",
+        Text("auth.register_subtitle".tr(),
             style: GoogleFonts.inter(
                 fontSize: 16,
                 color: AppColors.textDark.withValues(alpha: 0.6))),
@@ -230,19 +230,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       children: [
         CustomTextField(
-          hint: "Họ và tên",
+          hint: "auth.name_hint".tr(),
           icon: Icons.person_outline,
           controller: _nameController,
         ),
         const SizedBox(height: 10),
         CustomTextField(
-          hint: "Email",
+          hint: "auth.email_hint".tr(),
           icon: Icons.email_outlined,
           controller: _emailController,
         ),
         const SizedBox(height: 10),
         CustomTextField(
-          hint: "Mật khẩu",
+          hint: "auth.password_hint".tr(),
           icon: Icons.lock_outline,
           isPassword: true,
           isPasswordVisible: _isPasswordVisible,
@@ -252,7 +252,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         const SizedBox(height: 10),
         CustomTextField(
-          hint: "Xác nhận mật khẩu",
+          hint: "auth.confirm_password_hint".tr(),
           icon: Icons.lock_outline,
           isPassword: true,
           isPasswordVisible: _isConfirmPasswordVisible,
@@ -279,9 +279,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
         const SizedBox(width: 8),
-        Text("Tôi đồng ý với ",
+        Text("auth.agree_prefix".tr(),
             style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
-        Text("Điều khoản sử dụng",
+        Text("auth.terms".tr(),
             style: GoogleFonts.inter(
                 fontSize: 12,
                 color: AppColors.primary,
@@ -296,7 +296,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _isLoading
             ? const CircularProgressIndicator()
             : PrimaryButton(
-                text: "Tạo tài khoản",
+                text: "auth.register_button".tr(),
                 onPressed: _handleRegister,
               ),
         const SizedBox(height: 12),
@@ -313,7 +313,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const Expanded(child: Divider()),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text("hoặc",
+          child: Text("auth.or_divider".tr(),
               style: GoogleFonts.inter(color: Colors.grey, fontSize: 13)),
         ),
         const Expanded(child: Divider()),
@@ -330,7 +330,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         icon: Image.network(
             "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png",
             height: 20),
-        label: Text("Đăng ký với Google",
+        label: Text("auth.google_register".tr(),
             style: GoogleFonts.inter(
                 color: AppColors.textDark,
                 fontWeight: FontWeight.w600,
@@ -348,11 +348,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Đã có tài khoản? ",
+        Text("auth.has_account".tr(),
             style: GoogleFonts.inter(color: Colors.grey, fontSize: 14)),
         GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: Text("Đăng nhập",
+          child: Text("auth.login_title".tr(),
               style: GoogleFonts.inter(
                   color: AppColors.primary,
                   fontWeight: FontWeight.bold,
@@ -362,3 +362,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+

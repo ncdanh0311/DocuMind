@@ -35,5 +35,5 @@ def create_notebook(
 def read_notebook(notebook_id: uuid.UUID, session: Session = Depends(get_session)):
     notebook = session.get(Notebook, notebook_id)
     if not notebook:
-        raise HTTPException(status_code=404, detail="Notebook not found")
+        raise HTTPException(status_code=404, detail="ERR_NOTEBOOK_NOT_FOUND")
     return notebook

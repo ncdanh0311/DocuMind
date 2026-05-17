@@ -1,33 +1,35 @@
+import 'package:easy_localization/easy_localization.dart';
+
 class AppStrings {
   // --- AUTH NOTIFICATIONS ---
-  static const String loginSuccess = "Đăng nhập thành công!";
-  static const String loginFailed = "Đăng nhập thất bại";
-  static const String registerSuccess = "Đăng ký thành công!";
-  static const String registerFailed = "Đăng ký thất bại";
-  static const String logoutLoading = "Đang đăng xuất...";
+  static String get loginSuccess => "strings.login_success".tr();
+  static String get loginFailed => "strings.login_failed".tr();
+  static String get registerSuccess => "strings.register_success".tr();
+  static String get registerFailed => "strings.register_failed".tr();
+  static String get logoutLoading => "strings.logout_loading".tr();
 
   // --- AUTH SPECIFIC ERRORS ---
-  static const String emailAlreadyExists = "Email này đã được sử dụng.";
-  static const String incorrectEmailPassword =
-      "Email hoặc mật khẩu không chính xác.";
-  static const String userNotFound = "Không tìm thấy người dùng.";
+  static String get emailAlreadyExists => "strings.email_exists".tr();
+  static String get incorrectEmailPassword => "strings.incorrect_credentials".tr();
+  static String get userNotFound => "strings.user_not_found".tr();
 
   // --- VALIDATION MESSAGES ---
-  static const String fillAllFields = "Vui lòng nhập đầy đủ thông tin";
-  static const String passwordMismatch = "Mật khẩu xác nhận không khớp";
-  static const String agreeToTerms = "Bạn cần đồng ý với điều khoản sử dụng";
-  static const String invalidEmailFormat = "Email không đúng định dạng";
-  static const String passwordTooShort = "Mật khẩu dài ít nhất 8 ký tự";
+  static String get fillAllFields => "strings.fill_all_fields".tr();
+  static String get passwordMismatch => "strings.password_mismatch".tr();
+  static String get agreeToTerms => "strings.agree_to_terms".tr();
+  static String get invalidEmailFormat => "strings.invalid_email".tr();
+  static String get passwordTooShort => "strings.password_too_short".tr();
 
   // --- SYSTEM MESSAGES ---
-  static const String connectionError = "Lỗi kết nối, vui lòng thử lại";
-  static const String serverError = "Lỗi máy chủ, vui lòng liên hệ hỗ trợ";
-  static const String unknownError = "Đã xảy ra lỗi không xác định";
-  static const String sessionExpired = "Phiên đăng nhập đã hết hạn";
+  static String get connectionError => "strings.connection_error".tr();
+  static String get serverError => "strings.server_error".tr();
+  static String get unknownError => "strings.unknown_error".tr();
+  static String get sessionExpired => "strings.session_expired".tr();
 
   // --- BUTTONS & LABELS ---
-  static const String login = "Đăng nhập";
-  static const String register = "Đăng ký";
-  static const String logout = "Đăng xuất";
-  static const String back = "Quay lại";
+  static String get login => "strings.login".tr();
+  static String get register => "strings.register".tr();
+  static String get logout => "strings.logout".tr();
+  static String get back => "strings.back".tr();
 }
+
