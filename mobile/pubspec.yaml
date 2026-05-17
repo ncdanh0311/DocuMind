@@ -16,6 +16,7 @@ dependencies:
   flutter_secure_storage: ^10.1.0
   shimmer: ^3.0.0
   app_links: ^7.0.0
+  file_picker: ^11.0.2
 
 dev_dependencies:
   flutter_test:

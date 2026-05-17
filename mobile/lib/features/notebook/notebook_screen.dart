@@ -194,6 +194,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
           context,
           MaterialPageRoute(
             builder: (context) => NotebookDetailScreen(
+              notebookId: notebook['id'],
               notebookTitle: notebook['title'],
               iconPath: notebook['icon'],
               themeColor: notebook['color'] as Color,

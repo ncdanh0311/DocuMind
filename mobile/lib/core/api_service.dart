@@ -182,4 +182,59 @@ class ApiService extends BaseApiService {
       return handleError(e);
     }
   }
+
+  // --- DOCUMENT METHODS ---
+
+  Future<Map<String, dynamic>> getDocuments(String notebookId) async {
+    try {
+      final response = await http.get(
+        Uri.parse("${ApiConstants.baseUrl}/notebooks/$notebookId/documents"),
+        headers: await getHeaders(isAuth: true),
+      );
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> uploadDocument(String notebookId, {required String fileName, String? filePath, List<int>? fileBytes}) async {
+    try {
+      final uri = Uri.parse("${ApiConstants.baseUrl}/notebooks/$notebookId/documents/upload");
+      final request = http.MultipartRequest('POST', uri);
+
+      final token = await getToken();
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      if (filePath != null) {
+        request.files.add(await http.MultipartFile.fromPath('file', filePath));
+      } else if (fileBytes != null) {
+        request.files.add(http.MultipartFile.fromBytes('file', fileBytes, filename: fileName));
+      } else {
+        return {"success": false, "message": "Không tìm thấy dữ liệu file."};
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteDocument(String documentId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse("${ApiConstants.baseUrl}/documents/$documentId"),
+        headers: await getHeaders(isAuth: true),
+      );
+      if (response.statusCode == 204) {
+        return {"success": true};
+      }
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
 }

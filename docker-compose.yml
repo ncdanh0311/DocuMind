@@ -34,6 +34,7 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./alembic.ini:/app/alembic.ini
+      - ./.uploads:/app/.uploads
     # Tự động chạy migration nâng cấp DB trước khi chạy server
     command: sh -c "alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
 

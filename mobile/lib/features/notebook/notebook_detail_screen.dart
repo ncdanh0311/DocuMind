@@ -3,14 +3,19 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/features/ai/ai_chat_screen.dart';
 import 'package:documind_mobile/features/ai/summary_screen.dart';
+import 'package:documind_mobile/core/api_service.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:shimmer/shimmer.dart';
 
 class NotebookDetailScreen extends StatefulWidget {
+  final String notebookId;
   final String notebookTitle;
   final String? iconPath;
   final Color themeColor;
 
   const NotebookDetailScreen({
     super.key, 
+    required this.notebookId,
     required this.notebookTitle, 
     this.iconPath,
     this.themeColor = const Color(0xFFE0F2F1),
@@ -21,6 +26,139 @@ class NotebookDetailScreen extends StatefulWidget {
 }
 
 class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
+  final ApiService _apiService = ApiService();
+  List<dynamic> _documents = [];
+  bool _isLoading = true;
+  bool _isUploading = false;
+  String? _deletingDocId;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDocuments();
+  }
+
+  Future<void> _fetchDocuments() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await _apiService.getDocuments(widget.notebookId);
+
+    if (mounted) {
+      if (result["success"]) {
+        setState(() {
+          _documents = result["data"];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = result["message"];
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _uploadDocument() async {
+    try {
+      final FilePickerResult? pickResult = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'docx', 'txt'],
+      );
+
+      if (pickResult == null || pickResult.files.isEmpty) return;
+
+      final file = pickResult.files.first;
+
+      setState(() {
+        _isUploading = true;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Đang tải file lên..."), duration: Duration(seconds: 2)),
+      );
+
+      final result = await _apiService.uploadDocument(
+        widget.notebookId,
+        fileName: file.name,
+        filePath: file.path,
+        fileBytes: file.bytes,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+
+        if (result["success"]) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Tải file lên thành công!"), backgroundColor: Colors.green),
+          );
+          _fetchDocuments();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Lỗi: ${result['message']}"), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Lỗi: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteDocument(String documentId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Xóa tài liệu"),
+        content: const Text("Bạn có chắc chắn muốn xóa tài liệu này khỏi sổ tay?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Xóa", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _deletingDocId = documentId;
+    });
+
+    final result = await _apiService.deleteDocument(documentId);
+    if (mounted) {
+      setState(() {
+        _deletingDocId = null;
+      });
+      if (result["success"]) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Đã xóa tài liệu"), backgroundColor: Colors.green),
+        );
+        _fetchDocuments();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Lỗi: ${result['message']}"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,17 +167,30 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
       body: Column(
         children: [
           _buildActionGrid(),
+          if (_isUploading)
+            LinearProgressIndicator(backgroundColor: Colors.grey.shade200, color: AppColors.primary),
           const SizedBox(height: 10),
           _buildContentHeader(),
           Expanded(
-            child: _buildDocumentList(),
+            child: _isLoading
+                ? _buildShimmerLoading()
+                : _errorMessage != null
+                    ? _buildErrorState()
+                    : _documents.isEmpty
+                        ? _buildEmptyState()
+                        : RefreshIndicator(
+                            onRefresh: _fetchDocuments,
+                            child: _buildDocumentList(),
+                          ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: _isUploading ? null : _uploadDocument,
+        backgroundColor: _isUploading ? Colors.grey : AppColors.primary,
+        child: _isUploading 
+            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
@@ -176,7 +327,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
             style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark),
           ),
           Text(
-            "Xem thêm",
+            "${_documents.length} file",
             style: GoogleFonts.inter(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
           ),
         ],
@@ -185,17 +336,16 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   }
 
   Widget _buildDocumentList() {
-    final docs = [
-      {"name": "Quang hợp ở thực vật.pdf", "date": "2 giờ trước", "type": "PDF"},
-      {"name": "Ghi chú sinh học lớp 12.docx", "date": "Hôm qua", "type": "DOCX"},
-      {"name": "Bài tập về nhà - Hóa.txt", "date": "3 ngày trước", "type": "TXT"},
-    ];
-
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: docs.length,
+      itemCount: _documents.length,
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       itemBuilder: (context, index) {
-        final doc = docs[index];
+        final doc = _documents[index];
+        final fileName = doc['file_name'] ?? 'Tài liệu không tên';
+        final status = doc['status'] ?? 'uploaded';
+        final isPdf = fileName.toString().toLowerCase().endsWith('.pdf');
+
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
@@ -213,7 +363,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  doc['type'] == 'PDF' ? Icons.picture_as_pdf_rounded : Icons.description_rounded,
+                  isPdf ? Icons.picture_as_pdf_rounded : Icons.description_rounded,
                   color: AppColors.primary,
                   size: 24,
                 ),
@@ -224,25 +374,121 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      doc['name']!,
+                      fileName,
                       style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textDark),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      doc['date']!,
-                      style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: status == 'ready' 
+                                ? Colors.green 
+                                : status == 'processing' 
+                                    ? Colors.orange 
+                                    : Colors.blue,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          status == 'ready' ? 'Đã phân tích' : status == 'processing' ? 'Đang xử lý...' : 'Đã tải lên',
+                          style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.more_vert_rounded, color: Colors.grey),
-                onPressed: () {},
-              ),
+              _deletingDocId == doc['document_id']
+                  ? const Padding(
+                      padding: EdgeInsets.all(12.0),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                      onPressed: _deletingDocId != null ? null : () => _deleteDocument(doc['document_id']),
+                    ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      itemCount: 3,
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: Colors.grey.shade100,
+          highlightColor: Colors.white,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            height: 70,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset("assets/mascot/mascot-owl-avatar-circle.png", width: 100, opacity: const AlwaysStoppedAnimation(0.5)),
+          const SizedBox(height: 16),
+          Text(
+            "Sổ tay chưa có tài liệu nào",
+            style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            "Bấm nút + dưới góc để tải PDF hoặc DOCX lên",
+            style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade400),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline_rounded, size: 50, color: Colors.redAccent),
+          const SizedBox(height: 16),
+          Text(
+            "Không thể tải danh sách tài liệu",
+            style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(_errorMessage ?? "Đã có lỗi xảy ra"),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _fetchDocuments,
+            child: const Text("Thử lại"),
+          ),
+        ],
+      ),
     );
   }
 }

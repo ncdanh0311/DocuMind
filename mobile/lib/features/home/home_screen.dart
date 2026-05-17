@@ -473,6 +473,7 @@ class _HomeScreenState extends State<HomeScreen> {
               context,
               MaterialPageRoute(
                 builder: (context) => NotebookDetailScreen(
+                  notebookId: folder['id'] as String,
                   notebookTitle: folder['title'] as String,
                   iconPath: folder['icon'] as String,
                   themeColor: folder['color'] as Color? ?? AppColors.primary,
