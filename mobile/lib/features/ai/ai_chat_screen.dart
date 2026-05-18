@@ -3,7 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 
 class AIChatScreen extends StatefulWidget {
-  const AIChatScreen({super.key});
+  final String? notebookId;
+  final String? notebookTitle;
+
+  const AIChatScreen({super.key, this.notebookId, this.notebookTitle});
 
   @override
   State<AIChatScreen> createState() => _AIChatScreenState();
@@ -38,8 +41,9 @@ class _AIChatScreenState extends State<AIChatScreen> {
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
-        "Trợ lý AI",
+        widget.notebookTitle != null ? "AI: ${widget.notebookTitle}" : "Trợ lý AI",
         style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark),
+        overflow: TextOverflow.ellipsis,
       ),
       centerTitle: true,
       actions: [
