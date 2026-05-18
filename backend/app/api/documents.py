@@ -97,6 +97,24 @@ def list_documents(
     return documents
 
 
+@router.get("/documents/recent", response_model=List[Document])
+def get_recent_documents(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Lấy danh sách 5 tài liệu mới nhất của người dùng trên tất cả các sổ tay.
+    """
+    documents = session.exec(
+        select(Document)
+        .join(Notebook, Document.notebook_id == Notebook.notebook_id)
+        .where(Notebook.user_id == current_user.user_id)
+        .order_by(Document.uploaded_at.desc())
+        .limit(5)
+    ).all()
+    return documents
+
+
 @router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_document(
     document_id: uuid.UUID,

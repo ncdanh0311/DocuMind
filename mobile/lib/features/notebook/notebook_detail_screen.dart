@@ -185,7 +185,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _DocumentContentBottomSheet(documentId: documentId, fileName: fileName),
+      builder: (context) => DocumentContentBottomSheet(documentId: documentId, fileName: fileName),
     );
     if (mounted) {
       _fetchDocuments(showLoading: false);
@@ -529,17 +529,17 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   }
 }
 
-class _DocumentContentBottomSheet extends StatefulWidget {
+class DocumentContentBottomSheet extends StatefulWidget {
   final String documentId;
   final String fileName;
 
-  const _DocumentContentBottomSheet({required this.documentId, required this.fileName});
+  const DocumentContentBottomSheet({required this.documentId, required this.fileName});
 
   @override
-  State<_DocumentContentBottomSheet> createState() => _DocumentContentBottomSheetState();
+  State<DocumentContentBottomSheet> createState() => _DocumentContentBottomSheetState();
 }
 
-class _DocumentContentBottomSheetState extends State<_DocumentContentBottomSheet> {
+class _DocumentContentBottomSheetState extends State<DocumentContentBottomSheet> {
   final ApiService _apiService = ApiService();
   String _cleanContent = "";
   bool _isLoading = true;

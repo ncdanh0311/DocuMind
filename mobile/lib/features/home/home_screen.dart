@@ -25,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingContent = true;
   final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> _notebooks = [];
+  List<Map<String, dynamic>> _recentNotes = [];
 
   @override
   void initState() {
@@ -44,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final result = await _apiService.getNotebooks();
+    final notesRes = await _apiService.getRecentDocuments();
 
     if (mounted) {
       if (result["success"]) {
@@ -51,23 +53,33 @@ class _HomeScreenState extends State<HomeScreen> {
         data.sort(
             (a, b) => (b["created_at"] ?? "").compareTo(a["created_at"] ?? ""));
 
-        setState(() {
-          _notebooks =
-              data.where((item) => item["show_on_home"] == true).map((item) {
-            return {
-              "id": item["notebook_id"],
-              "title": item["title"],
-              "count": 0,
-              "icon": item["icon_path"] ?? _getCategoryIcon(item["title"]),
-            };
-          }).toList();
-          _isLoadingContent = false;
-        });
-      } else {
-        setState(() {
-          _isLoadingContent = false;
-        });
+        _notebooks =
+            data.where((item) => item["show_on_home"] == true).map((item) {
+          return {
+            "id": item["notebook_id"],
+            "title": item["title"],
+            "count": 0,
+            "icon": item["icon_path"] ?? _getCategoryIcon(item["title"]),
+          };
+        }).toList();
       }
+
+      if (notesRes["success"]) {
+        final List<dynamic> notesData = notesRes["data"];
+        _recentNotes = notesData.map((item) {
+          return {
+            "id": item["document_id"],
+            "notebook_id": item["notebook_id"],
+            "title": item["file_name"],
+            "created_at": item["uploaded_at"] ?? "",
+            "status": item["status"] ?? "uploaded",
+          };
+        }).toList();
+      }
+
+      setState(() {
+        _isLoadingContent = false;
+      });
     }
   }
 
@@ -142,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 8),
                   _isLoadingContent
                       ? _buildNoteSkeleton()
-                      : _buildRecentNoteCard(),
+                      : _buildRecentNotesList(),
                   const SizedBox(height: 100),
                 ],
               ),
@@ -612,44 +624,118 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildRecentNoteCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-                color: const Color(0xFFF1F8F7),
-                borderRadius: BorderRadius.circular(14)),
-            child: const Icon(Icons.description_rounded,
-                color: AppColors.primary, size: 24),
+  Widget _buildRecentNotesList() {
+    if (_recentNotes.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Text(
+            "Chưa có tài liệu nào gần đây",
+            style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 14),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      padding: EdgeInsets.zero,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _recentNotes.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final note = _recentNotes[index];
+        final isAnalyzed = note["status"] == "completed" || note["status"] == "analyzed";
+
+        return GestureDetector(
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => DocumentContentBottomSheet(
+                documentId: note["id"] as String,
+                fileName: note["title"] as String,
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey.shade100, width: 1.2),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
+              ],
+            ),
+            child: Row(
               children: [
-                Text("home.sample_note_title".tr(),
-                    style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark)),
-                Text("home.sample_note_desc".tr(),
-                    style: GoogleFonts.inter(
-                        fontSize: 12, color: Colors.grey.shade500)),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F8F7),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.description_rounded, color: AppColors.primary, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        note["title"] as String,
+                        style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.access_time_rounded, size: 12, color: Colors.grey.shade400),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatDate(note["created_at"] as String),
+                            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isAnalyzed ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: Text(
+                              isAnalyzed ? "Đã phân tích" : "Đang xử lý...",
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isAnalyzed ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey.shade400, size: 16),
               ],
             ),
           ),
-          const Icon(Icons.more_vert_rounded, color: Colors.grey, size: 24),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  String _formatDate(String dateStr) {
+    if (dateStr.isEmpty) return "Gần đây";
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      return "${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+    } catch (_) {
+      return "Gần đây";
+    }
   }
 
   Widget _buildCustomBottomNav() {
