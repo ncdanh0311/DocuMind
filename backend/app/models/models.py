@@ -17,6 +17,19 @@ class User(SQLModel, table=True):
     otp_code: Optional[str] = None
     otp_expiry: Optional[datetime] = None
     
+    # Security & Long-term session
+    refresh_token: Optional[str] = None
+    refresh_token_expiry: Optional[datetime] = None
+    
+    # Profile & Preferences
+    avatar_id: Optional[str] = Field(default="mascot-owl-avatar-circle.png")
+    biometric_enabled: bool = Field(default=False)
+    app_pin: Optional[str] = None
+    
+    @property
+    def has_app_pin(self) -> bool:
+        return bool(self.app_pin)
+    
     # Relationships
     notebooks: List["Notebook"] = Relationship(back_populates="user")
 

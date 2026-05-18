@@ -4,9 +4,56 @@ import 'package:documind_mobile/core/constants.dart';
 import 'package:documind_mobile/core/base_api_service.dart';
 
 class ApiService extends BaseApiService {
-  // Cache in-memory to avoid frequent disk reads
   String? _cachedToken;
   String? _cachedName;
+
+  Future<bool> refreshToken() async {
+    try {
+      final refreshToken = await storage.read(key: "refresh_token");
+      if (refreshToken == null) return false;
+
+      final response = await http.post(
+        Uri.parse("${ApiConstants.baseUrl}${ApiConstants.authEndpoint}/refresh-token"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"refresh_token": refreshToken}),
+      );
+
+      final result = handleResponse(response);
+      if (result["success"]) {
+        final data = result["data"];
+        _cachedToken = data["access_token"];
+        if (data["refresh_token"] != null) {
+          await storage.write(key: "refresh_token", value: data["refresh_token"]);
+        }
+        await storage.write(key: "access_token", value: _cachedToken);
+        return true;
+      } else {
+        await _clearLocalAuth();
+        return false;
+      }
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _clearLocalAuth() async {
+    _cachedToken = null;
+    _cachedName = null;
+    await storage.delete(key: "access_token");
+    await storage.delete(key: "refresh_token");
+    await storage.delete(key: "full_name");
+  }
+
+  Future<http.Response> _sendWithAuthRetry(Future<http.Response> Function() requestCall) async {
+    http.Response res = await requestCall();
+    if (res.statusCode == 401) {
+      final refreshed = await refreshToken();
+      if (refreshed) {
+        res = await requestCall();
+      }
+    }
+    return res;
+  }
 
   // --- AUTH METHODS ---
   
@@ -27,8 +74,14 @@ class ApiService extends BaseApiService {
         final data = result["data"];
         _cachedToken = data['access_token'];
         _cachedName = data['full_name'];
+        final rToken = data['refresh_token'];
         await storage.write(key: 'access_token', value: _cachedToken);
-        await storage.write(key: 'full_name', value: _cachedName);
+        if (rToken != null) {
+          await storage.write(key: 'refresh_token', value: rToken);
+        }
+        if (_cachedName != null) {
+          await storage.write(key: 'full_name', value: _cachedName);
+        }
       }
       return result;
     } catch (e) {
@@ -52,7 +105,11 @@ class ApiService extends BaseApiService {
         final data = result["data"];
         _cachedToken = data['access_token'];
         _cachedName = data['full_name'];
+        final rToken = data['refresh_token'];
         await storage.write(key: "access_token", value: _cachedToken);
+        if (rToken != null) {
+          await storage.write(key: "refresh_token", value: rToken);
+        }
         if (_cachedName != null) {
           await storage.write(key: "full_name", value: _cachedName);
         }
@@ -64,10 +121,13 @@ class ApiService extends BaseApiService {
   }
 
   Future<void> logout() async {
-    _cachedToken = null;
-    _cachedName = null;
-    await storage.delete(key: "access_token");
-    await storage.delete(key: "full_name");
+    try {
+      await http.post(
+        Uri.parse("${ApiConstants.baseUrl}${ApiConstants.authEndpoint}/logout"),
+        headers: await getHeaders(isAuth: true),
+      );
+    } catch (_) {}
+    await _clearLocalAuth();
   }
 
   Future<Map<String, dynamic>> forgotPassword(String email) async {
@@ -109,7 +169,23 @@ class ApiService extends BaseApiService {
           "new_password": newPassword,
         }),
       );
-      return handleResponse(response);
+      final result = handleResponse(response);
+      if (result["success"]) {
+        final data = result["data"];
+        if (data != null && data["access_token"] != null) {
+          _cachedToken = data['access_token'];
+          _cachedName = data['full_name'];
+          final rToken = data['refresh_token'];
+          await storage.write(key: "access_token", value: _cachedToken);
+          if (rToken != null) {
+            await storage.write(key: "refresh_token", value: rToken);
+          }
+          if (_cachedName != null) {
+            await storage.write(key: "full_name", value: _cachedName);
+          }
+        }
+      }
+      return result;
     } catch (e) {
       return handleError(e);
     }
@@ -117,10 +193,62 @@ class ApiService extends BaseApiService {
 
   Future<Map<String, dynamic>> getProfile() async {
     try {
-      final response = await http.get(
+      final response = await _sendWithAuthRetry(() async => http.get(
         Uri.parse("${ApiConstants.baseUrl}${ApiConstants.authEndpoint}/me"),
         headers: await getHeaders(isAuth: true),
-      );
+      ));
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> updateProfile({String? fullName, String? avatarId}) async {
+    try {
+      final response = await _sendWithAuthRetry(() async => http.put(
+        Uri.parse("${ApiConstants.baseUrl}${ApiConstants.authEndpoint}/me"),
+        headers: await getHeaders(isAuth: true),
+        body: jsonEncode({
+          if (fullName != null) "full_name": fullName,
+          if (avatarId != null) "avatar_id": avatarId,
+        }),
+      ));
+      final result = handleResponse(response);
+      if (result["success"] && fullName != null) {
+        _cachedName = fullName;
+        await storage.write(key: "full_name", value: fullName);
+      }
+      return result;
+    } catch (e) {
+      return handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> updateSecurity({bool? biometricEnabled, String? appPin, String? oldPassword, String? newPassword}) async {
+    try {
+      final response = await _sendWithAuthRetry(() async => http.put(
+        Uri.parse("${ApiConstants.baseUrl}${ApiConstants.authEndpoint}/security"),
+        headers: await getHeaders(isAuth: true),
+        body: jsonEncode({
+          if (biometricEnabled != null) "biometric_enabled": biometricEnabled,
+          if (appPin != null) "app_pin": appPin,
+          if (oldPassword != null) "old_password": oldPassword,
+          if (newPassword != null) "new_password": newPassword,
+        }),
+      ));
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyPin(String pin) async {
+    try {
+      final response = await _sendWithAuthRetry(() async => http.post(
+        Uri.parse("${ApiConstants.baseUrl}${ApiConstants.authEndpoint}/verify-pin"),
+        headers: await getHeaders(isAuth: true),
+        body: jsonEncode({"pin": pin}),
+      ));
       return handleResponse(response);
     } catch (e) {
       return handleError(e);
@@ -143,10 +271,10 @@ class ApiService extends BaseApiService {
 
   Future<Map<String, dynamic>> getNotebooks() async {
     try {
-      final response = await http.get(
+      final response = await _sendWithAuthRetry(() async => http.get(
         Uri.parse("${ApiConstants.baseUrl}/notebooks/"),
         headers: await getHeaders(isAuth: true),
-      );
+      ));
       return handleResponse(response);
     } catch (e) {
       return handleError(e);
@@ -155,7 +283,7 @@ class ApiService extends BaseApiService {
 
   Future<Map<String, dynamic>> createNotebook(String title, {bool isPrivate = true, bool showOnHome = true, String? iconPath}) async {
     try {
-      final response = await http.post(
+      final response = await _sendWithAuthRetry(() async => http.post(
         Uri.parse("${ApiConstants.baseUrl}/notebooks/"),
         headers: await getHeaders(isAuth: true),
         body: jsonEncode({
@@ -164,7 +292,7 @@ class ApiService extends BaseApiService {
           "show_on_home": showOnHome,
           "icon_path": iconPath,
         }),
-      );
+      ));
       return handleResponse(response);
     } catch (e) {
       return handleError(e);
@@ -173,10 +301,10 @@ class ApiService extends BaseApiService {
 
   Future<Map<String, dynamic>> deleteNotebook(String notebookId) async {
     try {
-      final response = await http.delete(
+      final response = await _sendWithAuthRetry(() async => http.delete(
         Uri.parse("${ApiConstants.baseUrl}/notebooks/$notebookId"),
         headers: await getHeaders(isAuth: true),
-      );
+      ));
       return handleResponse(response);
     } catch (e) {
       return handleError(e);
@@ -187,10 +315,10 @@ class ApiService extends BaseApiService {
 
   Future<Map<String, dynamic>> getDocuments(String notebookId) async {
     try {
-      final response = await http.get(
+      final response = await _sendWithAuthRetry(() async => http.get(
         Uri.parse("${ApiConstants.baseUrl}/notebooks/$notebookId/documents"),
         headers: await getHeaders(isAuth: true),
-      );
+      ));
       return handleResponse(response);
     } catch (e) {
       return handleError(e);
@@ -199,24 +327,39 @@ class ApiService extends BaseApiService {
 
   Future<Map<String, dynamic>> uploadDocument(String notebookId, {required String fileName, String? filePath, List<int>? fileBytes}) async {
     try {
-      final uri = Uri.parse("${ApiConstants.baseUrl}/notebooks/$notebookId/documents/upload");
-      final request = http.MultipartRequest('POST', uri);
+      // For multipart upload, if token is expired, we can also check beforehand or catch 401
+      String? token = await getToken();
+      
+      Future<http.Response> runMultipart(String authTok) async {
+        final uri = Uri.parse("${ApiConstants.baseUrl}/notebooks/$notebookId/documents/upload");
+        final request = http.MultipartRequest('POST', uri);
+        request.headers['Authorization'] = 'Bearer $authTok';
 
-      final token = await getToken();
-      if (token != null) {
-        request.headers['Authorization'] = 'Bearer $token';
+        if (filePath != null) {
+          request.files.add(await http.MultipartFile.fromPath('file', filePath));
+        } else if (fileBytes != null) {
+          request.files.add(http.MultipartFile.fromBytes('file', fileBytes, filename: fileName));
+        } else {
+          throw Exception("Không tìm thấy dữ liệu file.");
+        }
+
+        final streamedResponse = await request.send();
+        return await http.Response.fromStream(streamedResponse);
       }
 
-      if (filePath != null) {
-        request.files.add(await http.MultipartFile.fromPath('file', filePath));
-      } else if (fileBytes != null) {
-        request.files.add(http.MultipartFile.fromBytes('file', fileBytes, filename: fileName));
-      } else {
-        return {"success": false, "message": "Không tìm thấy dữ liệu file."};
+      if (token == null) return {"success": false, "message": "ERR_UNAUTHORIZED"};
+
+      http.Response response = await runMultipart(token);
+      if (response.statusCode == 401) {
+        final refreshed = await refreshToken();
+        if (refreshed) {
+          token = await getToken();
+          if (token != null) {
+            response = await runMultipart(token);
+          }
+        }
       }
 
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
       return handleResponse(response);
     } catch (e) {
       return handleError(e);
@@ -225,10 +368,10 @@ class ApiService extends BaseApiService {
 
   Future<Map<String, dynamic>> deleteDocument(String documentId) async {
     try {
-      final response = await http.delete(
+      final response = await _sendWithAuthRetry(() async => http.delete(
         Uri.parse("${ApiConstants.baseUrl}/documents/$documentId"),
         headers: await getHeaders(isAuth: true),
-      );
+      ));
       if (response.statusCode == 204) {
         return {"success": true};
       }

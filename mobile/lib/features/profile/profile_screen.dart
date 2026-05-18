@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
+import 'package:documind_mobile/features/profile/edit_profile_screen.dart';
 import 'package:documind_mobile/features/profile/settings_screen.dart';
 import 'package:documind_mobile/core/api_service.dart';
 import 'package:documind_mobile/features/auth/login_screen.dart';
@@ -16,6 +17,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final ApiService _apiService = ApiService();
   String _fullName = "Người dùng";
+  String _avatarId = "mascot-owl-avatar-circle.png";
   bool _isLoggingOut = false;
 
   String _getShortName(String name) {
@@ -36,9 +38,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted && result["success"]) {
       setState(() {
         final String? name = result["data"]["full_name"];
-        if (name != null) {
-          _fullName = _getShortName(name);
-        }
+        final String? av = result["data"]["avatar_id"];
+        if (name != null) _fullName = _getShortName(name);
+        if (av != null && av.isNotEmpty) _avatarId = av;
       });
     }
   }
@@ -171,41 +173,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildHeader() {
-    return Row(
-      children: [
-        Image.asset(
-          "assets/mascot/mascot-owl-avatar-circle.png",
-          width: 120,
-          height: 120,
-          fit: BoxFit.contain,
-        ),
-        const SizedBox(width: 24),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _fullName,
-                style: GoogleFonts.outfit(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                "profile.joined_date".tr(),
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  color: const Color(0xFF64748B),
-                ),
-              ),
-            ],
+    return GestureDetector(
+      onTap: () async {
+        final updated = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EditProfileScreen(
+              currentName: _fullName,
+              currentAvatar: _avatarId,
+            ),
           ),
-        ),
-      ],
+        );
+        if (updated == true) _loadUserData();
+      },
+      child: Row(
+        children: [
+          Image.asset(
+            "assets/mascot/$_avatarId",
+            width: 100,
+            height: 100,
+            fit: BoxFit.contain,
+          ),
+          const SizedBox(width: 24),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _fullName,
+                        style: GoogleFonts.outfit(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "profile.joined_date".tr(),
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    color: const Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -292,6 +315,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             "profile.my_data".tr(),
             iconBg: AppColors.categoryStudy,
             iconColor: AppColors.primary,
+            onTap: () async {
+              final updated = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditProfileScreen(
+                    currentName: _fullName,
+                    currentAvatar: _avatarId,
+                  ),
+                ),
+              );
+              if (updated == true) _loadUserData();
+            },
           ),
           _buildDivider(),
           _buildMenuItem(
@@ -299,11 +334,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             "profile.settings".tr(),
             iconBg: AppColors.categoryProject,
             iconColor: Colors.blue,
-            onTap: () {
-              Navigator.push(
+            onTap: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
               );
+              _loadUserData();
             },
           ),
           _buildDivider(),

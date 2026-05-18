@@ -2,10 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from datetime import datetime, timedelta
 from backend.app.core.db import get_session
-from backend.app.core.security import get_password_hash, verify_password, create_access_token
+from backend.app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token
 from backend.app.core.config import settings
 from backend.app.models.models import User
-from backend.app.schemas.schemas import UserCreate, UserLogin, Token, UserPublic, ForgotPassword, ResetPassword, VerifyOTP
+from backend.app.schemas.schemas import (
+    UserCreate, UserLogin, Token, UserPublic, ForgotPassword, 
+    ResetPassword, VerifyOTP, RefreshTokenRequest, UserUpdate, SecurityUpdate
+)
 from backend.app.api.deps import get_current_user
 from jose import jwt, JWTError
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
@@ -60,7 +63,6 @@ async def send_reset_otp_email(email: str, otp: str):
 
 @router.post("/register", response_model=Token)
 def register(user_in: UserCreate, session: Session = Depends(get_session)):
-    # ... (giữ nguyên logic register)
     user = session.exec(select(User).where(User.email == user_in.email)).first()
     if user:
         raise HTTPException(
@@ -77,15 +79,20 @@ def register(user_in: UserCreate, session: Session = Depends(get_session)):
     session.commit()
     session.refresh(db_user)
     
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        str(db_user.user_id), expires_delta=access_token_expires
-    )
+    access_token = create_access_token(str(db_user.user_id))
+    refresh_token = create_refresh_token(str(db_user.user_id))
+    
+    db_user.refresh_token = refresh_token
+    db_user.refresh_token_expiry = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    session.add(db_user)
+    session.commit()
     
     return {
         "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
-        "full_name": db_user.full_name
+        "full_name": db_user.full_name,
+        "avatar_id": db_user.avatar_id
     }
 
 @router.post("/login", response_model=Token)
@@ -99,11 +106,60 @@ def login(user_in: UserLogin, session: Session = Depends(get_session)):
         )
     
     access_token = create_access_token(subject=user.user_id)
+    refresh_token = create_refresh_token(subject=user.user_id)
+    
+    user.refresh_token = refresh_token
+    user.refresh_token_expiry = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    session.add(user)
+    session.commit()
+    
     return {
         "access_token": access_token, 
+        "refresh_token": refresh_token,
         "token_type": "bearer",
-        "full_name": user.full_name
+        "full_name": user.full_name,
+        "avatar_id": user.avatar_id
     }
+
+@router.post("/refresh-token", response_model=Token)
+def refresh_token(data: RefreshTokenRequest, session: Session = Depends(get_session)):
+    try:
+        payload = jwt.decode(data.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: str = payload.get("sub")
+        token_type: str = payload.get("type")
+        if user_id is None or token_type != "refresh":
+            raise HTTPException(status_code=401, detail="ERR_TOKEN_INVALID")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="ERR_TOKEN_EXPIRED")
+    
+    user = session.get(User, user_id)
+    if not user or user.refresh_token != data.refresh_token or user.refresh_token_expiry < datetime.utcnow():
+        raise HTTPException(status_code=401, detail="ERR_SESSION_EXPIRED")
+    
+    # Tạo cặp token mới
+    new_access = create_access_token(subject=user.user_id)
+    new_refresh = create_refresh_token(subject=user.user_id)
+    
+    user.refresh_token = new_refresh
+    user.refresh_token_expiry = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    session.add(user)
+    session.commit()
+    
+    return {
+        "access_token": new_access,
+        "refresh_token": new_refresh,
+        "token_type": "bearer",
+        "full_name": user.full_name,
+        "avatar_id": user.avatar_id
+    }
+
+@router.post("/logout")
+def logout(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    current_user.refresh_token = None
+    current_user.refresh_token_expiry = None
+    session.add(current_user)
+    session.commit()
+    return {"message": "MSG_LOGOUT_SUCCESS"}
 
 @router.post("/forgot-password")
 async def forgot_password(data: ForgotPassword, session: Session = Depends(get_session)):
@@ -114,7 +170,6 @@ async def forgot_password(data: ForgotPassword, session: Session = Depends(get_s
             detail="ERR_EMAIL_NOT_FOUND"
         )
     
-    # Tạo mã OTP 6 số
     otp = f"{random.randint(100000, 999999)}"
     user.otp_code = otp
     user.otp_expiry = datetime.utcnow() + timedelta(minutes=5)
@@ -122,9 +177,7 @@ async def forgot_password(data: ForgotPassword, session: Session = Depends(get_s
     session.add(user)
     session.commit()
     
-    # Gửi email chứa OTP
     await send_reset_otp_email(data.email, otp)
-    
     return {"message": "MSG_OTP_SENT"}
 
 @router.post("/verify-otp")
@@ -136,22 +189,17 @@ def verify_otp(data: VerifyOTP, session: Session = Depends(get_session)):
     if datetime.utcnow() > user.otp_expiry:
         raise HTTPException(status_code=400, detail="ERR_OTP_EXPIRED")
     
-    # Mã đúng -> Tạo token tạm thời để đặt lại mật khẩu (hết hạn sau 10 phút)
     reset_token = create_access_token(
         subject=str(user.user_id), expires_delta=timedelta(minutes=10)
     )
-    
-    # Xóa OTP sau khi dùng xong
     user.otp_code = None
     user.otp_expiry = None
     session.add(user)
     session.commit()
-    
     return {"reset_token": reset_token}
 
 @router.post("/reset-password")
 def reset_password(data: ResetPassword, session: Session = Depends(get_session)):
-    # Giải mã token để lấy user_id
     try:
         payload = jwt.decode(data.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
@@ -160,26 +208,56 @@ def reset_password(data: ResetPassword, session: Session = Depends(get_session))
     except JWTError:
         raise HTTPException(status_code=400, detail="ERR_TOKEN_EXPIRED")
     
-    # Tìm user và cập nhật mật khẩu
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="ERR_USER_NOT_FOUND")
     
-    # Cập nhật mật khẩu mới
     user.hashed_password = get_password_hash(data.new_password)
+    access_token = create_access_token(subject=str(user.user_id))
+    refresh_token = create_refresh_token(subject=str(user.user_id))
+    
+    user.refresh_token = refresh_token
+    user.refresh_token_expiry = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     session.add(user)
     session.commit()
     session.refresh(user)
 
-    # Tạo token đăng nhập mới
-    access_token = create_access_token(subject=str(user.user_id))
-
     return {
         "message": "MSG_PASSWORD_RESET_SUCCESS",
         "access_token": access_token,
-        "full_name": user.full_name
+        "refresh_token": refresh_token,
+        "full_name": user.full_name,
+        "avatar_id": user.avatar_id
     }
 
 @router.get("/me", response_model=UserPublic)
 def read_user_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+@router.put("/me", response_model=UserPublic)
+def update_user_me(data: UserUpdate, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if data.full_name is not None:
+        current_user.full_name = data.full_name
+    if data.avatar_id is not None:
+        current_user.avatar_id = data.avatar_id
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+    return current_user
+
+@router.put("/security", response_model=UserPublic)
+def update_security(data: SecurityUpdate, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if data.biometric_enabled is not None:
+        current_user.biometric_enabled = data.biometric_enabled
+    if data.app_pin is not None:
+        current_user.app_pin = data.app_pin if data.app_pin != "" else None
+    
+    if data.old_password and data.new_password:
+        if not verify_password(data.old_password, current_user.hashed_password):
+            raise HTTPException(status_code=400, detail="ERR_OLD_PASSWORD_INCORRECT")
+        current_user.hashed_password = get_password_hash(data.new_password)
+        
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
     return current_user

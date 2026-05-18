@@ -58,9 +58,30 @@
     "stat_time": "Thời gian",
     "my_data": "Dữ liệu của tôi",
     "edit_profile": "Chỉnh sửa hồ sơ",
+    "edit_profile_title": "Cập nhật thông tin",
+    "avatar_select": "Chọn linh vật đại diện",
+    "full_name_label": "Họ và tên",
+    "save_changes": "Lưu thay đổi",
+    "save_success": "Đã cập nhật hồ sơ thành công!",
     "settings": "Cài đặt ứng dụng",
     "language": "Ngôn ngữ",
-    "security": "Bảo mật",
+    "security": "Bảo mật & Sinh trắc học",
+    "security_title": "Cài đặt bảo mật",
+    "biometric_login": "Đăng nhập sinh trắc học",
+    "biometric_desc": "Sử dụng Face ID / Touch ID để mở khóa",
+    "app_pin": "Mã PIN ứng dụng",
+    "app_pin_desc": "Mã PIN 4 số bảo vệ sổ tay riêng tư",
+    "change_password": "Đổi mật khẩu",
+    "old_password": "Mật khẩu hiện tại",
+    "new_password": "Mật khẩu mới",
+    "confirm_password": "Xác nhận mật khẩu mới",
+    "password_mismatch": "Mật khẩu mới không khớp",
+    "pin_set_success": "Đã thiết lập mã PIN thành công!",
+    "pin_remove_success": "Đã gỡ bỏ mã PIN!",
+    "unlock_prompt": "Vui lòng xác thực để mở DocuMind",
+    "pin_prompt_title": "Nhập mã PIN",
+    "pin_prompt_desc": "Vui lòng nhập mã PIN 4 số của bạn",
+    "wrong_pin": "Mã PIN không chính xác. Vui lòng thử lại.",
     "help_support": "Trợ giúp & Hỗ trợ",
     "logout": "Đăng xuất",
     "logout_progress": "Đang đăng xuất...",
@@ -169,10 +190,13 @@
     "ERR_NOTEBOOK_NOT_FOUND": "Không tìm thấy sổ tay hoặc bạn không có quyền truy cập.",
     "ERR_DOC_NOT_FOUND": "Không tìm thấy tài liệu.",
     "ERR_DOC_FORBIDDEN": "Bạn không có quyền xóa tài liệu này.",
-    "ERR_UNAUTHORIZED": "Phiên đăng nhập đã hết hạn hoặc không hợp lệ."
+    "ERR_UNAUTHORIZED": "Phiên đăng nhập đã hết hạn hoặc không hợp lệ.",
+    "ERR_SESSION_EXPIRED": "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.",
+    "ERR_OLD_PASSWORD_INCORRECT": "Mật khẩu hiện tại không chính xác."
   },
   "messages": {
     "MSG_OTP_SENT": "Mã xác thực đã được gửi vào email của bạn.",
-    "MSG_PASSWORD_RESET_SUCCESS": "Mật khẩu của bạn đã được cập nhật thành công!"
+    "MSG_PASSWORD_RESET_SUCCESS": "Mật khẩu của bạn đã được cập nhật thành công!",
+    "MSG_LOGOUT_SUCCESS": "Đã đăng xuất thành công."
   }
 }

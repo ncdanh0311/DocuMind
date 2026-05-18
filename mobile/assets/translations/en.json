@@ -58,9 +58,30 @@
     "stat_time": "Time",
     "my_data": "My Data",
     "edit_profile": "Edit Profile",
+    "edit_profile_title": "Update Profile",
+    "avatar_select": "Choose Mascot Avatar",
+    "full_name_label": "Full Name",
+    "save_changes": "Save Changes",
+    "save_success": "Profile updated successfully!",
     "settings": "App Settings",
     "language": "Language",
-    "security": "Security",
+    "security": "Security & Biometrics",
+    "security_title": "Security Settings",
+    "biometric_login": "Biometric Authentication",
+    "biometric_desc": "Use Face ID / Touch ID to unlock app",
+    "app_pin": "App PIN Code",
+    "app_pin_desc": "4-digit security PIN for notebook lock",
+    "change_password": "Change Password",
+    "old_password": "Current Password",
+    "new_password": "New Password",
+    "confirm_password": "Confirm New Password",
+    "password_mismatch": "New passwords do not match",
+    "pin_set_success": "PIN set successfully!",
+    "pin_remove_success": "PIN removed successfully!",
+    "unlock_prompt": "Please authenticate to open DocuMind",
+    "pin_prompt_title": "Enter Security PIN",
+    "pin_prompt_desc": "Please enter your 4-digit PIN",
+    "wrong_pin": "Incorrect PIN code. Try again.",
     "help_support": "Help & Support",
     "logout": "Log Out",
     "logout_progress": "Logging out...",
@@ -169,10 +190,13 @@
     "ERR_NOTEBOOK_NOT_FOUND": "Notebook not found or access denied.",
     "ERR_DOC_NOT_FOUND": "Document not found.",
     "ERR_DOC_FORBIDDEN": "You do not have permission to delete this document.",
-    "ERR_UNAUTHORIZED": "Session expired or invalid credentials."
+    "ERR_UNAUTHORIZED": "Session expired or invalid credentials.",
+    "ERR_SESSION_EXPIRED": "Your session has expired. Please log in again.",
+    "ERR_OLD_PASSWORD_INCORRECT": "Current password is incorrect."
   },
   "messages": {
     "MSG_OTP_SENT": "Verification code has been sent to your email.",
-    "MSG_PASSWORD_RESET_SUCCESS": "Your password has been successfully updated!"
+    "MSG_PASSWORD_RESET_SUCCESS": "Your password has been successfully updated!",
+    "MSG_LOGOUT_SUCCESS": "Logged out successfully."
   }
 }

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
+import 'package:documind_mobile/features/profile/edit_profile_screen.dart';
+import 'package:documind_mobile/core/api_service.dart';
+import 'package:documind_mobile/features/auth/login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -11,7 +14,26 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final ApiService _apiService = ApiService();
   bool _notificationsEnabled = true;
+  String _currentName = "";
+  String _currentAvatar = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final result = await _apiService.getProfile();
+    if (mounted && result["success"]) {
+      setState(() {
+        _currentName = result["data"]["full_name"] ?? "";
+        _currentAvatar = result["data"]["avatar_id"] ?? "";
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,9 +63,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             const SizedBox(height: 20),
             _buildSectionHeader("profile.title".tr()),
-            _buildSettingItem(Icons.person_outline_rounded, "profile.edit_profile".tr()),
-            _buildSettingItem(Icons.lock_outline_rounded, "profile.security".tr()),
-            
+            _buildSettingItem(
+              Icons.person_outline_rounded,
+              "profile.edit_profile".tr(),
+              onTap: () async {
+                final updated = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EditProfileScreen(
+                      currentName: _currentName,
+                      currentAvatar: _currentAvatar,
+                    ),
+                  ),
+                );
+                if (updated == true) _loadProfile();
+              },
+            ),
             const SizedBox(height: 30),
             _buildSectionHeader("profile.settings".tr()),
             _buildToggleItem(Icons.notifications_none_rounded, "settings.notifications".tr(), _notificationsEnabled, (val) {
@@ -146,7 +181,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildLogoutButton() {
     return Center(
       child: TextButton(
-        onPressed: () {},
+        onPressed: () async {
+          await _apiService.logout();
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (route) => false,
+            );
+          }
+        },
         child: Text(
           "profile.logout".tr(),
           style: GoogleFonts.inter(

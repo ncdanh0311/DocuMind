@@ -9,7 +9,8 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = "your-super-secret-key-change-this-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 1 week
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 # 1 hour
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30 # 30 days
     
     # PostgreSQL Connection
     POSTGRES_SERVER: str = "localhost"
