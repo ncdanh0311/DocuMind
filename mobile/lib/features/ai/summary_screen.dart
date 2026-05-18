@@ -3,10 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 
 class SummaryScreen extends StatelessWidget {
+  final String? notebookId;
   final String title;
 
   const SummaryScreen({
     super.key,
+    this.notebookId,
     this.title = "Tóm tắt",
   });
 
@@ -22,12 +24,13 @@ class SummaryScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "Tóm tắt",
+          title,
           style: GoogleFonts.outfit(
             fontSize: 20,
             fontWeight: FontWeight.bold,
             color: AppColors.textDark,
           ),
+          overflow: TextOverflow.ellipsis,
         ),
         centerTitle: true,
         actions: [
