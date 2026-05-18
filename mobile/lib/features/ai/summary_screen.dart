@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class SummaryScreen extends StatelessWidget {
   final String? notebookId;
@@ -14,6 +15,7 @@ class SummaryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayTitle = title == "Tóm tắt" ? "summary.title".tr() : title;
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFA),
       appBar: AppBar(
@@ -24,7 +26,7 @@ class SummaryScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          title,
+          displayTitle,
           style: GoogleFonts.outfit(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -46,18 +48,18 @@ class SummaryScreen extends StatelessWidget {
         child: Column(
           children: [
             _buildSummaryCard(
-              title: "Tóm tắt nội dung",
+              title: "summary.content_title".tr(),
               content: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Định luật Newton gồm 3 định luật cơ bản:",
+                    "summary.newton_intro".tr(),
                     style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textDark),
                   ),
                   const SizedBox(height: 12),
-                  _buildBulletPoint("Định luật I: Vật giữ nguyên trạng thái nếu không có lực tác dụng."),
-                  _buildBulletPoint("Định luật II: F = m.a"),
-                  _buildBulletPoint("Định luật III: Lực tác dụng và phản tác dụng luôn bằng nhau và ngược chiều."),
+                  _buildBulletPoint("summary.newton_law1".tr()),
+                  _buildBulletPoint("summary.newton_law2".tr()),
+                  _buildBulletPoint("summary.newton_law3".tr()),
                 ],
               ),
               color: const Color(0xFFE8F5E9),
@@ -68,13 +70,13 @@ class SummaryScreen extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 _buildSummaryCard(
-                  title: "Ý chính",
+                  title: "summary.key_points".tr(),
                   content: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildNumberedPoint("1", "Định luật I: Quán tính"),
-                      _buildNumberedPoint("2", "Định luật II: F = m.a"),
-                      _buildNumberedPoint("3", "Định luật III: Tác dụng và phản tác dụng"),
+                      _buildNumberedPoint("1", "summary.kp_law1".tr()),
+                      _buildNumberedPoint("2", "summary.kp_law2".tr()),
+                      _buildNumberedPoint("3", "summary.kp_law3".tr()),
                       const SizedBox(height: 60),
                     ],
                   ),
@@ -98,14 +100,14 @@ class SummaryScreen extends StatelessWidget {
               children: [
                 Expanded(
                   child: _buildActionButton(
-                    label: "Sao chép",
+                    label: "summary.copy".tr(),
                     icon: Icons.copy_rounded,
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: _buildActionButton(
-                    label: "Tạo Flashcard",
+                    label: "summary.create_flashcard".tr(),
                     icon: Icons.style_rounded,
                   ),
                 ),
@@ -130,10 +132,10 @@ class SummaryScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: color.withOpacity(0.3), width: 1.2),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -176,7 +178,7 @@ class SummaryScreen extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: GoogleFonts.inter(fontSize: 15, color: AppColors.textDark.withOpacity(0.8), height: 1.6),
+              style: GoogleFonts.inter(fontSize: 15, color: AppColors.textDark.withValues(alpha: 0.8), height: 1.6),
             ),
           ),
         ],
@@ -198,7 +200,7 @@ class SummaryScreen extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: GoogleFonts.inter(fontSize: 15, color: AppColors.textDark.withOpacity(0.8), height: 1.6),
+              style: GoogleFonts.inter(fontSize: 15, color: AppColors.textDark.withValues(alpha: 0.8), height: 1.6),
             ),
           ),
         ],
@@ -212,7 +214,7 @@ class SummaryScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: const Color(0xFF4DB6AC).withOpacity(0.6), width: 1.5),
+        border: Border.all(color: const Color(0xFF4DB6AC).withValues(alpha: 0.6), width: 1.5),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

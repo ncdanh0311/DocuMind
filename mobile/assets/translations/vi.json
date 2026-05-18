@@ -31,7 +31,8 @@
     "notes_count": "{} ghi chú",
     "recent_notes": "Ghi chú gần đây",
     "sample_note_title": "Định luật Newton",
-    "sample_note_desc": "Vật lý • 12 phút trước"
+    "sample_note_desc": "Vật lý • 12 phút trước",
+    "empty_recent_notes": "Chưa có tài liệu nào gần đây"
   },
   "notebook": {
     "title": "Sổ tay của bạn",
@@ -48,7 +49,23 @@
     "uploading": "Đang tải file lên...",
     "status_uploaded": "Đã tải lên",
     "status_processing": "Đang xử lý...",
-    "status_ready": "Đã phân tích"
+    "status_ready": "Đã phân tích",
+    "documents_title": "Tài liệu của bạn",
+    "document_content": "Nội dung tài liệu",
+    "empty_content": "Tài liệu trống hoặc đang được phân tích...",
+    "notes_count": "ghi chú",
+    "no_description": "Chưa có mô tả",
+    "private": "Riêng tư",
+    "public": "Công khai",
+    "empty_list_title": "Chưa có sổ tay nào",
+    "empty_list_subtitle": "Bấm nút + để tạo sổ tay đầu tiên",
+    "error_title": "Lỗi kết nối",
+    "retry": "Thử lại",
+    "filter_all": "Tất cả",
+    "filter_study": "Học tập",
+    "filter_project": "Dự án",
+    "filter_research": "Nghiên cứu",
+    "filter_personal": "Cá nhân"
   },
   "profile": {
     "title": "Tài khoản",
@@ -198,5 +215,35 @@
     "MSG_OTP_SENT": "Mã xác thực đã được gửi vào email của bạn.",
     "MSG_PASSWORD_RESET_SUCCESS": "Mật khẩu của bạn đã được cập nhật thành công!",
     "MSG_LOGOUT_SUCCESS": "Đã đăng xuất thành công."
+  },
+  "ai": {
+    "title": "Trợ lý AI",
+    "sample_query": "Tóm tắt ghi chú \"Quang hợp ở thực vật\" giúp mình nhé!",
+    "sample_response": "Đây là bản tóm tắt cho bạn nè!",
+    "followup_question": "Bạn muốn mình giải thích phần nào thêm không?",
+    "summary_heading": "Tóm tắt: Quang hợp ở thực vật",
+    "summary_bullet1": "Quang hợp là quá trình thực vật dùng ánh sáng để chuyển đổi CO₂ và H₂O thành glucose và O₂.",
+    "summary_bullet2": "Diễn ra ở lục lạp, nhờ diệp lục hấp thụ năng lượng ánh sáng.",
+    "summary_bullet3": "Gồm 2 giai đoạn:\n- Pha sáng: tạo ATP, NADPH và O₂.\n- Pha tối (chu trình Calvin): cố định CO₂ để tổng hợp glucose.",
+    "summary_bullet4": "Ý nghĩa: cung cấp năng lượng cho cây và duy trì sự sống trên Trái Đất.",
+    "action1": "Giải thích pha sáng",
+    "action2": "Sơ đồ minh họa",
+    "action3": "Cách cây hấp thụ CO₂?",
+    "action4": "Tạo flashcard",
+    "input_placeholder": "Hỏi bất cứ điều gì..."
+  },
+  "summary": {
+    "title": "Tóm tắt",
+    "content_title": "Tóm tắt nội dung",
+    "newton_intro": "Định luật Newton gồm 3 định luật cơ bản:",
+    "newton_law1": "Định luật I: Vật giữ nguyên trạng thái nếu không có lực tác dụng.",
+    "newton_law2": "Định luật II: F = m.a",
+    "newton_law3": "Định luật III: Lực tác dụng và phản tác dụng luôn bằng nhau và ngược chiều.",
+    "key_points": "Ý chính",
+    "kp_law1": "Định luật I: Quán tính",
+    "kp_law2": "Định luật II: F = m.a",
+    "kp_law3": "Định luật III: Tác dụng và phản tác dụng",
+    "copy": "Sao chép",
+    "create_flashcard": "Tạo Flashcard"
   }
 }

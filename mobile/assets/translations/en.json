@@ -31,7 +31,8 @@
     "notes_count": "{} notes",
     "recent_notes": "Recent Notes",
     "sample_note_title": "Newton's Laws of Motion",
-    "sample_note_desc": "Physics • 12 mins ago"
+    "sample_note_desc": "Physics • 12 mins ago",
+    "empty_recent_notes": "No recent documents yet"
   },
   "notebook": {
     "title": "Your Notebooks",
@@ -48,7 +49,23 @@
     "uploading": "Uploading file...",
     "status_uploaded": "Uploaded",
     "status_processing": "Processing...",
-    "status_ready": "Analyzed"
+    "status_ready": "Analyzed",
+    "documents_title": "Your Documents",
+    "document_content": "Document Content",
+    "empty_content": "Document is empty or still processing...",
+    "notes_count": "notes",
+    "no_description": "No description",
+    "private": "Private",
+    "public": "Public",
+    "empty_list_title": "No notebooks yet",
+    "empty_list_subtitle": "Tap + to create your first notebook",
+    "error_title": "Connection error",
+    "retry": "Retry",
+    "filter_all": "All",
+    "filter_study": "Study",
+    "filter_project": "Project",
+    "filter_research": "Research",
+    "filter_personal": "Personal"
   },
   "profile": {
     "title": "Profile",
@@ -198,5 +215,35 @@
     "MSG_OTP_SENT": "Verification code has been sent to your email.",
     "MSG_PASSWORD_RESET_SUCCESS": "Your password has been successfully updated!",
     "MSG_LOGOUT_SUCCESS": "Logged out successfully."
+  },
+  "ai": {
+    "title": "AI Assistant",
+    "sample_query": "Please summarize the note \"Plant Photosynthesis\" for me!",
+    "sample_response": "Here is your summary!",
+    "followup_question": "Would you like me to explain any part in detail?",
+    "summary_heading": "Summary: Plant Photosynthesis",
+    "summary_bullet1": "Photosynthesis is the process by which plants use light to convert CO₂ and H₂O into glucose and O₂.",
+    "summary_bullet2": "Occurs in chloroplasts, where chlorophyll absorbs light energy.",
+    "summary_bullet3": "Consists of 2 phases:\n- Light phase: produces ATP, NADPH, and O₂.\n- Dark phase (Calvin cycle): fixes CO₂ to synthesize glucose.",
+    "summary_bullet4": "Significance: provides energy for plants and maintains life on Earth.",
+    "action1": "Explain light phase",
+    "action2": "Illustration diagram",
+    "action3": "How do plants absorb CO₂?",
+    "action4": "Create flashcard",
+    "input_placeholder": "Ask anything..."
+  },
+  "summary": {
+    "title": "Summary",
+    "content_title": "Content Summary",
+    "newton_intro": "Newton's laws consist of 3 fundamental laws:",
+    "newton_law1": "Law I: An object remains at rest or in motion unless acted upon by a force.",
+    "newton_law2": "Law II: F = m.a",
+    "newton_law3": "Law III: Action and reaction forces are equal and opposite.",
+    "key_points": "Key Points",
+    "kp_law1": "Law I: Inertia",
+    "kp_law2": "Law II: F = m.a",
+    "kp_law3": "Law III: Action and reaction",
+    "copy": "Copy",
+    "create_flashcard": "Create Flashcard"
   }
 }

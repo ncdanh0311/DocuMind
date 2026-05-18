@@ -630,7 +630,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 24),
           child: Text(
-            "Chưa có tài liệu nào gần đây",
+            "home.empty_recent_notes".tr(),
             style: GoogleFonts.inter(color: Colors.grey.shade500, fontSize: 14),
           ),
         ),
@@ -645,7 +645,7 @@ class _HomeScreenState extends State<HomeScreen> {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final note = _recentNotes[index];
-        final isAnalyzed = note["status"] == "completed" || note["status"] == "analyzed";
+        final isAnalyzed = note["status"] == "ready";
 
         return GestureDetector(
           onTap: () {
@@ -706,7 +706,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               borderRadius: BorderRadius.circular(100),
                             ),
                             child: Text(
-                              isAnalyzed ? "Đã phân tích" : "Đang xử lý...",
+                              isAnalyzed ? "notebook.status_ready".tr() : "notebook.status_processing".tr(),
                               style: GoogleFonts.inter(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,

@@ -5,6 +5,7 @@ import 'package:documind_mobile/features/notebook/create_notebook_screen.dart';
 import 'package:documind_mobile/features/notebook/notebook_detail_screen.dart';
 import 'package:documind_mobile/core/api_service.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class NotebookScreen extends StatefulWidget {
   final VoidCallback? onNotebookCreated;
@@ -19,9 +20,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
   List<Map<String, dynamic>> _notebooks = [];
   bool _isLoading = true;
   String? _errorMessage;
-  String _selectedFilter = "Tất cả";
+  String _selectedFilter = "all";
 
-  final List<String> _filters = ["Tất cả", "Học tập", "Dự án", "Nghiên cứu", "Cá nhân"];
+  final List<String> _filters = ["all", "study", "project", "research", "personal"];
 
   @override
   void initState() {
@@ -46,8 +47,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
               "id": item["notebook_id"],
               "title": item["title"],
               "count": 0,
-              "desc": "Chưa có mô tả",
-              "status": item["is_private"] == true ? "Riêng tư" : "Công khai",
+              "desc": "notebook.no_description".tr(),
+              "status": item["is_private"] == true ? "notebook.private".tr() : "notebook.public".tr(),
               "color": const Color(0xFFF1F8F7),
               "icon": item["icon_path"] ?? _getCategoryIcon(item["title"]),
             };
@@ -107,8 +108,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
   }
 
   List<Map<String, dynamic>> _getFilteredNotebooks() {
-    if (_selectedFilter == "Tất cả") return _notebooks;
-    return _notebooks.where((notebook) => notebook["title"].contains(_selectedFilter)).toList();
+    if (_selectedFilter == "all") return _notebooks;
+    final filterText = "notebook.filter_$_selectedFilter".tr();
+    return _notebooks.where((notebook) => (notebook["title"] as String).toLowerCase().contains(filterText.toLowerCase())).toList();
   }
 
   PreferredSizeWidget _buildAppBar() {
@@ -120,7 +122,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
-        "Sổ tay",
+        "nav.notebook".tr(),
         style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark),
       ),
       centerTitle: true,
@@ -172,7 +174,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   ),
                 ),
                 child: Text(
-                  filter,
+                  "notebook.filter_$filter".tr(),
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -241,7 +243,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "${notebook["count"]} ghi chú",
+                    "${notebook["count"]} ${"notebook.notes_count".tr()}",
                     style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade500),
                   ),
                   const SizedBox(height: 12),
@@ -283,8 +285,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Expanded(child: _buildNavItem(0, "assets/icons/navigations/icon-nav-home-outline.png", "Trang chủ")),
-          Expanded(child: _buildNavItem(1, "assets/icons/navigations/icon-nav-notebook-outline.png", "Số tay")),
+          Expanded(child: _buildNavItem(0, "assets/icons/navigations/icon-nav-home-outline.png", "nav.home".tr())),
+          Expanded(child: _buildNavItem(1, "assets/icons/navigations/icon-nav-notebook-outline.png", "nav.notebook".tr())),
           
           
           Expanded(
@@ -311,8 +313,8 @@ class _NotebookScreenState extends State<NotebookScreen> {
             ),
           ),
           
-          Expanded(child: _buildNavItem(2, "assets/icons/navigations/icon-nav-ai-outline.png", "AI")),
-          Expanded(child: _buildNavItem(3, "assets/icons/navigations/icon-nav-profile-outline.png", "Cá nhân")),
+          Expanded(child: _buildNavItem(2, "assets/icons/navigations/icon-nav-ai-outline.png", "nav.ai".tr())),
+          Expanded(child: _buildNavItem(3, "assets/icons/navigations/icon-nav-profile-outline.png", "nav.profile".tr())),
         ],
       ),
     );
@@ -347,12 +349,12 @@ class _NotebookScreenState extends State<NotebookScreen> {
           Image.asset("assets/mascot/mascot-owl-avatar-circle.png", width: 120, opacity: const AlwaysStoppedAnimation(0.5)),
           const SizedBox(height: 24),
           Text(
-            "Chưa có sổ tay nào",
+            "notebook.empty_list_title".tr(),
             style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
           ),
           const SizedBox(height: 8),
           Text(
-            "Bấm nút + để tạo sổ tay đầu tiên",
+            "notebook.empty_list_subtitle".tr(),
             style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade400),
           ),
         ],
@@ -368,15 +370,15 @@ class _NotebookScreenState extends State<NotebookScreen> {
           const Icon(Icons.error_outline_rounded, size: 60, color: Colors.redAccent),
           const SizedBox(height: 16),
           Text(
-            "Lỗi kết nối",
+            "notebook.error_title".tr(),
             style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          Text(_errorMessage ?? "Đã có lỗi xảy ra"),
+          Text(_errorMessage ?? "notebook.error_title".tr()),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _fetchNotebooks,
-            child: const Text("Thử lại"),
+            child: Text("notebook.retry".tr()),
           ),
         ],
       ),

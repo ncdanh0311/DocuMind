@@ -7,6 +7,7 @@ import 'package:documind_mobile/features/ai/summary_screen.dart';
 import 'package:documind_mobile/core/api_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class NotebookDetailScreen extends StatefulWidget {
   final String notebookId;
@@ -266,7 +267,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildActionButton(
-            label: "Tóm tắt",
+            label: "home.action_summary".tr(),
             icon: "assets/icons/actions/icon-actions-summary.png",
             color: const Color(0xFFE8F5E9),
             iconColor: const Color(0xFF2E7D32),
@@ -278,7 +279,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
             },
           ),
           _buildActionButton(
-            label: "Hỏi AI",
+            label: "home.action_ai_chat".tr(),
             icon: "assets/icons/actions/icon-actions-ai-chat.png",
             color: const Color(0xFFE3F2FD),
             iconColor: const Color(0xFF1565C0),
@@ -290,7 +291,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
             },
           ),
           _buildActionButton(
-            label: "Flashcards",
+            label: "home.action_flashcard".tr(),
             icon: "assets/icons/actions/icon-actions-flashcards.png",
             color: const Color(0xFFFFF3E0),
             iconColor: const Color(0xFFEF6C00),
@@ -356,11 +357,11 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            "Tài liệu của bạn",
+            "notebook.documents_title".tr(),
             style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark),
           ),
           Text(
-            "${_documents.length} file",
+            "${_documents.length} ${"notebook.documents_count".tr()}",
             style: GoogleFonts.inter(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
           ),
         ],
@@ -431,7 +432,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          status == 'ready' ? 'Đã phân tích' : status == 'processing' ? 'Đang xử lý...' : 'Đã tải lên',
+                          status == 'ready' ? "notebook.status_ready".tr() : status == 'processing' ? "notebook.status_processing".tr() : "notebook.status_uploaded".tr(),
                           style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
                         ),
                       ],
@@ -591,7 +592,7 @@ class _DocumentContentBottomSheetState extends State<DocumentContentBottomSheet>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Nội dung tài liệu", style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                      Text("notebook.document_content".tr(), style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark)),
                       const SizedBox(height: 4),
                       Text(widget.fileName, style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade500)),
                     ],
@@ -608,7 +609,7 @@ class _DocumentContentBottomSheetState extends State<DocumentContentBottomSheet>
                 : _errorMessage != null
                     ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)))
                     : _cleanContent.isEmpty
-                        ? Center(child: Text("Tài liệu trống hoặc đang được phân tích...", style: GoogleFonts.inter(color: Colors.grey)))
+                        ? Center(child: Text("notebook.empty_content".tr(), style: GoogleFonts.inter(color: Colors.grey)))
                         : SingleChildScrollView(
                             physics: const BouncingScrollPhysics(),
                             padding: const EdgeInsets.all(24),

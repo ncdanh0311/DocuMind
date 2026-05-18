@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class AIChatScreen extends StatefulWidget {
   final String? notebookId;
@@ -41,7 +42,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
-        widget.notebookTitle != null ? "AI: ${widget.notebookTitle}" : "Trợ lý AI",
+        widget.notebookTitle != null ? "AI: ${widget.notebookTitle}" : "ai.title".tr(),
         style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark),
         overflow: TextOverflow.ellipsis,
       ),
@@ -63,16 +64,16 @@ class _AIChatScreenState extends State<AIChatScreen> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        _buildUserMessage("Tóm tắt ghi chú \"Quang hợp ở thực vật\" giúp mình nhé!"),
+        _buildUserMessage("ai.sample_query".tr()),
         const SizedBox(height: 20),
         _buildAIMessage(
-          "Đây là bản tóm tắt cho bạn nè!",
+          "ai.sample_response".tr(),
           isIntro: true,
         ),
         const SizedBox(height: 12),
         _buildAIResponseCard(),
         const SizedBox(height: 12),
-        _buildAIMessage("Bạn muốn mình giải thích phần nào thêm không?"),
+        _buildAIMessage("ai.followup_question".tr()),
       ],
     );
   }
@@ -118,10 +119,10 @@ class _AIChatScreenState extends State<AIChatScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CircleAvatar(
+        const CircleAvatar(
           radius: 18,
           backgroundColor: Colors.white,
-          backgroundImage: const AssetImage("assets/mascot/mascot-owl-avatar-circle.png"),
+          backgroundImage: AssetImage("assets/mascot/mascot-owl-avatar-circle.png"),
         ),
         const SizedBox(width: 12),
         Container(
@@ -164,14 +165,14 @@ class _AIChatScreenState extends State<AIChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Tóm tắt: Quang hợp ở thực vật",
+              "ai.summary_heading".tr(),
               style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textDark),
             ),
             const SizedBox(height: 12),
-            _buildSummaryItem("Quang hợp là quá trình thực vật dùng ánh sáng để chuyển đổi CO₂ và H₂O thành glucose và O₂."),
-            _buildSummaryItem("Diễn ra ở lục lạp, nhờ diệp lục hấp thụ năng lượng ánh sáng."),
-            _buildSummaryItem("Gồm 2 giai đoạn:\n- Pha sáng: tạo ATP, NADPH và O₂.\n- Pha tối (chu trình Calvin): cố định CO₂ để tổng hợp glucose."),
-            _buildSummaryItem("Ý nghĩa: cung cấp năng lượng cho cây và duy trì sự sống trên Trái Đất."),
+            _buildSummaryItem("ai.summary_bullet1".tr()),
+            _buildSummaryItem("ai.summary_bullet2".tr()),
+            _buildSummaryItem("ai.summary_bullet3".tr()),
+            _buildSummaryItem("ai.summary_bullet4".tr()),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
@@ -211,7 +212,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   }
 
   Widget _buildSuggestedActions() {
-    final actions = ["Giải thích pha sáng", "Sơ đồ minh họa", "Cách cây hấp thụ CO₂?", "Tạo flashcard"];
+    final actions = ["ai.action1".tr(), "ai.action2".tr(), "ai.action3".tr(), "ai.action4".tr()];
     return SizedBox(
       height: 50,
       child: ListView.builder(
@@ -265,7 +266,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 child: TextField(
                   controller: _messageController,
                   decoration: InputDecoration(
-                    hintText: "Hỏi bất cứ điều gì...",
+                    hintText: "ai.input_placeholder".tr(),
                     hintStyle: GoogleFonts.inter(fontSize: 14, color: Colors.grey),
                     border: InputBorder.none,
                   ),
