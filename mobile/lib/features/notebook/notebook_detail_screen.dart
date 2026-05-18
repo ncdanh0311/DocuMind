@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
@@ -32,6 +33,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   bool _isUploading = false;
   String? _deletingDocId;
   String? _errorMessage;
+  Timer? _statusTimer;
 
   @override
   void initState() {
@@ -39,11 +41,29 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
     _fetchDocuments();
   }
 
-  Future<void> _fetchDocuments() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  @override
+  void dispose() {
+    _statusTimer?.cancel();
+    super.dispose();
+  }
+
+  void _checkProcessingStatus() {
+    _statusTimer?.cancel();
+    final hasProcessing = _documents.any((doc) => doc['status'] == 'processing' || doc['status'] == 'uploaded');
+    if (hasProcessing && mounted) {
+      _statusTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted) _fetchDocuments(showLoading: false);
+      });
+    }
+  }
+
+  Future<void> _fetchDocuments({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     final result = await _apiService.getDocuments(widget.notebookId);
 
@@ -51,12 +71,13 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
       if (result["success"]) {
         setState(() {
           _documents = result["data"];
-          _isLoading = false;
+          if (showLoading) _isLoading = false;
         });
+        _checkProcessingStatus();
       } else {
         setState(() {
           _errorMessage = result["message"];
-          _isLoading = false;
+          if (showLoading) _isLoading = false;
         });
       }
     }
@@ -156,6 +177,18 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
           SnackBar(content: Text("Lỗi: ${result['message']}"), backgroundColor: Colors.red),
         );
       }
+    }
+  }
+
+  Future<void> _showChunksDialog(String documentId, String fileName) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _DocumentContentBottomSheet(documentId: documentId, fileName: fileName),
+    );
+    if (mounted) {
+      _fetchDocuments(showLoading: false);
     }
   }
 
@@ -346,19 +379,21 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
         final status = doc['status'] ?? 'uploaded';
         final isPdf = fileName.toString().toLowerCase().endsWith('.pdf');
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade100),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
+        return GestureDetector(
+          onTap: () => _showChunksDialog(doc['document_id'].toString(), fileName),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade100),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -422,8 +457,9 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
                     ),
             ],
           ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 
@@ -486,6 +522,110 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
           ElevatedButton(
             onPressed: _fetchDocuments,
             child: const Text("Thử lại"),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DocumentContentBottomSheet extends StatefulWidget {
+  final String documentId;
+  final String fileName;
+
+  const _DocumentContentBottomSheet({required this.documentId, required this.fileName});
+
+  @override
+  State<_DocumentContentBottomSheet> createState() => _DocumentContentBottomSheetState();
+}
+
+class _DocumentContentBottomSheetState extends State<_DocumentContentBottomSheet> {
+  final ApiService _apiService = ApiService();
+  String _cleanContent = "";
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchContent();
+  }
+
+  Future<void> _fetchContent() async {
+    final result = await _apiService.getDocumentChunks(widget.documentId);
+    if (mounted) {
+      if (result["success"]) {
+        final List<dynamic> chunks = result["data"];
+        final combined = chunks.map((c) => (c["content"] ?? "").toString().trim()).where((s) => s.isNotEmpty).join("\n\n");
+        setState(() {
+          _cleanContent = combined;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = result["message"];
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.88,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Nội dung tài liệu", style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                      const SizedBox(height: 4),
+                      Text(widget.fileName, style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade500)),
+                    ],
+                  ),
+                ),
+                IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: Colors.grey.shade200),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : _errorMessage != null
+                    ? Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)))
+                    : _cleanContent.isEmpty
+                        ? Center(child: Text("Tài liệu trống hoặc đang được phân tích...", style: GoogleFonts.inter(color: Colors.grey)))
+                        : SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.all(24),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: SelectableText(
+                                _cleanContent,
+                                style: GoogleFonts.inter(fontSize: 15, color: AppColors.textDark, height: 1.68),
+                              ),
+                            ),
+                          ),
           ),
         ],
       ),

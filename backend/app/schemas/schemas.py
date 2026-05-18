@@ -55,3 +55,12 @@ class SecurityUpdate(BaseModel):
     app_pin: Optional[str] = None # Nếu "" là tắt mã PIN
     old_password: Optional[str] = None
     new_password: Optional[str] = None
+
+class DocumentChunkResponse(BaseModel):
+    docuchunk_id: uuid.UUID
+    document_id: uuid.UUID
+    content: str
+    page_number: Optional[int] = None
+
+    class Config:
+        from_attributes = True

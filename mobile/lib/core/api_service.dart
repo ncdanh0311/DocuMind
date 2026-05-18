@@ -380,4 +380,16 @@ class ApiService extends BaseApiService {
       return handleError(e);
     }
   }
+
+  Future<Map<String, dynamic>> getDocumentChunks(String documentId) async {
+    try {
+      final response = await _sendWithAuthRetry(() async => http.get(
+        Uri.parse("${ApiConstants.baseUrl}/documents/$documentId/chunks"),
+        headers: await getHeaders(isAuth: true),
+      ));
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
 }

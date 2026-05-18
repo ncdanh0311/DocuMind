@@ -2,12 +2,14 @@ import os
 import shutil
 import uuid
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, BackgroundTasks
 from sqlmodel import Session, select
 
 from backend.app.core.db import get_session
-from backend.app.models.models import Document, Notebook, User
+from backend.app.models.models import Document, Notebook, User, DocumentChunk
+from backend.app.schemas.schemas import DocumentChunkResponse
 from backend.app.api.deps import get_current_user
+from backend.app.services.document_service import process_document_background
 
 router = APIRouter()
 
@@ -16,12 +18,13 @@ UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.
 @router.post("/notebooks/{notebook_id}/documents/upload", response_model=Document, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     notebook_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Tải file (PDF, DOCX, TXT) lên một sổ tay cụ thể.
+    Tải file (PDF, DOCX, TXT) lên một sổ tay cụ thể và tự động xử lý nền bằng Docling.
     """
     # 1. Kiểm tra quyền sở hữu sổ tay
     notebook = session.get(Notebook, notebook_id)
@@ -62,6 +65,9 @@ async def upload_document(
     session.add(db_document)
     session.commit()
     session.refresh(db_document)
+
+    # 6. Kích hoạt tác vụ nền xử lý file bằng Docling -> Database
+    background_tasks.add_task(process_document_background, doc_id, file_path)
 
     return db_document
 
@@ -130,3 +136,35 @@ def delete_document(
     session.commit()
 
     return None
+
+
+@router.get("/documents/{document_id}/chunks", response_model=List[DocumentChunkResponse])
+def get_document_chunks(
+    document_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Lấy danh sách các phân mảnh (chunks) của một tài liệu để debug hoặc hiển thị.
+    """
+    document = session.get(Document, document_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="ERR_DOC_NOT_FOUND"
+        )
+
+    notebook = session.get(Notebook, document.notebook_id)
+    if not notebook or notebook.user_id != current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="ERR_DOC_FORBIDDEN"
+        )
+
+    chunks = session.exec(
+        select(DocumentChunk)
+        .where(DocumentChunk.document_id == document_id)
+        .order_by(DocumentChunk.page_number, DocumentChunk.docuchunk_id)
+    ).all()
+
+    return chunks

@@ -31,12 +31,12 @@ class User(SQLModel, table=True):
         return bool(self.app_pin)
     
     # Relationships
-    notebooks: List["Notebook"] = Relationship(back_populates="user")
+    notebooks: List["Notebook"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 class Notebook(SQLModel, table=True):
     __tablename__ = "notebooks"
     notebook_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    user_id: uuid.UUID = Field(foreign_key="users.user_id")
+    user_id: uuid.UUID = Field(foreign_key="users.user_id", ondelete="CASCADE")
     title: str
     is_private: bool = Field(default=True)
     show_on_home: bool = Field(default=True)
@@ -45,26 +45,26 @@ class Notebook(SQLModel, table=True):
     
     # Relationships
     user: User = Relationship(back_populates="notebooks")
-    documents: List["Document"] = Relationship(back_populates="notebook")
-    qa_histories: List["QAHistory"] = Relationship(back_populates="notebook")
+    documents: List["Document"] = Relationship(back_populates="notebook", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    qa_histories: List["QAHistory"] = Relationship(back_populates="notebook", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 class Document(SQLModel, table=True):
     __tablename__ = "documents"
     document_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    notebook_id: uuid.UUID = Field(foreign_key="notebooks.notebook_id")
+    notebook_id: uuid.UUID = Field(foreign_key="notebooks.notebook_id", ondelete="CASCADE")
     file_name: str
     status: str = Field(default="processing") # processing | ready | error
     uploaded_at: datetime = Field(default_factory=datetime.utcnow)
     
     # Relationships
     notebook: Notebook = Relationship(back_populates="documents")
-    chunks: List["DocumentChunk"] = Relationship(back_populates="document")
-    summaries: List["Summary"] = Relationship(back_populates="document")
+    chunks: List["DocumentChunk"] = Relationship(back_populates="document", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    summaries: List["Summary"] = Relationship(back_populates="document", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 class DocumentChunk(SQLModel, table=True):
     __tablename__ = "document_chunks"
     docuchunk_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    document_id: uuid.UUID = Field(foreign_key="documents.document_id")
+    document_id: uuid.UUID = Field(foreign_key="documents.document_id", ondelete="CASCADE")
     content: str
     # Sử dụng Vector từ pgvector (ví dụ 768 chiều cho PhoBERT)
     embedding: Optional[List[float]] = Field(sa_column=Column(Vector(768)))
@@ -73,12 +73,12 @@ class DocumentChunk(SQLModel, table=True):
     
     # Relationships
     document: Document = Relationship(back_populates="chunks")
-    citations: List["Citation"] = Relationship(back_populates="chunk")
+    citations: List["Citation"] = Relationship(back_populates="chunk", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 class Summary(SQLModel, table=True):
     __tablename__ = "summaries"
     summary_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    document_id: uuid.UUID = Field(foreign_key="documents.document_id")
+    document_id: uuid.UUID = Field(foreign_key="documents.document_id", ondelete="CASCADE")
     content: str
     model_name: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -89,7 +89,7 @@ class Summary(SQLModel, table=True):
 class QAHistory(SQLModel, table=True):
     __tablename__ = "qa_history"
     qahistory_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    notebook_id: uuid.UUID = Field(foreign_key="notebooks.notebook_id")
+    notebook_id: uuid.UUID = Field(foreign_key="notebooks.notebook_id", ondelete="CASCADE")
     question: str
     answer: str
     model_name: str
@@ -97,13 +97,13 @@ class QAHistory(SQLModel, table=True):
     
     # Relationships
     notebook: Notebook = Relationship(back_populates="qa_histories")
-    citations: List["Citation"] = Relationship(back_populates="qa_history")
+    citations: List["Citation"] = Relationship(back_populates="qa_history", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 class Citation(SQLModel, table=True):
     __tablename__ = "citations"
     citation_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    qa_id: uuid.UUID = Field(foreign_key="qa_history.qahistory_id")
-    chunk_id: uuid.UUID = Field(foreign_key="document_chunks.docuchunk_id")
+    qa_id: uuid.UUID = Field(foreign_key="qa_history.qahistory_id", ondelete="CASCADE")
+    chunk_id: uuid.UUID = Field(foreign_key="document_chunks.docuchunk_id", ondelete="CASCADE")
     relevance_score: Optional[float] = None
     
     # Relationships
