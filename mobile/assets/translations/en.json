@@ -32,7 +32,9 @@
     "recent_notes": "Recent Notes",
     "sample_note_title": "Newton's Laws of Motion",
     "sample_note_desc": "Physics • 12 mins ago",
-    "empty_recent_notes": "No recent documents yet"
+    "empty_recent_notes": "No recent documents yet",
+    "search_empty_title": "No results found for \"{}\"",
+    "search_empty_subtitle": "Please try again with different keywords"
   },
   "notebook": {
     "title": "Your Notebooks",

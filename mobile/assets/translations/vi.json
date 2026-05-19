@@ -32,7 +32,9 @@
     "recent_notes": "Ghi chú gần đây",
     "sample_note_title": "Định luật Newton",
     "sample_note_desc": "Vật lý • 12 phút trước",
-    "empty_recent_notes": "Chưa có tài liệu nào gần đây"
+    "empty_recent_notes": "Chưa có tài liệu nào gần đây",
+    "search_empty_title": "Không tìm thấy kết quả nào cho \"{}\"",
+    "search_empty_subtitle": "Vui lòng thử lại với từ khóa khác"
   },
   "notebook": {
     "title": "Sổ tay của bạn",

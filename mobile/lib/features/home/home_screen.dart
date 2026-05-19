@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -26,11 +27,22 @@ class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> _notebooks = [];
   List<Map<String, dynamic>> _recentNotes = [];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+  Timer? _searchDebounce;
+  bool _isSearchLoading = false;
 
   @override
   void initState() {
     super.initState();
     _loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchDebounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadInitialData() async {
@@ -84,12 +96,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _getCategoryIcon(String title) {
-    if (title.contains("Học"))
+    if (title.contains("Học")) {
       return "assets/icons/categories/icon-category-study.png";
-    if (title.contains("Dự"))
+    }
+    if (title.contains("Dự")) {
       return "assets/icons/categories/icon-category-project.png";
-    if (title.contains("Cá"))
+    }
+    if (title.contains("Cá")) {
       return "assets/icons/categories/icon-category-personal.png";
+    }
     return "assets/icons/categories/icon-category-research.png";
   }
 
@@ -112,6 +127,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeContent(BuildContext context) {
+    final bool isSearching = _searchQuery.isNotEmpty;
+    final filteredNotebooks = isSearching
+        ? _notebooks
+            .where((nb) => (nb["title"] as String)
+                .toLowerCase()
+                .contains(_searchQuery))
+            .toList()
+        : _notebooks;
+    final filteredNotes = isSearching
+        ? _recentNotes
+            .where((note) => (note["title"] as String)
+                .toLowerCase()
+                .contains(_searchQuery))
+            .toList()
+        : _recentNotes;
+
     return RefreshIndicator(
       onRefresh: _loadInitialData,
       color: AppColors.primary,
@@ -128,33 +159,54 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 8),
                   _buildSearchBar(),
                   const SizedBox(height: 16),
-                  _buildBanner(),
-                  const SizedBox(height: 32),
-                  _buildSectionHeader("home.quick_actions".tr()),
-                  const SizedBox(height: 12),
-                  _buildQuickActions(),
-                  const SizedBox(height: 32),
 
-                  if (_isLoadingContent || _notebooks.isNotEmpty) ...[
-                    _buildSectionHeader(
-                      "home.recent_notebooks".tr(),
-                      showSeeAll: true,
-                      onSeeAllTap: () {
-                        setState(() => _currentIndex = 1);
-                      },
-                    ),
-                    const SizedBox(height: 6),
-                    _isLoadingContent
-                        ? _buildFolderSkeleton()
-                        : _buildFolderGrid(),
+                  if (!isSearching) ...[
+                    _buildBanner(),
                     const SizedBox(height: 32),
-                  ],
+                    _buildSectionHeader("home.quick_actions".tr()),
+                    const SizedBox(height: 12),
+                    _buildQuickActions(),
+                    const SizedBox(height: 32),
 
-                  _buildSectionHeader("home.recent_notes".tr(), showSeeAll: true),
-                  const SizedBox(height: 8),
-                  _isLoadingContent
-                      ? _buildNoteSkeleton()
-                      : _buildRecentNotesList(),
+                    if (_isLoadingContent || _notebooks.isNotEmpty) ...[
+                      _buildSectionHeader(
+                        "home.recent_notebooks".tr(),
+                        showSeeAll: true,
+                        onSeeAllTap: () {
+                          setState(() => _currentIndex = 1);
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                      _isLoadingContent
+                          ? _buildFolderSkeleton()
+                          : _buildFolderGrid(),
+                      const SizedBox(height: 32),
+                    ],
+
+                    _buildSectionHeader("home.recent_notes".tr(), showSeeAll: true),
+                    const SizedBox(height: 8),
+                    _isLoadingContent
+                        ? _buildNoteSkeleton()
+                        : _buildRecentNotesList(),
+                  ] else ...[
+                    if (_isSearchLoading)
+                      _buildSearchLoading()
+                    else if (filteredNotebooks.isEmpty && filteredNotes.isEmpty)
+                      _buildEmptySearch()
+                    else ...[
+                      if (filteredNotebooks.isNotEmpty) ...[
+                        _buildSectionHeader("home.recent_notebooks".tr(), showSeeAll: false),
+                        const SizedBox(height: 12),
+                        _buildFilteredFolders(filteredNotebooks),
+                        const SizedBox(height: 32),
+                      ],
+                      if (filteredNotes.isNotEmpty) ...[
+                        _buildSectionHeader("home.recent_notes".tr(), showSeeAll: false),
+                        const SizedBox(height: 12),
+                        _buildFilteredNotes(filteredNotes),
+                      ],
+                    ],
+                  ],
                   const SizedBox(height: 100),
                 ],
               ),
@@ -237,14 +289,51 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(100),
       ),
       child: TextField(
+        controller: _searchController,
+        onChanged: (value) {
+          final query = value.trim().toLowerCase();
+          if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+
+          if (query.isEmpty) {
+            setState(() {
+              _searchQuery = "";
+              _isSearchLoading = false;
+            });
+            return;
+          }
+
+          setState(() {
+            _isSearchLoading = true;
+            _searchQuery = query;
+          });
+
+          _searchDebounce = Timer(const Duration(milliseconds: 1000), () {
+            if (mounted) {
+              setState(() {
+                _isSearchLoading = false;
+              });
+            }
+          });
+        },
         decoration: InputDecoration(
           hintText: "home.search_placeholder".tr(),
           hintStyle:
               GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 14),
           prefixIcon:
               const Icon(Icons.search_rounded, color: Colors.grey, size: 22),
-          suffixIcon:
-              Icon(Icons.tune_rounded, color: Colors.grey.shade400, size: 22),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 20),
+                  onPressed: () {
+                    _searchController.clear();
+                    if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+                    setState(() {
+                      _searchQuery = "";
+                      _isSearchLoading = false;
+                    });
+                  },
+                )
+              : Icon(Icons.tune_rounded, color: Colors.grey.shade400, size: 22),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
@@ -491,7 +580,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ElevatedButton.icon(
                               onPressed: () {
                                 Navigator.pop(context);
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => CreateNotebookScreen())).then((_) => _loadInitialData());
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateNotebookScreen())).then((_) => _loadInitialData());
                               },
                               icon: const Icon(Icons.add, color: Colors.white),
                               label: Text("Tạo sổ tay mới", style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -571,56 +660,73 @@ class _HomeScreenState extends State<HomeScreen> {
         childAspectRatio: 2.5,
       ),
       itemCount: _notebooks.length > 4 ? 4 : _notebooks.length,
-      itemBuilder: (context, index) {
-        final folder = _notebooks[index];
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => NotebookDetailScreen(
-                  notebookId: folder['id'] as String,
-                  notebookTitle: folder['title'] as String,
-                  iconPath: folder['icon'] as String,
-                  themeColor: folder['color'] as Color? ?? AppColors.primary,
-                ),
-              ),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade100, width: 1),
-            ),
-            child: Row(
-              children: [
-                Image.asset(folder["icon"] as String,
-                    width: 44, height: 44, fit: BoxFit.contain),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(folder["title"] as String,
-                          style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textDark),
-                          overflow: TextOverflow.ellipsis),
-                      Text("home.notes_count".tr().replaceFirst("{}", "${folder["count"]}"),
-                          style: GoogleFonts.inter(
-                              fontSize: 11, color: Colors.grey.shade500)),
-                    ],
-                  ),
-                ),
-              ],
+      itemBuilder: (context, index) => _buildFolderItem(_notebooks[index]),
+    );
+  }
+
+  Widget _buildFilteredFolders(List<Map<String, dynamic>> folders) {
+    return GridView.builder(
+      shrinkWrap: true,
+      padding: EdgeInsets.zero,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 8,
+        childAspectRatio: 2.5,
+      ),
+      itemCount: folders.length,
+      itemBuilder: (context, index) => _buildFolderItem(folders[index]),
+    );
+  }
+
+  Widget _buildFolderItem(Map<String, dynamic> folder) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => NotebookDetailScreen(
+              notebookId: folder['id'] as String,
+              notebookTitle: folder['title'] as String,
+              iconPath: folder['icon'] as String,
+              themeColor: folder['color'] as Color? ?? AppColors.primary,
             ),
           ),
         );
       },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade100, width: 1),
+        ),
+        child: Row(
+          children: [
+            Image.asset(folder["icon"] as String,
+                width: 44, height: 44, fit: BoxFit.contain),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(folder["title"] as String,
+                      style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark),
+                      overflow: TextOverflow.ellipsis),
+                  Text("home.notes_count".tr().replaceFirst("{}", "${folder["count"]}"),
+                      style: GoogleFonts.inter(
+                          fontSize: 11, color: Colors.grey.shade500)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -643,88 +749,140 @@ class _HomeScreenState extends State<HomeScreen> {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: _recentNotes.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final note = _recentNotes[index];
-        final isAnalyzed = note["status"] == "ready";
+      itemBuilder: (context, index) => _buildNoteItem(_recentNotes[index]),
+    );
+  }
 
-        return GestureDetector(
-          onTap: () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => DocumentContentBottomSheet(
-                documentId: note["id"] as String,
-                fileName: note["title"] as String,
-              ),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey.shade100, width: 1.2),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F8F7),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.description_rounded, color: AppColors.primary, size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        note["title"] as String,
-                        style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textDark),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.access_time_rounded, size: 12, color: Colors.grey.shade400),
-                          const SizedBox(width: 4),
-                          Text(
-                            _formatDate(note["created_at"] as String),
-                            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
-                          ),
-                          const SizedBox(width: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: isAnalyzed ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
-                              borderRadius: BorderRadius.circular(100),
-                            ),
-                            child: Text(
-                              isAnalyzed ? "notebook.status_ready".tr() : "notebook.status_processing".tr(),
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: isAnalyzed ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey.shade400, size: 16),
-              ],
-            ),
+  Widget _buildFilteredNotes(List<Map<String, dynamic>> notes) {
+    return ListView.separated(
+      shrinkWrap: true,
+      padding: EdgeInsets.zero,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: notes.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) => _buildNoteItem(notes[index]),
+    );
+  }
+
+  Widget _buildNoteItem(Map<String, dynamic> note) {
+    final isAnalyzed = note["status"] == "ready";
+
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => DocumentContentBottomSheet(
+            documentId: note["id"] as String,
+            fileName: note["title"] as String,
           ),
         );
       },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade100, width: 1.2),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F8F7),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.description_rounded, color: AppColors.primary, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    note["title"] as String,
+                    style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.access_time_rounded, size: 12, color: Colors.grey.shade400),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatDate(note["created_at"] as String),
+                        style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isAnalyzed ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Text(
+                          isAnalyzed ? "notebook.status_ready".tr() : "notebook.status_processing".tr(),
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: isAnalyzed ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey.shade400, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptySearch() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 60),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset("assets/mascot/mascot-owl-reading-book.png", width: 140, height: 140),
+            const SizedBox(height: 16),
+            Text(
+              "home.search_empty_title".tr().replaceFirst("{}", _searchQuery),
+              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "home.search_empty_subtitle".tr(),
+              style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade500),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchLoading() {
+    return const SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 80),
+        child: Center(
+          child: CircularProgressIndicator(
+            color: AppColors.primary,
+          ),
+        ),
+      ),
     );
   }
 
@@ -770,7 +928,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => CreateNotebookScreen()),
+                        builder: (context) => const CreateNotebookScreen()),
                   );
                   if (result == true) {
                     _loadInitialData();
