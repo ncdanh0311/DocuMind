@@ -1,5 +1,6 @@
 from typing import Optional
 import uuid
+from datetime import datetime
 from pydantic import BaseModel, EmailStr
 
 class UserCreate(BaseModel):
@@ -26,8 +27,6 @@ class UserPublic(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
     avatar_id: Optional[str] = None
-    biometric_enabled: bool = False
-    has_app_pin: bool = False
 
     class Config:
         from_attributes = True
@@ -51,8 +50,6 @@ class UserUpdate(BaseModel):
     avatar_id: Optional[str] = None
 
 class SecurityUpdate(BaseModel):
-    biometric_enabled: Optional[bool] = None
-    app_pin: Optional[str] = None # Nếu "" là tắt mã PIN
     old_password: Optional[str] = None
     new_password: Optional[str] = None
 
@@ -61,6 +58,18 @@ class DocumentChunkResponse(BaseModel):
     document_id: uuid.UUID
     content: str
     page_number: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+class NotificationResponse(BaseModel):
+    notification_id: uuid.UUID
+    user_id: uuid.UUID
+    title: str
+    body: str
+    is_read: bool
+    type: str
+    created_at: datetime
 
     class Config:
         from_attributes = True

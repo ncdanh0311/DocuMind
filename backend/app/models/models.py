@@ -23,15 +23,10 @@ class User(SQLModel, table=True):
     
     # Profile & Preferences
     avatar_id: Optional[str] = Field(default="mascot-owl-avatar-circle.png")
-    biometric_enabled: bool = Field(default=False)
-    app_pin: Optional[str] = None
-    
-    @property
-    def has_app_pin(self) -> bool:
-        return bool(self.app_pin)
     
     # Relationships
     notebooks: List["Notebook"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    notifications: List["Notification"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 class Notebook(SQLModel, table=True):
     __tablename__ = "notebooks"
@@ -109,3 +104,16 @@ class Citation(SQLModel, table=True):
     # Relationships
     qa_history: QAHistory = Relationship(back_populates="citations")
     chunk: DocumentChunk = Relationship(back_populates="citations")
+
+class Notification(SQLModel, table=True):
+    __tablename__ = "notifications"
+    notification_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="users.user_id", ondelete="CASCADE", index=True)
+    title: str
+    body: str
+    is_read: bool = Field(default=False)
+    type: str = Field(default="info") # success | info | warning | welcome
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relationships
+    user: User = Relationship(back_populates="notifications")

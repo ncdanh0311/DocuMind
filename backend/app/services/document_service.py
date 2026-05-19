@@ -3,7 +3,7 @@ import logging
 import uuid
 from sqlmodel import Session
 from backend.app.core.db import engine
-from backend.app.models.models import Document, DocumentChunk
+from backend.app.models.models import Document, DocumentChunk, Notification
 from backend.processor.document_processor import DocumentProcessor
 
 logger = logging.getLogger(__name__)
@@ -42,11 +42,31 @@ def process_document_background(doc_id: uuid.UUID, file_path: str):
                 )
                 session.add(db_chunk)
 
+            # Tạo thông báo thành công cho người dùng sở hữu tài liệu
+            notification = Notification(
+                user_id=doc.notebook.user_id,
+                title="Phân tích tài liệu thành công!",
+                body=f"Tài liệu {doc.file_name} đã được phân tích thành công! Bắt đầu tóm tắt ngay.",
+                type="success"
+            )
+            session.add(notification)
+
             doc.status = "ready"
             session.commit()
             logger.info(f"✅ Xử lý thành công tài liệu {doc_id}. Đã tạo {len(chunks_data)} chunks.")
 
         except Exception as e:
             logger.error(f"❌ Lỗi xử lý tài liệu {doc_id}: {e}", exc_info=True)
+            try:
+                notification = Notification(
+                    user_id=doc.notebook.user_id,
+                    title="Lỗi phân tích tài liệu",
+                    body=f"Tài liệu {doc.file_name} gặp lỗi khi phân tích: {str(e)}",
+                    type="error"
+                )
+                session.add(notification)
+            except Exception as notify_err:
+                logger.error(f"Không thể tạo thông báo lỗi cho user: {notify_err}")
+            
             doc.status = "error"
             session.commit()

@@ -224,14 +224,12 @@ class ApiService extends BaseApiService {
     }
   }
 
-  Future<Map<String, dynamic>> updateSecurity({bool? biometricEnabled, String? appPin, String? oldPassword, String? newPassword}) async {
+  Future<Map<String, dynamic>> updateSecurity({String? oldPassword, String? newPassword}) async {
     try {
       final response = await _sendWithAuthRetry(() async => http.put(
         Uri.parse("${ApiConstants.baseUrl}${ApiConstants.authEndpoint}/security"),
         headers: await getHeaders(isAuth: true),
         body: jsonEncode({
-          if (biometricEnabled != null) "biometric_enabled": biometricEnabled,
-          if (appPin != null) "app_pin": appPin,
           if (oldPassword != null) "old_password": oldPassword,
           if (newPassword != null) "new_password": newPassword,
         }),
@@ -242,12 +240,37 @@ class ApiService extends BaseApiService {
     }
   }
 
-  Future<Map<String, dynamic>> verifyPin(String pin) async {
+  // --- NOTIFICATION METHODS ---
+
+  Future<Map<String, dynamic>> getNotifications() async {
+    try {
+      final response = await _sendWithAuthRetry(() async => http.get(
+        Uri.parse("${ApiConstants.baseUrl}/notifications/"),
+        headers: await getHeaders(isAuth: true),
+      ));
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> markAllNotificationsAsRead() async {
     try {
       final response = await _sendWithAuthRetry(() async => http.post(
-        Uri.parse("${ApiConstants.baseUrl}${ApiConstants.authEndpoint}/verify-pin"),
+        Uri.parse("${ApiConstants.baseUrl}/notifications/read"),
         headers: await getHeaders(isAuth: true),
-        body: jsonEncode({"pin": pin}),
+      ));
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> markNotificationAsRead(String notificationId) async {
+    try {
+      final response = await _sendWithAuthRetry(() async => http.post(
+        Uri.parse("${ApiConstants.baseUrl}/notifications/$notificationId/read"),
+        headers: await getHeaders(isAuth: true),
       ));
       return handleResponse(response);
     } catch (e) {

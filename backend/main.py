@@ -46,12 +46,13 @@ async def root():
     }
 
 # Import các router
-from backend.app.api import notebooks, auth, documents
+from backend.app.api import notebooks, auth, documents, notifications
 
 # Include các router
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(notebooks.router, prefix=f"{settings.API_V1_STR}/notebooks", tags=["notebooks"])
 app.include_router(documents.router, prefix=settings.API_V1_STR, tags=["documents"])
+app.include_router(notifications.router, prefix=f"{settings.API_V1_STR}/notifications", tags=["notifications"])
 
 if __name__ == "__main__":
     import uvicorn

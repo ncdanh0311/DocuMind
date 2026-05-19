@@ -247,11 +247,6 @@ def update_user_me(data: UserUpdate, current_user: User = Depends(get_current_us
 
 @router.put("/security", response_model=UserPublic)
 def update_security(data: SecurityUpdate, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    if data.biometric_enabled is not None:
-        current_user.biometric_enabled = data.biometric_enabled
-    if data.app_pin is not None:
-        current_user.app_pin = data.app_pin if data.app_pin != "" else None
-    
     if data.old_password and data.new_password:
         if not verify_password(data.old_password, current_user.hashed_password):
             raise HTTPException(status_code=400, detail="ERR_OLD_PASSWORD_INCORRECT")
