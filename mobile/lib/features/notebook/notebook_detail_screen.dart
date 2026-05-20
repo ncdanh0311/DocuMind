@@ -274,7 +274,12 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SummaryScreen()),
+                MaterialPageRoute(
+                  builder: (context) => SummaryScreen(
+                    notebookId: widget.notebookId,
+                    title: "Tóm tắt: ${widget.notebookTitle}",
+                  ),
+                ),
               );
             },
           ),
@@ -286,7 +291,12 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AIChatScreen()),
+                MaterialPageRoute(
+                  builder: (context) => AIChatScreen(
+                    notebookId: widget.notebookId,
+                    notebookTitle: widget.notebookTitle,
+                  ),
+                ),
               );
             },
           ),

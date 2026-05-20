@@ -27,6 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingContent = true;
   final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> _notebooks = [];
+  String? _selectedChatNotebookId;
+  String? _selectedChatNotebookTitle;
   List<Map<String, dynamic>> _recentNotes = [];
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
@@ -129,6 +131,8 @@ class _HomeScreenState extends State<HomeScreen> {
             onBackToHome: () => setState(() => _currentIndex = 0),
           ),
           AIChatScreen(
+            notebookId: _selectedChatNotebookId,
+            notebookTitle: _selectedChatNotebookTitle,
             onBackToHome: () => setState(() => _currentIndex = 0),
           ),
           const ProfileScreen(),
@@ -1136,7 +1140,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: () {
                               Navigator.pop(context);
                               if (actionKey == "action_ai_chat") {
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => AIChatScreen(notebookId: nb["id"] as String, notebookTitle: nb["title"] as String)));
+                                setState(() {
+                                  _selectedChatNotebookId = nb["id"] as String;
+                                  _selectedChatNotebookTitle = nb["title"] as String;
+                                  _currentIndex = 2;
+                                });
                               } else if (actionKey == "action_summary") {
                                 Navigator.push(context, MaterialPageRoute(builder: (context) => SummaryScreen(notebookId: nb["id"] as String, title: "Tóm tắt: ${nb["title"]}")));
                               } else {
@@ -1516,7 +1524,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ? iconPath.replaceAll("outline", "filled")
         : iconPath;
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () {
+        if (index == 2) {
+          _showNotebookSelectionModal("action_ai_chat");
+        } else {
+          setState(() => _currentIndex = index);
+        }
+      },
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisSize: MainAxisSize.min,
