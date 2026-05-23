@@ -138,6 +138,222 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
     }
   }
 
+  void _showAddOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 5),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(15.0),
+                child: Text(
+                  "notebook.add_title".tr(),
+                  style: GoogleFonts.outfit(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.upload_file_rounded, color: AppColors.primary),
+                ),
+                title: Text(
+                  "notebook.add_upload_file".tr(),
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w500, fontSize: 16),
+                ),
+                subtitle: Text(
+                  "notebook.add_upload_file_desc".tr(),
+                  style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _uploadDocument();
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.note_alt_rounded, color: Colors.orange),
+                ),
+                title: Text(
+                  "notebook.add_paste_text".tr(),
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w500, fontSize: 16),
+                ),
+                subtitle: Text(
+                  "notebook.add_paste_text_desc".tr(),
+                  style: GoogleFonts.outfit(color: Colors.grey, fontSize: 13),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showPasteTextDialog();
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showPasteTextDialog() async {
+    final titleController = TextEditingController();
+    final contentController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                "notebook.paste_dialog_title".tr(),
+                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: AppColors.textDark),
+              ),
+              content: Form(
+                key: formKey,
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.9,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextFormField(
+                          controller: titleController,
+                          decoration: InputDecoration(
+                            labelText: "notebook.paste_doc_title".tr(),
+                            hintText: "notebook.paste_doc_title_hint".tr(),
+                            labelStyle: GoogleFonts.outfit(fontSize: 14),
+                            hintStyle: GoogleFonts.outfit(fontSize: 14),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return "notebook.paste_doc_title_err".tr();
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 15),
+                        TextFormField(
+                          controller: contentController,
+                          maxLines: 8,
+                          minLines: 4,
+                          decoration: InputDecoration(
+                            labelText: "notebook.paste_doc_content".tr(),
+                            hintText: "notebook.paste_doc_content_hint".tr(),
+                            labelStyle: GoogleFonts.outfit(fontSize: 14),
+                            hintStyle: GoogleFonts.outfit(fontSize: 14),
+                            alignLabelWithHint: true,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return "notebook.paste_doc_content_err".tr();
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    "notebook.cancel".tr(),
+                    style: GoogleFonts.outfit(color: Colors.grey, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () async {
+                    if (formKey.currentState!.validate()) {
+                      final title = titleController.text.trim();
+                      final content = contentController.text.trim();
+                      Navigator.pop(context); // Close dialog
+
+                      setState(() {
+                        _isUploading = true;
+                      });
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("notebook.saving_text".tr()), duration: const Duration(seconds: 2)),
+                      );
+
+                      final result = await _apiService.createDocumentFromText(
+                        widget.notebookId,
+                        title: title,
+                        content: content,
+                      );
+
+                      if (mounted) {
+                        setState(() {
+                          _isUploading = false;
+                        });
+
+                        if (result["success"]) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("notebook.save_text_success".tr()), backgroundColor: Colors.green),
+                          );
+                          _fetchDocuments();
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Lỗi: ${result['message']}"), backgroundColor: Colors.red),
+                          );
+                        }
+                      }
+                    }
+                  },
+                  child: Text(
+                    "notebook.save".tr(),
+                    style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _deleteDocument(String documentId) async {
     final bool? confirm = await showDialog<bool>(
       context: context,
@@ -220,7 +436,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _isUploading ? null : _uploadDocument,
+        onPressed: _isUploading ? null : () => _showAddOptions(context),
         backgroundColor: _isUploading ? Colors.grey : AppColors.primary,
         child: _isUploading 
             ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))

@@ -72,6 +72,72 @@ async def upload_document(
     return db_document
 
 
+from pydantic import BaseModel
+
+class TextDocumentCreate(BaseModel):
+    title: str
+    content: str
+
+@router.post("/notebooks/{notebook_id}/documents/text", response_model=Document, status_code=status.HTTP_201_CREATED)
+async def create_document_from_text(
+    notebook_id: uuid.UUID,
+    request: TextDocumentCreate,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Tạo tài liệu từ văn bản thuần trực tiếp và tự động xử lý nền bằng Docling.
+    """
+    # 1. Kiểm tra quyền sở hữu sổ tay
+    notebook = session.get(Notebook, notebook_id)
+    if not notebook or notebook.user_id != current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="ERR_NOTEBOOK_NOT_FOUND"
+        )
+
+    # 2. Đảm bảo tên file kết thúc bằng .txt
+    filename = request.title.strip()
+    if not filename.lower().endswith(".txt"):
+        filename = f"{filename}.txt"
+
+    # 3. Tạo bản ghi Document
+    doc_id = uuid.uuid4()
+    db_document = Document(
+        document_id=doc_id,
+        notebook_id=notebook_id,
+        file_name=filename,
+        status="uploaded"
+    )
+
+    # 4. Tạo thư mục lưu trữ nếu chưa có
+    notebook_upload_dir = os.path.join(UPLOAD_DIR, str(notebook_id))
+    os.makedirs(notebook_upload_dir, exist_ok=True)
+
+    # 5. Lưu nội dung văn bản thành file .txt
+    file_path = os.path.join(notebook_upload_dir, f"{doc_id}.txt")
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(request.content)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Lỗi khi lưu file văn bản: {str(e)}"
+        )
+
+    # 6. Lưu thông tin vào Database
+    session.add(db_document)
+    session.commit()
+    session.refresh(db_document)
+
+    # 7. Kích hoạt tác vụ nền xử lý file văn bản -> Database
+    background_tasks.add_task(process_document_background, doc_id, file_path)
+
+    return db_document
+
+
+
 @router.get("/notebooks/{notebook_id}/documents", response_model=List[Document])
 def list_documents(
     notebook_id: uuid.UUID,
