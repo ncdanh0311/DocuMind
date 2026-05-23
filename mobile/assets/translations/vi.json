@@ -47,7 +47,7 @@
     "add_upload_file_desc": "Hỗ trợ PDF, DOCX, TXT",
     "add_paste_text": "Nhập văn bản trực tiếp",
     "add_paste_text_desc": "Tự soạn thảo hoặc paste văn bản vào",
-    "paste_dialog_title": "Nhập văn bản thuần",
+    "paste_dialog_title": "Nhập văn bản",
     "paste_doc_title": "Tiêu đề tài liệu",
     "paste_doc_title_hint": "Nhập tiêu đề...",
     "paste_doc_title_err": "Vui lòng nhập tiêu đề",

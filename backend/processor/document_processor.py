@@ -46,7 +46,7 @@ class DocumentProcessor:
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             length_function=len,
-            separators=["\n\n", "\n", ". ", " ", ""]
+            separators=["\n\n", "\n", ". ", " "]
         )
 
     def _inject_markdown_headers(self, md_content: str) -> str:
@@ -139,5 +139,19 @@ class DocumentProcessor:
                     }
                 })
         
-        logger.info(f"✅ Đã băm thành {len(final_chunks)} mảnh (lớp 2) với overlap {self.chunk_overlap}")
         return final_chunks
+
+    @staticmethod
+    def split_text_without_word_splitting(text: str, chunk_size: int = 1000, chunk_overlap: int = 0) -> List[str]:
+        """
+        Chia nhỏ văn bản một cách thông minh phục vụ cho việc tóm tắt và chat với AI (RAG),
+        đảm bảo không bao giờ bị cắt ở giữa từ bằng cách loại bỏ separator rỗng.
+        """
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+            separators=["\n\n", "\n", ". ", " "]
+        )
+        return splitter.split_text(text)
