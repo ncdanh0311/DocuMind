@@ -87,7 +87,40 @@ def chat_with_notebook(
     # 5. Chạy mô hình PhoBERT QA để lấy câu trả lời trích xuất
     answer = qa_service.answer_question(context, request.question)
 
-    # 6. Ghi lại lịch sử hỏi đáp vào Database
+    # Tự động mở rộng câu trả lời ra toàn bộ câu chứa nó trong context để cung cấp đầy đủ thông tin
+    if answer and "Không tìm thấy" not in answer:
+        import re
+        # Tách context thành các câu (dựa trên dấu chấm, hỏi, than hoặc xuống dòng)
+        sentences = re.split(r'(?<=[.!?])\s+|\n+', context)
+        clean_ans = answer.lower().replace(" ", "").replace("_", "").replace(".", "")
+        for sentence in sentences:
+            clean_sentence = sentence.lower().replace(" ", "").replace("_", "").replace(".", "")
+            if clean_ans in clean_sentence and len(clean_ans) > 0:
+                answer = sentence.strip()
+                break
+
+    # 6. Tìm xem answer thuộc về chunk nào để đánh dấu trích dẫn dạng [x]
+    matched_chunk_idx = None
+    clean_ans = answer.lower().replace(" ", "").replace("_", "")
+    
+    for idx, chunk in enumerate(related_chunks):
+        clean_chunk = chunk.content.lower().replace(" ", "").replace("_", "")
+        if clean_ans in clean_chunk:
+            matched_chunk_idx = idx
+            break
+
+    # Nếu không trùng khớp hoàn hảo, lấy chunk đầu tiên có độ tương đồng cao nhất
+    if matched_chunk_idx is None and len(related_chunks) > 0:
+        matched_chunk_idx = 0
+
+    if matched_chunk_idx is not None:
+        citation_num = matched_chunk_idx + 1
+        if answer.endswith("."):
+            answer = f"{answer[:-1].strip()} [{citation_num}]."
+        else:
+            answer = f"{answer.strip()} [{citation_num}]"
+
+    # 7. Ghi lại lịch sử hỏi đáp vào Database
     qa_id = uuid.uuid4()
     qa_history = QAHistory(
         qahistory_id=qa_id,
@@ -111,12 +144,24 @@ def chat_with_notebook(
 
     session.commit()
 
-    # 7. Tạo danh sách nguồn trích dẫn trả về
+    # 8. Tạo danh sách nguồn và trích dẫn chi tiết trả về
     sources = []
-    for chunk in related_chunks:
+    citations_list = []
+    for idx, chunk in enumerate(related_chunks):
         doc_name = chunk.document.file_name if chunk.document else "Tài liệu không tên"
         page_info = f"Trang {chunk.page_number}" if chunk.page_number else "Không rõ trang"
         sources.append(f"{doc_name} ({page_info})")
+        
+        citations_list.append({
+            "id": idx + 1,
+            "source_title": doc_name,
+            "page_number": chunk.page_number,
+            "snippet": chunk.content
+        })
 
-    return ChatResponse(answer=answer, sources=list(set(sources)))
+    return ChatResponse(
+        answer=answer, 
+        sources=list(set(sources)), 
+        citations=citations_list
+    )
 

@@ -1,14 +1,83 @@
 import 'package:flutter/material.dart';
+import 'package:documind_mobile/core/app_colors.dart';
 
 class FormattedText extends StatelessWidget {
   final String text;
   final TextStyle style;
+  final Function(int)? onCitationTap;
 
   const FormattedText({
     super.key,
     required this.text,
     required this.style,
+    this.onCitationTap,
   });
+
+  List<InlineSpan> _parseCitations(String segmentText, TextStyle currentStyle) {
+    if (segmentText.isEmpty) return [];
+
+    final citationRegExp = RegExp(r'\[(\d+)\]');
+    final matches = citationRegExp.allMatches(segmentText).toList();
+    if (matches.isEmpty) {
+      return [TextSpan(text: segmentText, style: currentStyle)];
+    }
+
+    final List<InlineSpan> spans = [];
+    int start = 0;
+    for (final match in matches) {
+      if (match.start > start) {
+        spans.add(TextSpan(
+          text: segmentText.substring(start, match.start),
+          style: currentStyle,
+        ));
+      }
+
+      final numberStr = match.group(1)!;
+      final number = int.parse(numberStr);
+
+      spans.add(
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: GestureDetector(
+            onTap: () {
+              if (onCitationTap != null) {
+                onCitationTap!(number);
+              }
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: const BoxDecoration(
+                color: AppColors.primary, // App primary theme color
+                shape: BoxShape.circle,
+              ),
+              width: 18,
+              height: 18,
+              alignment: Alignment.center,
+              child: Text(
+                '$number',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      start = match.end;
+    }
+
+    if (start < segmentText.length) {
+      spans.add(TextSpan(
+        text: segmentText.substring(start),
+        style: currentStyle,
+      ));
+    }
+
+    return spans;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +120,6 @@ class FormattedText extends StatelessWidget {
       }
 
       // 3. Phân tích in đậm (bold) và in nghiêng (italic) inline
-      // Regex này tìm các cặp thẻ ***, **, *, ___, __, _
       final boldItalicRegExp = RegExp(r'(\*\*\*|___\b|\*\*|__\b|\*|_\b)');
       int start = 0;
       bool isBold = false;
@@ -60,18 +128,18 @@ class FormattedText extends StatelessWidget {
       final matches = boldItalicRegExp.allMatches(line).toList();
 
       if (matches.isEmpty) {
-        spans.add(TextSpan(
-          text: line,
-          style: currentLineStyle,
+        spans.addAll(_parseCitations(
+          line,
+          currentLineStyle,
         ));
       } else {
         for (final match in matches) {
           final matchedText = match.group(0);
 
           if (match.start > start) {
-            spans.add(TextSpan(
-              text: line.substring(start, match.start),
-              style: currentLineStyle.copyWith(
+            spans.addAll(_parseCitations(
+              line.substring(start, match.start),
+              currentLineStyle.copyWith(
                 fontWeight: isBold ? FontWeight.bold : currentLineStyle.fontWeight,
                 fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
               ),
@@ -91,9 +159,9 @@ class FormattedText extends StatelessWidget {
         }
 
         if (start < line.length) {
-          spans.add(TextSpan(
-            text: line.substring(start),
-            style: currentLineStyle.copyWith(
+          spans.addAll(_parseCitations(
+            line.substring(start),
+            currentLineStyle.copyWith(
               fontWeight: isBold ? FontWeight.bold : currentLineStyle.fontWeight,
               fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
             ),
