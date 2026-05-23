@@ -61,8 +61,8 @@ class DocumentChunk(SQLModel, table=True):
     docuchunk_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     document_id: uuid.UUID = Field(foreign_key="documents.document_id", ondelete="CASCADE")
     content: str
-    # Sử dụng Vector từ pgvector (ví dụ 768 chiều cho PhoBERT)
-    embedding: Optional[List[float]] = Field(sa_column=Column(Vector(768)))
+    # Sử dụng Vector từ pgvector (384 chiều cho multilingual-e5-small)
+    embedding: Optional[List[float]] = Field(sa_column=Column(Vector(384)))
     embedding_model: Optional[str] = None
     page_number: Optional[int] = None
     
