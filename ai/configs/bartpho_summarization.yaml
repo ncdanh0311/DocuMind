@@ -2,28 +2,39 @@ model:
   name: "vinai/bartpho-word-base"
   max_input_length: 512
   max_target_length: 256
+
 data:
   train_path: "datasets/cleaned/vietnews/train"
-  val_path: "datasets/cleaned/vietnews/validation"
-  test_path: "datasets/cleaned/vietnews/test"
+  val_path:   "datasets/cleaned/vietnews/validation"
+  test_path:  "datasets/cleaned/vietnews/test"
   max_train_samples: 20000
-  max_val_samples: 1000
-  max_test_samples: 2000
-  batch_size: 16          # Tang len 32 cho toc do cuc cao
+  max_val_samples:   1000
+  max_test_samples:  2000
+  batch_size: 32
   num_workers: 16
 
 training:
   output_dir: "results/models/bartpho_summarization"
-  num_train_epochs: 10
-  learning_rate: 1e-4     # LoRA dung LR cao se hoi tu nhanh hon
+  num_train_epochs: 15
+  learning_rate: 0.0005
   weight_decay: 0.01
-  gradient_accumulation_steps: 1 
-  save_total_limit: 1
-  early_stopping_patience: 2
+  gradient_accumulation_steps: 1
+  warmup_ratio: 0.05
+  evaluation_strategy: "epoch"
+  save_strategy: "epoch"
+  logging_steps: 100
+  save_total_limit: 2
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_rougeL"
+  early_stopping_patience: 3
 
 evaluation:
-  batch_size: 16
+  batch_size: 32
   predict_with_generate: true
+  generation_num_beams: 4
+  length_penalty: 1.2
+  no_repeat_ngram_size: 3
+  generation_max_length: 256
 
 bf16: true
 seed: 42

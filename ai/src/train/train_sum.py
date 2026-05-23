@@ -1,110 +1,113 @@
+#!/usr/bin/env python3
+import argparse
+import yaml
 import os
 import sys
-import yaml
-import argparse
-import torch
-import time
-import glob
+from pathlib import Path
+from datasets import load_from_disk
 from transformers import (
-    Seq2SeqTrainingArguments, 
-    Seq2SeqTrainer, 
-    DataCollatorForSeq2Seq, 
-    EarlyStoppingCallback
+    DataCollatorForSeq2Seq,
+    Seq2SeqTrainer,
+    Seq2SeqTrainingArguments,
+    EarlyStoppingCallback,
 )
+from evaluate import load as load_metric
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, ROOT_DIR)
+# Add src to path
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from src.data.data_loader import DataLoader
-from src.data.process_sum import SumProcessor
 from src.models.build_sum import SumModelBuilder
-from src.metrics.metric_sum import SumMetrics
-from src.logger import ResearchLogger
+from src.data.process_sum import SumProcessor
 
-def train_summarization(config_path):
-    with open(config_path, 'r') as f:
+rouge = load_metric("rouge")
+
+def compute_metrics(eval_preds):
+    preds, labels = eval_preds
+    labels[labels == -100] = 0
+    decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
+    decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+    # Clean "_" cho BARTpho trước khi tính ROUGE
+    decoded_preds = [t.replace("_", " ") for t in decoded_preds]
+    decoded_labels = [t.replace("_", " ") for t in decoded_labels]
+
+    result = rouge.compute(predictions=decoded_preds, references=decoded_labels, use_stemmer=True)
+    return {k: round(v * 100, 4) for k, v in result.items()}
+
+def train_summarization(config_path: str):
+    with open(config_path, "r") as f:
         cfg = yaml.safe_load(f)
-    run_name = os.path.basename(config_path).replace(".yaml", "")
-    
-    # 1. Build Model & Tokenizer (LoRA=True)
-    model, tokenizer = SumModelBuilder.build(cfg['model']['name'], task_type="summarization", use_lora=True)
 
-    # 2. Load & Sample Data
-    dataset = DataLoader.load(cfg['data']['train_path'].replace("/train", ""))
+    # 1. Build model
+    model, tok = SumModelBuilder.build(
+        model_name=cfg["model"]["name"],
+        task_type="summarization",
+        use_lora=True
+    )
+    global tokenizer
+    tokenizer = tok
+
+    # 2. Load dataset và GIỚI HẠN SỐ LƯỢNG (Subsampling)
+    train_ds = load_from_disk(cfg["data"]["train_path"])
+    val_ds = load_from_disk(cfg["data"]["val_path"])
+
+    # --- LOGIC CẮT DATA ---
+    if "max_train_samples" in cfg["data"]:
+        m_train = cfg["data"]["max_train_samples"]
+        if m_train < len(train_ds):
+            print(f"[INFO] Cat bot du lieu Train: {len(train_ds)} -> {m_train}")
+            train_ds = train_ds.shuffle(seed=42).select(range(m_train))
     
-    # --- CẮT DỮ LIỆU THEO CONFIG (Val 500 mẫu để chạy cho nhanh) ---
-    for split in ["train", "validation", "test"]:
-        max_key = f"max_{split}_samples"
-        max_samples = cfg['data'].get(max_key, 20000 if split == "train" else 500)
-        if len(dataset[split]) > max_samples:
-            dataset[split] = dataset[split].shuffle(seed=42).select(range(max_samples))
+    if "max_val_samples" in cfg["data"]:
+        m_val = cfg["data"]["max_val_samples"]
+        if m_val < len(val_ds):
+            print(f"[INFO] Cat bot du lieu Val: {len(val_ds)} -> {m_val}")
+            val_ds = val_ds.shuffle(seed=42).select(range(m_val))
 
     # 3. Tokenize
-    processor = SumProcessor(tokenizer, cfg['model']['max_input_length'], cfg['model']['max_target_length'])
-    print(f"[INFO] Tokenizing Data: Train({len(dataset['train'])}) | Val({len(dataset['validation'])}) | Test({len(dataset['test'])})")
-    tokenized_ds = dataset.map(processor.process, batched=True, num_proc=16, remove_columns=dataset["train"].column_names)
+    word_seg = "bartpho-word" in cfg["model"]["name"].lower()
+    processor = SumProcessor(
+        tokenizer=tokenizer,
+        max_input_length=cfg["model"]["max_input_length"],
+        max_target_length=cfg["model"]["max_target_length"],
+        word_segment=word_seg
+    )
 
-    # 4. Training Arguments
-    args = Seq2SeqTrainingArguments(
-        output_dir=cfg['training']['output_dir'],
-        num_train_epochs=cfg['training']['num_train_epochs'],
-        per_device_train_batch_size=cfg['data']['batch_size'],
-        per_device_eval_batch_size=8,
-        learning_rate=float(cfg['training']['learning_rate']),
-        bf16=True,
-        optim="adamw_torch_fused",
-        eval_strategy="epoch",
+    train_tokenized = train_ds.map(processor.process, batched=True, remove_columns=train_ds.column_names)
+    val_tokenized = val_ds.map(processor.process, batched=True, remove_columns=val_ds.column_names)
+
+    # 4. Training args
+    tcfg = cfg["training"]
+    training_args = Seq2SeqTrainingArguments(
+        output_dir=tcfg["output_dir"],
+        num_train_epochs=tcfg["num_train_epochs"],
+        learning_rate=float(tcfg["learning_rate"]),
+        per_device_train_batch_size=cfg["data"]["batch_size"],
+        per_device_eval_batch_size=cfg["evaluation"]["batch_size"],
+        gradient_accumulation_steps=tcfg.get("gradient_accumulation_steps", 1),
+        eval_strategy="epoch", # v4.45+ dung eval_strategy
         save_strategy="epoch",
-        logging_strategy="epoch",
+        logging_steps=100,
+        bf16=cfg.get("bf16", True), # RTX 3090 nen dung bf16
         load_best_model_at_end=True,
-        metric_for_best_model="eval_loss",
-        save_total_limit=1,
+        metric_for_best_model="eval_rougeL",
         predict_with_generate=True,
-        dataloader_num_workers=16,
-        remove_unused_columns=True,
+        generation_max_length=cfg["model"]["max_target_length"],
         report_to="none"
     )
 
-    log_path = os.path.join(ROOT_DIR, "results", "logs", f"{run_name}_history.csv")
-    logger_cb = ResearchLogger(log_path)
-
-    # 5. Trainer
     trainer = Seq2SeqTrainer(
         model=model,
-        args=args,
-        train_dataset=tokenized_ds['train'],
-        eval_dataset=tokenized_ds['validation'],
-        processing_class=tokenizer,
-        data_collator=DataCollatorForSeq2Seq(tokenizer, model=model),
-        compute_metrics=SumMetrics(tokenizer).compute, # Nhớ file này phải có lệnh .replace("_", " ")
-        callbacks=[logger_cb, EarlyStoppingCallback(early_stopping_patience=cfg['training']['early_stopping_patience'])]
+        args=training_args,
+        train_dataset=train_tokenized,
+        eval_dataset=val_tokenized,
+        processing_class=None,
+        compute_metrics=compute_metrics,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=2)]
     )
 
-    # --- 6. AUTO RESUME ---
-    checkpoint = None
-    if os.path.isdir(args.output_dir):
-        checkpoints = glob.glob(os.path.join(args.output_dir, "checkpoint-*"))
-        if checkpoints:
-            checkpoint = max(checkpoints, key=os.path.getmtime)
-            print(f"\n[RESUME] Chạy tiếp từ: {checkpoint}")
-
-    # 7. Chạy Huấn Luyện
-    trainer.train(resume_from_checkpoint=checkpoint)
-    
-    # --- 8. ĐÁNH GIÁ CUỐI CÙNG TRÊN 2000 MẪU TEST (QUAN TRỌNG) ---
-    print(f"\n[FINAL TEST] Đang đánh giá trên {len(tokenized_ds['test'])} mẫu Test mù...")
-    # Ép cấu hình max_length 256 cho bước Test
-    test_results = trainer.evaluate(tokenized_ds['test'], metric_key_prefix="test")
-    
-    # Ghi kết quả vào file kết quả cuối cùng
-    with open(logger_cb.txt_path, "a", encoding="utf-8") as f:
-        f.write("\n" + "="*40 + "\n")
-        f.write("KET QUA NGHIEN CUU TREN TAP TEST (2000 mẫu)\n")
-        for k, v in test_results.items():
-            f.write(f"  {k.upper()}: {v}\n")
-            
-    trainer.save_model(os.path.join(cfg['training']['output_dir'], "best_model"))
-    print(f"[OK] Đã hoàn thành và xuất báo cáo tại: {logger_cb.txt_path}")
+    trainer.train()
+    trainer.save_model(os.path.join(tcfg["output_dir"], "best"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

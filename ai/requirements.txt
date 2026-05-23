@@ -1,12 +1,12 @@
-# Core dependencies
-torch>=2.0.0
-transformers>=4.30.0
-datasets>=2.10.0
-peft>=0.4.0
-accelerate>=0.20.0
-bitsandbytes>=0.39.0
+# Core dependencies (Đã cài riêng bản Nightly nên chỉ để tên để check)
+transformers>=4.45.0
+datasets>=2.15.0
+peft>=0.12.0
+accelerate>=0.34.0
+bitsandbytes>=0.43.0
 sentencepiece
 protobuf
+pyyaml
 
 # Fix NumPy compatibility
 numpy<2.0.0
@@ -20,6 +20,7 @@ pytorch-crf
 rouge-score>=0.1.2
 bert-score>=0.3.13
 seqeval>=1.2.2
+evaluate
 
 # Training utilities
 tensorboard>=2.12.0

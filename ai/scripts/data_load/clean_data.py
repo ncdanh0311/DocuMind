@@ -41,24 +41,7 @@ def process_cleaning():
         ds_cleaned.save_to_disk("datasets/cleaned/vietnews")
         print("Luu Vietnews sach tai: datasets/cleaned/vietnews")
 
-    # 2. Lam sach VIQUAD
-    qa_path = "datasets/processed/viquad"
-    if os.path.exists(qa_path):
-        print("Dang xu ly ViQuAD...")
-        ds = load_from_disk(qa_path)
-        
-        def clean_qa_row(item):
-            item['context'] = clean_common_noise(item['context'])
-            item['question'] = clean_common_noise(item['question'])
-            # Tach tu cho PhoBERT (Bat buoc phai co gach noi nhu Ha_Noi)
-            item['context'] = ViTokenizer.tokenize(item['context'])
-            item['question'] = ViTokenizer.tokenize(item['question'])
-            # Luu y: Khong tach tu cho Answers vi se lam sai lech vi tri character start
-            return item
-        
-        ds_cleaned = ds.map(clean_qa_row, num_proc=4)
-        ds_cleaned.save_to_disk("datasets/cleaned/viquad")
-        print("Luu ViQuAD sach tai: datasets/cleaned/viquad")
+   
 
 if __name__ == "__main__":
     process_cleaning()
