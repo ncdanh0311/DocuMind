@@ -73,3 +73,11 @@ class NotificationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ChatRequest(BaseModel):
+    question: str
+
+class ChatResponse(BaseModel):
+    answer: str
+    sources: list[str] = []
+

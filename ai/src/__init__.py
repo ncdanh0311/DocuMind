@@ -1,1 +1,0 @@
-"""VietSumBot source code package"""

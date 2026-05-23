@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:documind_mobile/core/api_service.dart';
 
 class AIChatScreen extends StatefulWidget {
   final String? notebookId;
@@ -22,6 +23,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   String? _currentNotebookTitle;
   final List<Map<String, dynamic>> _messages = [];
   bool _isAILoading = false;
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
@@ -59,7 +61,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     });
   }
 
-  void _sendMessage(String query) {
+  void _sendMessage(String query) async {
     if (query.trim().isEmpty) return;
     _messageController.clear();
 
@@ -76,71 +78,70 @@ class _AIChatScreenState extends State<AIChatScreen> {
     });
     _scrollToBottom();
 
-    // Simulate AI thinking and response
-    Timer(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      setState(() {
-        _isAILoading = false;
-      });
-
-      // Prepare AI response text
-      String responseText = "";
-      final cleanQuery = query.toLowerCase();
-      if (cleanQuery.contains("tóm tắt")) {
-        responseText = "Dưới đây là tóm tắt các điểm cốt lõi trong sổ tay này:\n\n"
-            "• Khái niệm cốt lõi: Định nghĩa cơ bản và các nguyên lý vận hành của chủ đề nghiên cứu.\n"
-            "• Cấu trúc cốt lõi: Các thành phần chính và mối quan hệ hữu cơ giữa chúng.\n"
-            "• Điểm cần nhớ: Quy trình triển khai thực tế và một số điểm hạn chế thường gặp.";
-      } else if (cleanQuery.contains("trắc nghiệm") || cleanQuery.contains("câu hỏi")) {
-        responseText = "Tôi đã chuẩn bị bộ 3 câu hỏi ôn tập nhanh dành cho bạn:\n\n"
-            "1. Khái niệm cốt lõi của chủ đề này giải quyết vấn đề gì trong thực tế?\n"
-            "2. Hãy chỉ ra điểm khác biệt lớn nhất giữa lý thuyết này và các lý thuyết tương quan?\n"
-            "3. Quy trình 3 bước thực hiện quan trọng nhất gồm những gì?";
-      } else if (cleanQuery.contains("khái niệm") || cleanQuery.contains("ý chính")) {
-        responseText = "Các khái niệm quan trọng nhất bạn cần nắm vững bao gồm:\n\n"
-            "• Nguyên lý nền tảng: Nền móng phát triển toàn bộ hệ thống lý thuyết.\n"
-            "• Quy trình vận hành: Các bước tương tác trực quan của các thành phần hệ thống.\n"
-            "• Thực tiễn ứng dụng: Cách áp dụng lý thuyết này vào bài tập hoặc dự án thực tế.";
-      } else {
-        responseText = "Tôi đã nhận được câu hỏi của bạn về chủ đề này. Tôi đang phân tích cơ sở dữ liệu tài liệu hiện tại để đưa ra câu trả lời chi tiết và chính xác nhất cho bạn ở các bước tích hợp AI tiếp theo.";
-      }
-
-      final aiTimestamp = "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}";
-      
-      setState(() {
-        _messages.add({
-          "sender": "ai",
-          "text": "",
-          "timestamp": aiTimestamp,
-          "isStreaming": true,
-        });
-      });
-      _scrollToBottom();
-
-      final List<String> words = responseText.split(' ');
-      int currentWordIndex = 0;
-      
-      Timer.periodic(const Duration(milliseconds: 40), (timer) {
-        if (!mounted) {
-          timer.cancel();
-          return;
-        }
-        
-        if (currentWordIndex < words.length) {
-          setState(() {
-            _messages.last["text"] = words.take(currentWordIndex + 1).join(' ');
-          });
-          currentWordIndex++;
-          _scrollToBottom();
+    String responseText = "";
+    
+    if (widget.notebookId == null) {
+      responseText = "Vui lòng chọn hoặc mở một Sổ tay cụ thể trước khi thực hiện câu hỏi hỏi đáp với AI nhé!";
+    } else {
+      try {
+        final result = await _apiService.askAI(widget.notebookId!, query);
+        if (result["success"] == true) {
+          final data = result["data"];
+          responseText = data["answer"] ?? "Không tìm thấy câu trả lời.";
+          
+          if (data["sources"] != null && (data["sources"] as List).isNotEmpty) {
+            final List<String> srcList = List<String>.from(data["sources"]);
+            responseText += "\n\n📖 Nguồn trích dẫn:\n• " + srcList.join("\n• ");
+          }
         } else {
-          setState(() {
-            _messages.last["isStreaming"] = false;
-          });
-          timer.cancel();
+          responseText = result["message"] ?? "Đã xảy ra lỗi khi trao đổi với AI.";
         }
+      } catch (e) {
+        responseText = "Không thể kết nối đến máy chủ AI: $e";
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isAILoading = false;
+    });
+
+    final aiTimestamp = "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}";
+    
+    setState(() {
+      _messages.add({
+        "sender": "ai",
+        "text": "",
+        "timestamp": aiTimestamp,
+        "isStreaming": true,
       });
     });
+    _scrollToBottom();
+
+    final List<String> words = responseText.split(' ');
+    int currentWordIndex = 0;
+    
+    Timer.periodic(const Duration(milliseconds: 25), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
+      if (currentWordIndex < words.length) {
+        setState(() {
+          _messages.last["text"] = words.take(currentWordIndex + 1).join(' ');
+        });
+        currentWordIndex++;
+        _scrollToBottom();
+      } else {
+        setState(() {
+          _messages.last["isStreaming"] = false;
+        });
+        timer.cancel();
+      }
+    });
   }
+
 
   @override
   Widget build(BuildContext context) {
