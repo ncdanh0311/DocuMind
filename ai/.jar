@@ -1,0 +1,12 @@
+import os
+import py_vncorenlp
+
+# Lấy đường dẫn tuyệt đối đến thư mục vncorenlp
+abs_path = os.path.abspath('./vncorenlp')
+
+print(f"Checking path: {abs_path}")
+print(f"Jar file exists: {os.path.exists(os.path.join(abs_path, 'VnCoreNLP-1.2.jar'))}")
+
+# Khởi tạo với đường dẫn tuyệt đối
+nlp = py_vncorenlp.VnCoreNLP(annotators=['wseg'], save_dir=abs_path)
+print(nlp.word_segment('Tôi yêu Việt Nam'))

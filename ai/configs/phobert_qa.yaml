@@ -1,0 +1,35 @@
+model:
+  name: "vinai/phobert-base-v2"
+  max_length: 384
+  doc_stride: 96
+
+data:
+  train_path: "datasets/cleaned/viquad/train"
+  val_path:   "datasets/cleaned/viquad/validation"
+  test_path:  "datasets/cleaned/viquad/test"
+  batch_size: 32
+  num_workers: 1
+
+training:
+  output_dir: "results/models/phobert_qa"
+  num_train_epochs: 10
+  learning_rate: 1.0e-5
+  weight_decay: 0.01
+  warmup_ratio: 0.2
+  gradient_accumulation_steps: 1
+  max_grad_norm: 5.0
+  save_strategy: "epoch"
+  evaluation_strategy: "epoch"
+  logging_steps: 100
+  save_total_limit: 1
+  load_best_model_at_end: true
+  metric_for_best_model: "f1"
+  early_stopping_patience: 3
+
+evaluation:
+  batch_size: 64
+
+cache_dir: "./hf_cache"
+bf16: true
+fp16: false
+seed: 42
