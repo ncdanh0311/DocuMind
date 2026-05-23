@@ -389,6 +389,22 @@ class ApiService extends BaseApiService {
     }
   }
 
+  Future<Map<String, dynamic>> createDocumentFromText(String notebookId, {required String title, required String content}) async {
+    try {
+      final response = await _sendWithAuthRetry(() async => http.post(
+        Uri.parse("${ApiConstants.baseUrl}/notebooks/$notebookId/documents/text"),
+        headers: await getHeaders(isAuth: true),
+        body: jsonEncode({
+          "title": title,
+          "content": content,
+        }),
+      ));
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
+
   Future<Map<String, dynamic>> deleteDocument(String documentId) async {
     try {
       final response = await _sendWithAuthRetry(() async => http.delete(
