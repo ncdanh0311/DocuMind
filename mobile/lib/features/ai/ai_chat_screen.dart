@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:documind_mobile/core/api_service.dart';
+import 'package:documind_mobile/shared/widgets/atoms/formatted_text.dart';
+
 
 class AIChatScreen extends StatefulWidget {
   final String? notebookId;
@@ -22,6 +25,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   String? _currentNotebookTitle;
   final List<Map<String, dynamic>> _messages = [];
   bool _isAILoading = false;
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
@@ -59,7 +63,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     });
   }
 
-  void _sendMessage(String query) {
+  void _sendMessage(String query) async {
     if (query.trim().isEmpty) return;
     _messageController.clear();
 
@@ -76,71 +80,69 @@ class _AIChatScreenState extends State<AIChatScreen> {
     });
     _scrollToBottom();
 
-    // Simulate AI thinking and response
-    Timer(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      setState(() {
-        _isAILoading = false;
-      });
-
-      // Prepare AI response text
-      String responseText = "";
-      final cleanQuery = query.toLowerCase();
-      if (cleanQuery.contains("tóm tắt")) {
-        responseText = "Dưới đây là tóm tắt các điểm cốt lõi trong sổ tay này:\n\n"
-            "• Khái niệm cốt lõi: Định nghĩa cơ bản và các nguyên lý vận hành của chủ đề nghiên cứu.\n"
-            "• Cấu trúc cốt lõi: Các thành phần chính và mối quan hệ hữu cơ giữa chúng.\n"
-            "• Điểm cần nhớ: Quy trình triển khai thực tế và một số điểm hạn chế thường gặp.";
-      } else if (cleanQuery.contains("trắc nghiệm") || cleanQuery.contains("câu hỏi")) {
-        responseText = "Tôi đã chuẩn bị bộ 3 câu hỏi ôn tập nhanh dành cho bạn:\n\n"
-            "1. Khái niệm cốt lõi của chủ đề này giải quyết vấn đề gì trong thực tế?\n"
-            "2. Hãy chỉ ra điểm khác biệt lớn nhất giữa lý thuyết này và các lý thuyết tương quan?\n"
-            "3. Quy trình 3 bước thực hiện quan trọng nhất gồm những gì?";
-      } else if (cleanQuery.contains("khái niệm") || cleanQuery.contains("ý chính")) {
-        responseText = "Các khái niệm quan trọng nhất bạn cần nắm vững bao gồm:\n\n"
-            "• Nguyên lý nền tảng: Nền móng phát triển toàn bộ hệ thống lý thuyết.\n"
-            "• Quy trình vận hành: Các bước tương tác trực quan của các thành phần hệ thống.\n"
-            "• Thực tiễn ứng dụng: Cách áp dụng lý thuyết này vào bài tập hoặc dự án thực tế.";
-      } else {
-        responseText = "Tôi đã nhận được câu hỏi của bạn về chủ đề này. Tôi đang phân tích cơ sở dữ liệu tài liệu hiện tại để đưa ra câu trả lời chi tiết và chính xác nhất cho bạn ở các bước tích hợp AI tiếp theo.";
-      }
-
-      final aiTimestamp = "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}";
-      
-      setState(() {
-        _messages.add({
-          "sender": "ai",
-          "text": "",
-          "timestamp": aiTimestamp,
-          "isStreaming": true,
-        });
-      });
-      _scrollToBottom();
-
-      final List<String> words = responseText.split(' ');
-      int currentWordIndex = 0;
-      
-      Timer.periodic(const Duration(milliseconds: 40), (timer) {
-        if (!mounted) {
-          timer.cancel();
-          return;
-        }
-        
-        if (currentWordIndex < words.length) {
-          setState(() {
-            _messages.last["text"] = words.take(currentWordIndex + 1).join(' ');
-          });
-          currentWordIndex++;
-          _scrollToBottom();
+    String responseText = "";
+    List<dynamic>? fetchedCitations;
+    
+    if (widget.notebookId == null) {
+      responseText = "Vui lòng chọn hoặc mở một Sổ tay cụ thể trước khi thực hiện câu hỏi hỏi đáp với AI nhé!";
+    } else {
+      try {
+        final result = await _apiService.askAI(widget.notebookId!, query);
+        if (result["success"] == true) {
+          final data = result["data"];
+          responseText = data["answer"] ?? "Không tìm thấy câu trả lời.";
+          fetchedCitations = data["citations"];
         } else {
-          setState(() {
-            _messages.last["isStreaming"] = false;
-          });
-          timer.cancel();
+          responseText = result["message"] ?? "Đã xảy ra lỗi khi trao đổi với AI.";
         }
+      } catch (e) {
+        responseText = "Không thể kết nối đến máy chủ AI: $e";
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isAILoading = false;
+    });
+
+    final aiTimestamp = "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}";
+    
+    setState(() {
+      _messages.add({
+        "sender": "ai",
+        "text": "",
+        "timestamp": aiTimestamp,
+        "isStreaming": true,
+        "citations": fetchedCitations,
       });
     });
+
+    _scrollToBottom();
+
+    final List<String> words = responseText.split(' ');
+    int currentWordIndex = 0;
+    
+    Timer.periodic(const Duration(milliseconds: 25), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
+      if (currentWordIndex < words.length) {
+        setState(() {
+          _messages.last["text"] = words.take(currentWordIndex + 1).join(' ');
+        });
+        currentWordIndex++;
+        _scrollToBottom();
+      } else {
+        setState(() {
+          _messages.last["isStreaming"] = false;
+        });
+        timer.cancel();
+      }
+    });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -308,8 +310,14 @@ class _AIChatScreenState extends State<AIChatScreen> {
         if (msg["sender"] == "user") {
           return _buildUserMessage(msg["text"] as String, msg["timestamp"] as String);
         } else {
-          return _buildAIMessage(msg["text"] as String, msg["timestamp"] as String, msg["isStreaming"] == true);
+          return _buildAIMessage(
+            msg["text"] as String, 
+            msg["timestamp"] as String, 
+            msg["isStreaming"] == true,
+            msg["citations"] as List<dynamic>?,
+          );
         }
+
       },
     );
   }
@@ -353,7 +361,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
   }
 
-  Widget _buildAIMessage(String text, String timestamp, bool isStreaming) {
+  Widget _buildAIMessage(String text, String timestamp, bool isStreaming, List<dynamic>? citations) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -381,10 +389,14 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      text,
+                    FormattedText(
+                      text: text,
                       style: GoogleFonts.inter(fontSize: 15, color: AppColors.textDark, height: 1.4),
+                      onCitationTap: (citationId) {
+                        _showCitationDetails(context, citationId, citations, text);
+                      },
                     ),
+
                     const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -420,6 +432,214 @@ class _AIChatScreenState extends State<AIChatScreen> {
       ),
     );
   }
+
+  List<InlineSpan> _buildHighlightSpans(String snippet, String answer) {
+    // 1. Clean citation brackets at the end of answer (e.g. " [1]" or " [1].")
+    final cleanAnswer = answer.replaceAll(RegExp(r'\s*\[\d+\]\.?'), '').trim();
+    if (cleanAnswer.isEmpty) {
+      return [TextSpan(text: snippet, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFFE2E3E6), height: 1.5))];
+    }
+
+    // 2. Define punctuation and spacing regex for clean matching (excluding quotes to avoid string parsing issues)
+    final punctuationRegex = RegExp(r'[\s.,;:!?\-\(\)\[\]\…\–\—]');
+    final String cleanSnippet = snippet.toLowerCase()
+        .replaceAll("'", "")
+        .replaceAll('"', '')
+        .replaceAll(punctuationRegex, '');
+    final String cleanAns = cleanAnswer.toLowerCase()
+        .replaceAll("'", "")
+        .replaceAll('"', '')
+        .replaceAll(punctuationRegex, '');
+
+    if (cleanAns.isEmpty) {
+      return [TextSpan(text: snippet, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFFE2E3E6), height: 1.5))];
+    }
+
+    // 3. Search inside the clean text
+    int cleanMatchIndex = cleanSnippet.indexOf(cleanAns);
+    int cleanMatchLength = cleanAns.length;
+
+    // Fallback: if not found, try matching a shorter prefix (e.g. 25 clean chars)
+    if (cleanMatchIndex == -1 && cleanAns.length > 25) {
+      final String shortCleanAns = cleanAns.substring(0, 25);
+      cleanMatchIndex = cleanSnippet.indexOf(shortCleanAns);
+      if (cleanMatchIndex != -1) {
+        cleanMatchLength = cleanAns.length; // Approximate with full length
+      }
+    }
+
+    if (cleanMatchIndex == -1) {
+      return [TextSpan(text: snippet, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFFE2E3E6), height: 1.5))];
+    }
+
+    // 4. Map clean indexes back to original snippet indexes
+    int originalStartIndex = -1;
+    int originalEndIndex = -1;
+    
+    int cleanCharCount = 0;
+    int targetStartCleanCount = cleanMatchIndex;
+    int targetEndCleanCount = cleanMatchIndex + cleanMatchLength;
+
+    for (int i = 0; i < snippet.length; i++) {
+      final String char = snippet[i];
+      final bool isKept = !punctuationRegex.hasMatch(char);
+
+      if (isKept) {
+        if (cleanCharCount == targetStartCleanCount && originalStartIndex == -1) {
+          originalStartIndex = i;
+        }
+        if (cleanCharCount == targetEndCleanCount - 1 && originalEndIndex == -1) {
+          originalEndIndex = i + 1; // Index after the last matched character
+          break;
+        }
+        cleanCharCount++;
+      }
+    }
+
+    // Boundary guards
+    if (originalStartIndex == -1) originalStartIndex = 0;
+    if (originalEndIndex == -1 || originalEndIndex <= originalStartIndex) {
+      originalEndIndex = snippet.length;
+    }
+
+    final String beforeText = snippet.substring(0, originalStartIndex);
+    final String matchedText = snippet.substring(originalStartIndex, originalEndIndex);
+    final String afterText = snippet.substring(originalEndIndex);
+
+    return [
+      TextSpan(text: beforeText, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFFE2E3E6), height: 1.5)),
+      TextSpan(
+        text: matchedText,
+        style: GoogleFonts.inter(
+          fontSize: 14,
+          color: Colors.black, // Dark text for excellent readability
+          backgroundColor: const Color(0xFFFFD54F), // Premium yellow highlight
+          fontWeight: FontWeight.bold,
+          height: 1.5,
+        ),
+      ),
+      TextSpan(text: afterText, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFFE2E3E6), height: 1.5)),
+    ];
+  }
+
+  void _showCitationDetails(BuildContext context, int citationId, List<dynamic>? citations, String answerText) {
+    if (citations == null || citations.isEmpty) return;
+    
+    // Tìm trích dẫn có id trùng khớp
+    final citation = citations.firstWhere(
+      (c) => c["id"] == citationId,
+      orElse: () => null,
+    );
+    
+    if (citation == null) return;
+    
+    final String title = citation["source_title"] ?? "Tài liệu không tên";
+    final int? page = citation["page_number"];
+    final String snippet = citation["snippet"] ?? "";
+    final String displayTitle = page != null ? "$title (Trang $page)" : title;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E1F22), // Elegant dark background
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
+            ),
+          ),
+          padding: const EdgeInsets.only(top: 12, left: 24, right: 24, bottom: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Drag Handle
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.article_rounded, color: Color(0xFF80CBC4), size: 22), // Styled with light teal matching app theme
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      displayTitle,
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20, color: Colors.white60),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const Divider(color: Colors.white12, height: 16, thickness: 1),
+              const SizedBox(height: 12),
+              Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.35,
+                ),
+                child: SingleChildScrollView(
+                  child: RichText(
+                    text: TextSpan(
+                      children: _buildHighlightSpans(snippet, answerText),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 0),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text("Đang mở tài liệu: $title"),
+                          backgroundColor: AppColors.primary,
+                        ),
+                      );
+                    },
+                    child: Text(
+                      "Xem nguồn",
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFF80CBC4), // Teal link color matching app theme
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
 
   Widget _buildAILoadingIndicator() {
     return Container(

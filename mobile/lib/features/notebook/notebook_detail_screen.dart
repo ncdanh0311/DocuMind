@@ -231,9 +231,9 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setStateDialog) {
+          builder: (dialogContext, setStateDialog) {
             return AlertDialog(
               backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -244,7 +244,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
               content: Form(
                 key: formKey,
                 child: SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.9,
+                  width: MediaQuery.of(dialogContext).size.width * 0.9,
                   child: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -292,7 +292,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(dialogContext),
                   child: Text(
                     "notebook.cancel".tr(),
                     style: GoogleFonts.outfit(color: Colors.grey, fontWeight: FontWeight.bold),
@@ -307,7 +307,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
                     if (formKey.currentState!.validate()) {
                       final title = titleController.text.trim();
                       final content = contentController.text.trim();
-                      Navigator.pop(context); // Close dialog
+                      Navigator.pop(dialogContext); // Close dialog
 
                       setState(() {
                         _isUploading = true;

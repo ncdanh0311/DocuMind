@@ -26,7 +26,12 @@ def process_document_background(doc_id: uuid.UUID, file_path: str):
             processor = DocumentProcessor(chunk_size=1000, chunk_overlap=200)
             chunks_data = processor.process_document(file_path)
 
-            for chunk in chunks_data:
+            # Sinh vector embedding hàng loạt (batch) cho tất cả các chunks
+            from backend.app.services.embedding_service import embedding_service
+            contents = [chunk["content"] for chunk in chunks_data]
+            embeddings = embedding_service.embed_text(contents, is_query=False)
+
+            for idx, chunk in enumerate(chunks_data):
                 page_num = 1
                 if "metadata" in chunk and "page" in chunk["metadata"]:
                     try:
@@ -38,6 +43,8 @@ def process_document_background(doc_id: uuid.UUID, file_path: str):
                     docuchunk_id=uuid.uuid4(),
                     document_id=doc_id,
                     content=chunk["content"],
+                    embedding=embeddings[idx],
+                    embedding_model="intfloat/multilingual-e5-small",
                     page_number=page_num
                 )
                 session.add(db_chunk)
@@ -53,10 +60,10 @@ def process_document_background(doc_id: uuid.UUID, file_path: str):
 
             doc.status = "ready"
             session.commit()
-            logger.info(f"✅ Xử lý thành công tài liệu {doc_id}. Đã tạo {len(chunks_data)} chunks.")
+            logger.info(f"Xử lý thành công tài liệu {doc_id}. Đã tạo {len(chunks_data)} chunks.")
 
         except Exception as e:
-            logger.error(f"❌ Lỗi xử lý tài liệu {doc_id}: {e}", exc_info=True)
+            logger.error(f"Lỗi xử lý tài liệu {doc_id}: {e}", exc_info=True)
             try:
                 notification = Notification(
                     user_id=doc.notebook.user_id,

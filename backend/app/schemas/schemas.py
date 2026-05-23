@@ -73,3 +73,19 @@ class NotificationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ChatRequest(BaseModel):
+    question: str
+
+class CitationResponse(BaseModel):
+    id: int
+    source_title: str
+    page_number: Optional[int] = None
+    snippet: str
+
+class ChatResponse(BaseModel):
+    answer: str
+    sources: list[str] = []
+    citations: list[CitationResponse] = []
+
+
