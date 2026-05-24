@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 
 class CitationBottomSheet {
@@ -124,10 +125,12 @@ class CitationBottomSheet {
     
     if (citation == null) return;
     
-    final String title = citation["source_title"] ?? "Tài liệu không tên";
+    final String title = citation["source_title"] ?? "ai_chat.untitled_document".tr();
     final int? page = citation["page_number"];
     final String snippet = citation["snippet"] ?? "";
-    final String displayTitle = page != null ? "$title (Trang $page)" : title;
+    final String displayTitle = page != null
+        ? "ai_chat.page_format".tr(args: [title, page.toString()])
+        : title;
 
     showModalBottomSheet(
       context: context,
@@ -208,13 +211,13 @@ class CitationBottomSheet {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text("Đang mở tài liệu: $title"),
+                          content: Text("ai_chat.opening_document".tr(args: [title])),
                           backgroundColor: AppColors.primary,
                         ),
                       );
                     },
                     child: Text(
-                      "Xem nguồn",
+                      "ai_chat.view_source".tr(),
                       style: GoogleFonts.inter(
                         color: const Color(0xFF80CBC4), // Teal link color matching app theme
                         fontWeight: FontWeight.bold,
