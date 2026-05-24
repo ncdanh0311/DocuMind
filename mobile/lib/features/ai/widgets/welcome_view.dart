@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 
 class WelcomeView extends StatelessWidget {
@@ -23,7 +24,7 @@ class WelcomeView extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            "Trợ lý Học tập AI",
+            "ai_chat.welcome_title".tr(),
             style: GoogleFonts.outfit(
               fontSize: 22, 
               fontWeight: FontWeight.bold, 
@@ -32,7 +33,7 @@ class WelcomeView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            "Đặt câu hỏi cho AI để khám phá tài liệu trong Sổ tay của bạn",
+            "ai_chat.welcome_subtitle".tr(),
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 14, 
@@ -44,7 +45,7 @@ class WelcomeView extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              "Gợi ý câu hỏi:",
+              "ai_chat.suggested_questions".tr(),
               style: GoogleFonts.outfit(
                 fontSize: 15, 
                 fontWeight: FontWeight.bold, 
@@ -54,18 +55,18 @@ class WelcomeView extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _buildPromptCard(
-            "📖 Tóm tắt Sổ tay này",
-            "Hãy tóm tắt ngắn gọn các kiến thức chính trong Sổ tay này giúp tôi.",
+            "ai_chat.prompt_summary_label".tr(),
+            "ai_chat.prompt_summary_text".tr(),
           ),
           const SizedBox(height: 12),
           _buildPromptCard(
-            "❓ Bộ câu hỏi trắc nghiệm",
-            "Tạo 3 câu hỏi trắc nghiệm kèm giải thích từ nội dung của Sổ tay này.",
+            "ai_chat.prompt_quiz_label".tr(),
+            "ai_chat.prompt_quiz_text".tr(),
           ),
           const SizedBox(height: 12),
           _buildPromptCard(
-            "💡 Các khái niệm quan trọng",
-            "Liệt kê các khái niệm hoặc thuật ngữ cốt lõi nhất định phải nhớ trong Sổ tay này.",
+            "ai_chat.prompt_concepts_label".tr(),
+            "ai_chat.prompt_concepts_text".tr(),
           ),
         ],
       ),

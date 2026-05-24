@@ -43,41 +43,41 @@ class _SummaryScreenState extends State<SummaryScreen> {
         .replaceAll("Tóm tắt", "")
         .replaceAll("Flashcard", "");
 
-    final subject = cleanTitle.trim().isNotEmpty ? cleanTitle.trim() : "Tài liệu học tập";
+    final subject = cleanTitle.trim().isNotEmpty ? cleanTitle.trim() : "summary.default_subject".tr();
 
     if (isFlashcard) {
       return {
-        "heading": "Hệ thống Flashcard ôn tập",
-        "intro": "Các thẻ câu hỏi ôn luyện cốt lõi được AI tạo tự động cho Sổ tay của bạn:",
+        "heading": "summary.flashcard_heading".tr(),
+        "intro": "summary.flashcard_intro".tr(),
         "points": [
-          "Câu hỏi 1: Ý nghĩa thực tế quan trọng nhất của '$subject' là gì?",
-          "Câu hỏi 2: Các thành phần hoặc đặc tính cấu thành nên '$subject'?",
-          "Câu hỏi 3: Quy trình hoặc các bước thực hiện quan trọng nhất là gì?",
-          "Câu hỏi 4: Có những ví dụ thực tiễn tiêu biểu nào để hiểu sâu hơn?",
-          "Câu hỏi 5: Lỗi thường gặp hoặc điểm cần đặc biệt lưu ý khi làm bài tập?"
+          "summary.flashcard_q1".tr(args: [subject]),
+          "summary.flashcard_q2".tr(args: [subject]),
+          "summary.flashcard_q3".tr(args: [subject]),
+          "summary.flashcard_q4".tr(args: [subject]),
+          "summary.flashcard_q5".tr(args: [subject]),
         ],
-        "card2_heading": "Mẹo ôn tập hiệu quả",
+        "card2_heading": "summary.flashcard_tips_heading".tr(),
         "card2_points": [
-          "Lặp lại ngắt quãng: Hãy ôn luyện lại bộ thẻ này sau 1 ngày, 3 ngày và 7 ngày.",
-          "Liên hệ thực tế: Cố gắng tự lấy ví dụ riêng của bản thân cho mỗi câu trả lời.",
-          "Chủ động nhớ lại: Hãy tự trả lời trước khi lật xem đáp án chi tiết."
+          "summary.flashcard_tip1".tr(),
+          "summary.flashcard_tip2".tr(),
+          "summary.flashcard_tip3".tr(),
         ]
       };
     } else {
       return {
-        "heading": "Tóm tắt nội dung chính",
-        "intro": "Các kiến thức trọng tâm đã được trợ lý AI tổng hợp cô đọng từ sổ tay của bạn:",
+        "heading": "summary.summary_heading".tr(),
+        "intro": "summary.summary_intro".tr(),
         "points": [
-          "Tổng quan lý thuyết: Các định nghĩa cơ bản và bối cảnh sử dụng của '$subject'.",
-          "Nguyên lý vận hành: Phân tích cấu trúc cốt lõi, đặc tính và cơ chế hoạt động chính.",
-          "Phương pháp giải quyết: Các bước thực nghiệm, cách triển khai tối ưu cho chủ đề này.",
-          "Ứng dụng & Mở rộng: Các case-study thực tế và hướng phát triển nâng cao của kiến thức."
+          "summary.summary_p1".tr(args: [subject]),
+          "summary.summary_p2".tr(),
+          "summary.summary_p3".tr(),
+          "summary.summary_p4".tr(),
         ],
-        "card2_heading": "Từ khóa cốt lõi cần nhớ",
+        "card2_heading": "summary.summary_keywords_heading".tr(),
         "card2_points": [
-          "Hệ thống định nghĩa cơ bản xoay quanh '$subject'.",
-          "Mối tương quan giữa các phần lý thuyết và bài tập thực hành.",
-          "Phương án so sánh, đối chiếu các khía cạnh liên quan."
+          "summary.summary_k1".tr(args: [subject]),
+          "summary.summary_k2".tr(),
+          "summary.summary_k3".tr(),
         ]
       };
     }
@@ -85,7 +85,17 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final displayTitle = widget.title == "Tóm tắt" ? "summary.title".tr() : widget.title;
+    final isFlashcard = widget.title.toLowerCase().contains("flashcards") || 
+                        widget.title.toLowerCase().contains("flashcard");
+    final cleanTitle = widget.title
+        .replaceAll("Tóm tắt: ", "")
+        .replaceAll("Flashcards: ", "")
+        .replaceAll("Tóm tắt", "")
+        .replaceAll("Flashcard", "");
+    
+    final displayTitle = isFlashcard
+        ? "summary.flashcard_title".tr() + (cleanTitle.trim().isNotEmpty ? ": $cleanTitle" : "")
+        : "summary.title".tr() + (cleanTitle.trim().isNotEmpty ? ": $cleanTitle" : "");
     
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFA),
@@ -133,7 +143,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            "Đang tổng hợp thông tin bằng AI...",
+            "summary.loading_synthesis".tr(),
             style: GoogleFonts.inter(
               fontSize: 15,
               color: Colors.grey.shade600,
@@ -142,7 +152,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Hệ thống đang quét các tệp tài liệu trong Sổ tay",
+            "summary.loading_scanning".tr(),
             style: GoogleFonts.inter(
               fontSize: 12,
               color: Colors.grey.shade400,
@@ -217,7 +227,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                   icon: Icons.copy_rounded,
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Đã sao chép vào bộ nhớ tạm")),
+                      SnackBar(content: Text("summary.copied_toast".tr())),
                     );
                   },
                 ),
@@ -229,7 +239,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                   icon: Icons.style_rounded,
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Tính năng ôn luyện sâu hơn sẽ sớm khả dụng")),
+                      SnackBar(content: Text("summary.feature_upcoming".tr())),
                     );
                   },
                 ),

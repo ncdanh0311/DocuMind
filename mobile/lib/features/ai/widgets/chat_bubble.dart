@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/shared/widgets/atoms/formatted_text.dart';
 import 'citation_bottom_sheet.dart';
@@ -131,7 +132,7 @@ class AIChatBubble extends StatelessWidget {
                                 onTap: () {
                                   Clipboard.setData(ClipboardData(text: text));
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text("Đã sao chép phản hồi")),
+                                    SnackBar(content: Text("ai_chat.copied_response".tr())),
                                   );
                                 },
                                 child: const Icon(Icons.copy_rounded, size: 16, color: Colors.grey),

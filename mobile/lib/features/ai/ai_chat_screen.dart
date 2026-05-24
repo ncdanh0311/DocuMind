@@ -85,19 +85,19 @@ class _AIChatScreenState extends State<AIChatScreen> {
     List<dynamic>? fetchedCitations;
     
     if (widget.notebookId == null) {
-      responseText = "Vui lòng chọn hoặc mở một Sổ tay cụ thể trước khi thực hiện câu hỏi hỏi đáp với AI nhé!";
+      responseText = "ai_chat.select_notebook_error".tr();
     } else {
       try {
         final result = await _apiService.askAI(widget.notebookId!, query);
         if (result["success"] == true) {
           final data = result["data"];
-          responseText = data["answer"] ?? "Không tìm thấy câu trả lời.";
+          responseText = data["answer"] ?? "ai_chat.no_answer".tr();
           fetchedCitations = data["citations"];
         } else {
-          responseText = result["message"] ?? "Đã xảy ra lỗi khi trao đổi với AI.";
+          responseText = result["message"] ?? "ai_chat.error_communicating".tr();
         }
       } catch (e) {
-        responseText = "Không thể kết nối đến máy chủ AI: $e";
+        responseText = "ai_chat.cannot_connect".tr(args: [e.toString()]);
       }
     }
 
@@ -183,12 +183,12 @@ class _AIChatScreenState extends State<AIChatScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            "ai.title".tr(),
+            "ai_chat.title".tr(),
             style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
           ),
           if (_currentNotebookTitle != null)
             Text(
-              "Sổ tay: $_currentNotebookTitle",
+              "ai_chat.notebook_prefix".tr(args: [_currentNotebookTitle!]),
               style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500),
               overflow: TextOverflow.ellipsis,
             ),
@@ -288,7 +288,20 @@ class _AIChatScreenState extends State<AIChatScreen> {
   }
 
   Widget _buildSuggestedActions() {
-    final actions = ["Tóm tắt tiếp", "Đặt 3 câu hỏi ôn tập", "Liệt kê thuật ngữ"];
+    final List<Map<String, String>> actions = [
+      {
+        "label": "ai_chat.action_summary".tr(),
+        "query": "ai_chat.prompt_summary_text".tr(),
+      },
+      {
+        "label": "ai_chat.action_quiz".tr(),
+        "query": "ai_chat.prompt_quiz_text".tr(),
+      },
+      {
+        "label": "ai_chat.action_concepts".tr(),
+        "query": "ai_chat.prompt_concepts_text".tr(),
+      },
+    ];
     return SizedBox(
       height: 50,
       child: ListView.builder(
@@ -296,15 +309,16 @@ class _AIChatScreenState extends State<AIChatScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         itemCount: actions.length,
         itemBuilder: (context, index) {
+          final action = actions[index];
           return Container(
             margin: const EdgeInsets.only(right: 10, bottom: 10),
             child: ActionChip(
-              label: Text(actions[index]),
+              label: Text(action["label"]!),
               labelStyle: GoogleFonts.inter(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w500),
               backgroundColor: Colors.white,
               side: const BorderSide(color: Color(0xFFE0F2F1)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              onPressed: () => _sendMessage(actions[index]),
+              onPressed: () => _sendMessage(action["query"]!),
             ),
           );
         },
@@ -330,7 +344,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 icon: const Icon(Icons.add, color: Colors.grey),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Tính năng đính kèm tệp sẽ sớm khả dụng")),
+                    SnackBar(content: Text("ai_chat.attachment_upcoming".tr())),
                   );
                 },
               ),
@@ -347,7 +361,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   controller: _messageController,
                   onSubmitted: _sendMessage,
                   decoration: InputDecoration(
-                    hintText: "ai.input_placeholder".tr(),
+                    hintText: "ai_chat.input_placeholder".tr(),
                     hintStyle: GoogleFonts.inter(fontSize: 14, color: Colors.grey),
                     border: InputBorder.none,
                   ),
