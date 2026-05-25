@@ -224,7 +224,8 @@
     "ERR_DOC_FORBIDDEN": "Bạn không có quyền xóa tài liệu này.",
     "ERR_UNAUTHORIZED": "Phiên đăng nhập đã hết hạn hoặc không hợp lệ.",
     "ERR_SESSION_EXPIRED": "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.",
-    "ERR_OLD_PASSWORD_INCORRECT": "Mật khẩu hiện tại không chính xác."
+    "ERR_OLD_PASSWORD_INCORRECT": "Mật khẩu hiện tại không chính xác.",
+    "ERR_NO_DOCUMENTS": "Sổ tay này chưa có tài liệu nào được phân tích thành công. Bạn vui lòng tải tài liệu lên trước khi đặt câu hỏi nhé!"
   },
   "messages": {
     "MSG_OTP_SENT": "Mã xác thực đã được gửi vào email của bạn.",
