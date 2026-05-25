@@ -224,7 +224,8 @@
     "ERR_DOC_FORBIDDEN": "You do not have permission to delete this document.",
     "ERR_UNAUTHORIZED": "Session expired or invalid credentials.",
     "ERR_SESSION_EXPIRED": "Your session has expired. Please log in again.",
-    "ERR_OLD_PASSWORD_INCORRECT": "Current password is incorrect."
+    "ERR_OLD_PASSWORD_INCORRECT": "Current password is incorrect.",
+    "ERR_NO_DOCUMENTS": "This notebook has no documents analyzed yet. Please upload a document before asking questions!"
   },
   "messages": {
     "MSG_OTP_SENT": "Verification code has been sent to your email.",
