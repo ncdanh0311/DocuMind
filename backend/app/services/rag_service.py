@@ -53,8 +53,27 @@ class RAGService:
         # 4. Chạy mô hình PhoBERT QA để lấy câu trả lời trích xuất
         answer = qa_service.answer_question(context, question)
 
+        if answer and answer.startswith("ERR_"):
+            # Ghi lại lịch sử hỏi đáp vào Database (không trích dẫn)
+            qa_id = uuid.uuid4()
+            qa_history = QAHistory(
+                qahistory_id=qa_id,
+                notebook_id=notebook_id,
+                question=question,
+                answer=answer,
+                model_name="phobert_qa",
+                created_at=datetime.utcnow()
+            )
+            session.add(qa_history)
+            session.commit()
+            return ChatResponse(
+                answer=answer,
+                sources=[],
+                citations=[]
+            )
+
         # Tự động mở rộng câu trả lời ra toàn bộ câu chứa nó trong context
-        if answer and "Không tìm thấy" not in answer:
+        if answer:
             # Tách context thành các câu
             sentences = re.split(r'(?<=[.!?])\s+|\n+', context)
             clean_ans = answer.lower().replace(" ", "").replace("_", "").replace(".", "")

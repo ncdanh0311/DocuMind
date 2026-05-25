@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     SMTP_TLS: bool = True
     SMTP_SSL: bool = False
     
+    # AI Microservice URL
+    AI_SERVICE_URL: str = "http://localhost:8001"
+    
     @property
     def DATABASE_URL(self) -> str:
         if self.DATABASE_URL_OVERRIDE:

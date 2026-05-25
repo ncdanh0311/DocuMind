@@ -225,7 +225,9 @@
     "ERR_UNAUTHORIZED": "Session expired or invalid credentials.",
     "ERR_SESSION_EXPIRED": "Your session has expired. Please log in again.",
     "ERR_OLD_PASSWORD_INCORRECT": "Current password is incorrect.",
-    "ERR_NO_DOCUMENTS": "This notebook has no documents analyzed yet. Please upload a document before asking questions!"
+    "ERR_NO_DOCUMENTS": "This notebook has no documents analyzed yet. Please upload a document before asking questions!",
+    "ERR_ANSWER_NOT_FOUND": "No answer found in the document.",
+    "ERR_INVALID_INPUT": "Invalid document context or question."
   },
   "messages": {
     "MSG_OTP_SENT": "Verification code has been sent to your email.",
