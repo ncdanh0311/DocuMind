@@ -5,65 +5,89 @@ from pyvi import ViTokenizer
 
 class QAService:
     def __init__(self):
-        self.model_name = "phobert_qa"
-        # Đường dẫn tương đối từ ai/services/qa_service.py tới thư mục model
-        self.model_path = os.path.abspath(os.path.join(
-            os.path.dirname(__file__), "../results/models/phobert_qa/best_model"
+        # Đường dẫn tương đối từ ai/services/qa_service.py tới thư mục models
+        self.model_paths = {
+            "phobert_qa": os.path.abspath(os.path.join(
+                os.path.dirname(__file__), "../results/models/phobert_qa/best_model"
+            )),
+            "xlmroberta_qa": os.path.abspath(os.path.join(
+                os.path.dirname(__file__), "../results/models/xlmroberta_qa/best_model"
+            ))
+        }
+        self.cache_dir = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), "../hf_cache"
         ))
-        self.model = None
-        self.tokenizer = None
-        self.device = None
+        self.models = {"phobert_qa": None, "xlmroberta_qa": None}
+        self.tokenizers = {"phobert_qa": None, "xlmroberta_qa": None}
+        self.devices = {"phobert_qa": None, "xlmroberta_qa": None}
 
-    def _ensure_loaded(self):
+    def _ensure_loaded(self, model_type: str):
         """
-        Tải mô hình lên bộ nhớ một lần duy nhất khi có yêu cầu đầu tiên (Lazy Loading).
+        Tải mô hình lên bộ nhớ khi có yêu cầu đầu tiên (Lazy Loading).
         """
-        if self.model is not None:
+        if model_type not in self.models:
+            model_type = "phobert_qa"
+
+        if self.models[model_type] is not None:
             return
 
-        print(f"Đang tải mô hình PhoBERT QA từ: {self.model_path}...")
-        if not os.path.exists(self.model_path):
-            print("Thư mục model finetune cục bộ không tồn tại. Đang fallback về mô hình mặc định...")
-            raise FileNotFoundError(f"Không tìm thấy mô hình PhoBERT QA tại: {self.model_path}")
+        model_path = self.model_paths[model_type]
+        print(f"Đang tải mô hình {model_type} từ: {model_path}...")
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Không tìm thấy mô hình {model_type} tại: {model_path}")
 
         # Tối ưu thiết bị chạy: MPS (Apple Silicon GPU) -> CUDA -> CPU
         if torch.backends.mps.is_available():
-            self.device = torch.device("mps")
+            device = torch.device("mps")
         elif torch.cuda.is_available():
-            self.device = torch.device("cuda")
+            device = torch.device("cuda")
         else:
-            self.device = torch.device("cpu")
+            device = torch.device("cpu")
 
-        print(f"💻 Load PhoBERT QA trên thiết bị: {self.device}")
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
-        self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_path).to(self.device)
+        print(f"💻 Load {model_type} trên thiết bị: {device}")
+        self.tokenizers[model_type] = AutoTokenizer.from_pretrained(model_path)
+        self.models[model_type] = AutoModelForQuestionAnswering.from_pretrained(model_path).to(device)
+        self.devices[model_type] = device
 
-    def answer_question(self, context: str, question: str) -> str:
+    def answer_question(self, context: str, question: str, model_type: str = "phobert_qa") -> str:
         """
-        Thực hiện hỏi đáp trích xuất thông tin sử dụng mô hình PhoBERT QA.
-        Áp dụng kỹ thuật Sliding Window (max_length=384, doc_stride=96)
-        để quét toàn bộ context dài mà không bỏ sót thông tin.
+        Thực hiện hỏi đáp trích xuất thông tin sử dụng mô hình PhoBERT QA hoặc XLM-RoBERTa QA.
+        Áp dụng kỹ thuật Sliding Window để quét toàn bộ context dài mà không bỏ sót thông tin.
         """
         if not context or not question:
             return "ERR_INVALID_INPUT"
 
-        self._ensure_loaded()
+        if model_type not in self.models:
+            model_type = "phobert_qa"
 
-        # 1. Tách từ tiếng Việt bằng ViTokenizer
-        segmented_context = ViTokenizer.tokenize(context)
-        segmented_question = ViTokenizer.tokenize(question)
+        self._ensure_loaded(model_type)
+
+        model = self.models[model_type]
+        tokenizer = self.tokenizers[model_type]
+        device = self.devices[model_type]
+
+        # Xác định các tham số Sliding Window theo cấu hình mô hình
+        if model_type == "phobert_qa":
+            max_len = 384
+            stride = 96
+            # Tách từ tiếng Việt bằng ViTokenizer cho PhoBERT
+            segmented_context = ViTokenizer.tokenize(context)
+            segmented_question = ViTokenizer.tokenize(question)
+        else: # xlmroberta_qa
+            max_len = 512
+            stride = 128
+            # XLM-RoBERTa hoạt động tốt trên raw text không tách từ
+            segmented_context = context
+            segmented_question = question
 
         # 2. Tokenize với Sliding Window
-        #    - max_length=384: khớp với pipeline training (PhoBERT-base-v2)
-        #    - stride=96: overlap giữa các cửa sổ (doc_stride)
-        #    - return_overflowing_tokens=True: trả về nhiều cửa sổ khi context dài
-        encodings = self.tokenizer(
+        encodings = tokenizer(
             segmented_question,
             segmented_context,
             return_tensors="pt",
             truncation=True,
-            max_length=384,
-            stride=96,
+            max_length=max_len,
+            stride=stride,
             return_overflowing_tokens=True,
             padding=True,
         )
@@ -78,16 +102,16 @@ class QAService:
         # 3. Chạy inference trên từng cửa sổ
         for w in range(num_windows):
             window_inputs = {
-                key: val[w : w + 1].to(self.device)
+                key: val[w : w + 1].to(device)
                 for key, val in encodings.items()
             }
 
             with torch.no_grad():
-                outputs = self.model(**window_inputs)
+                outputs = model(**window_inputs)
 
-            # 4. Tìm các token EOS (2) để định vị phạm vi context
+            # 4. Tìm các token EOS để định vị phạm vi context
             input_ids = window_inputs["input_ids"][0].tolist()
-            eos_token_id = self.tokenizer.eos_token_id if self.tokenizer.eos_token_id is not None else 2
+            eos_token_id = tokenizer.eos_token_id if tokenizer.eos_token_id is not None else 2
             eos_indices = [i for i, tid in enumerate(input_ids) if tid == eos_token_id]
 
             if len(eos_indices) >= 2:
@@ -117,7 +141,7 @@ class QAService:
                         actual_end = ei + ctx_start
 
                         tokens = window_inputs["input_ids"][0, actual_start : actual_end + 1]
-                        ans_text = self.tokenizer.decode(tokens, skip_special_tokens=True).replace("_", " ").strip()
+                        ans_text = tokenizer.decode(tokens, skip_special_tokens=True).replace("_", " ").strip()
 
                         # Lọc bỏ câu trả lời rỗng hoặc toàn dấu câu
                         if ans_text and not all(c in ".,!?-_():;\"' " for c in ans_text):

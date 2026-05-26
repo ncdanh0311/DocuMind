@@ -334,13 +334,14 @@ class ApiService extends BaseApiService {
     }
   }
 
-  Future<Map<String, dynamic>> askAI(String notebookId, String question) async {
+  Future<Map<String, dynamic>> askAI(String notebookId, String question, {String? model}) async {
     try {
       final response = await _sendWithAuthRetry(() async => http.post(
         Uri.parse("${ApiConstants.baseUrl}/notebooks/$notebookId/chat"),
         headers: await getHeaders(isAuth: true),
         body: jsonEncode({
           "question": question,
+          if (model != null) "model": model,
         }),
       ));
       return handleResponse(response);

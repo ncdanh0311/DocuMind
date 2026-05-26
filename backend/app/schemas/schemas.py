@@ -76,6 +76,7 @@ class NotificationResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     question: str
+    model: Optional[str] = "phobert_qa"
 
 class CitationResponse(BaseModel):
     id: int

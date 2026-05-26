@@ -62,6 +62,7 @@ def chat_with_notebook(
     return rag_service.answer_notebook_question(
         notebook_id=notebook_id,
         question=request.question,
+        model=request.model or "phobert_qa",
         session=session
     )
 

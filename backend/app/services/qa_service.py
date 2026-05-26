@@ -9,7 +9,7 @@ class QAService:
         self.url = f"{settings.AI_SERVICE_URL}/qa"
         logger.info(f"Initialized QAService client calling {self.url}")
 
-    def answer_question(self, context: str, question: str) -> str:
+    def answer_question(self, context: str, question: str, model_type: str = "phobert_qa") -> str:
         """
         Gửi yêu cầu giải đáp câu hỏi (QA) tới AI service qua HTTP.
         """
@@ -19,7 +19,7 @@ class QAService:
         try:
             response = httpx.post(
                 self.url,
-                json={"context": context, "question": question},
+                json={"context": context, "question": question, "model_type": model_type},
                 timeout=30.0
             )
             response.raise_for_status()

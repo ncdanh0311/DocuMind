@@ -27,6 +27,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   final List<Map<String, dynamic>> _messages = [];
   bool _isAILoading = false;
   final ApiService _apiService = ApiService();
+  String _selectedModel = "phobert_qa";
 
   @override
   void initState() {
@@ -88,7 +89,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
       responseText = "ai_chat.select_notebook_error".tr();
     } else {
       try {
-        final result = await _apiService.askAI(widget.notebookId!, query);
+        final result = await _apiService.askAI(widget.notebookId!, query, model: _selectedModel);
         if (result["success"] == true) {
           final data = result["data"];
           responseText = data["answer"] ?? "ai_chat.no_answer".tr();
@@ -326,55 +327,111 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
   }
 
+  Widget _buildModelTab(String modelCode, String label) {
+    final isSelected = _selectedModel == modelCode;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedModel = modelCode;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : Colors.grey.shade300,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected) ...[
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 14),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? Colors.white : Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMessageInput() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -2)),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -2)),
         ],
       ),
       child: SafeArea(
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
-              child: IconButton(
-                icon: const Icon(Icons.add, color: Colors.grey),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("ai_chat.attachment_upcoming".tr())),
-                  );
-                },
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildModelTab("phobert_qa", "PhoBERT"),
+                  const SizedBox(width: 16),
+                  _buildModelTab("xlmroberta_qa", "XLM-RoBERTa"),
+                ],
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: TextField(
-                  controller: _messageController,
-                  onSubmitted: _sendMessage,
-                  decoration: InputDecoration(
-                    hintText: "ai_chat.input_placeholder".tr(),
-                    hintStyle: GoogleFonts.inter(fontSize: 14, color: Colors.grey),
-                    border: InputBorder.none,
+            Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
+                  child: IconButton(
+                    icon: const Icon(Icons.add, color: Colors.grey),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("ai_chat.attachment_upcoming".tr())),
+                      );
+                    },
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-              child: IconButton(
-                icon: const Icon(Icons.send_rounded, color: Colors.white, size: 24),
-                onPressed: () => _sendMessage(_messageController.text),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: TextField(
+                      controller: _messageController,
+                      onSubmitted: _sendMessage,
+                      decoration: InputDecoration(
+                        hintText: "ai_chat.input_placeholder".tr(),
+                        hintStyle: GoogleFonts.inter(fontSize: 14, color: Colors.grey),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                  child: IconButton(
+                    icon: const Icon(Icons.send_rounded, color: Colors.white, size: 24),
+                    onPressed: () => _sendMessage(_messageController.text),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

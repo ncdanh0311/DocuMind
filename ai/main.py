@@ -29,6 +29,7 @@ class EmbedResponse(BaseModel):
 class QARequest(BaseModel):
     context: str
     question: str
+    model_type: str = "phobert_qa"
 
 class QAResponse(BaseModel):
     answer: str
@@ -54,14 +55,15 @@ class RerankResponse(BaseModel):
 
 @app.get("/health")
 async def health():
-    qa_loaded = qa_service.model is not None
+    qa_phobert_loaded = qa_service.models["phobert_qa"] is not None
+    qa_xlmroberta_loaded = qa_service.models["xlmroberta_qa"] is not None
     summarization_loaded = summarization_service.model is not None
     reranker_loaded = reranker_service.model is not None
     return {
         "status": "healthy",
         "embedding_model": embedding_service.model_name,
-        "qa_model_path": qa_service.model_path,
-        "qa_model_loaded": qa_loaded,
+        "qa_phobert_loaded": qa_phobert_loaded,
+        "qa_xlmroberta_loaded": qa_xlmroberta_loaded,
         "summarization_model_path": summarization_service.model_path,
         "summarization_model_loaded": summarization_loaded,
         "reranker_model": reranker_service.model_name,
@@ -79,7 +81,7 @@ async def embed(request: EmbedRequest):
 @app.post("/qa", response_model=QAResponse)
 async def qa(request: QARequest):
     try:
-        answer = qa_service.answer_question(request.context, request.question)
+        answer = qa_service.answer_question(request.context, request.question, request.model_type)
         return QAResponse(answer=answer)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi khi chạy QA inference: {str(e)}")

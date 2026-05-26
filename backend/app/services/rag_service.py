@@ -18,6 +18,7 @@ class RAGService:
         *,
         notebook_id: uuid.UUID,
         question: str,
+        model: str = "phobert_qa",
         session: Session
     ) -> ChatResponse:
         """
@@ -89,8 +90,8 @@ class RAGService:
         # 4. Tạo context từ các chunks đã qua rerank
         context = "\n".join([chunk.content for chunk in reranked_chunks])
 
-        # 5. Chạy mô hình PhoBERT QA để lấy câu trả lời trích xuất
-        answer = qa_service.answer_question(context, question)
+        # 5. Chạy mô hình QA được lựa chọn để lấy câu trả lời trích xuất
+        answer = qa_service.answer_question(context, question, model_type=model)
 
         if answer and answer.startswith("ERR_"):
             # Ghi lại lịch sử hỏi đáp vào Database (không trích dẫn)
@@ -100,7 +101,7 @@ class RAGService:
                 notebook_id=notebook_id,
                 question=question,
                 answer=answer,
-                model_name="phobert_qa",
+                model_name=model,
                 created_at=datetime.utcnow()
             )
             session.add(qa_history)
@@ -150,7 +151,7 @@ class RAGService:
             notebook_id=notebook_id,
             question=question,
             answer=answer,
-            model_name="phobert_qa",
+            model_name=model,
             created_at=datetime.utcnow()
         )
         session.add(qa_history)
