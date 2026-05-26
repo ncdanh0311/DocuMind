@@ -41,6 +41,8 @@ class QAService:
     def answer_question(self, context: str, question: str) -> str:
         """
         Thực hiện hỏi đáp trích xuất thông tin sử dụng mô hình PhoBERT QA.
+        Áp dụng kỹ thuật Sliding Window (max_length=384, doc_stride=96)
+        để quét toàn bộ context dài mà không bỏ sót thông tin.
         """
         if not context or not question:
             return "ERR_INVALID_INPUT"
@@ -51,68 +53,82 @@ class QAService:
         segmented_context = ViTokenizer.tokenize(context)
         segmented_question = ViTokenizer.tokenize(question)
 
-        # 2. Tokenize dữ liệu đầu vào
-        inputs = self.tokenizer(
+        # 2. Tokenize với Sliding Window
+        #    - max_length=384: khớp với pipeline training (PhoBERT-base-v2)
+        #    - stride=96: overlap giữa các cửa sổ (doc_stride)
+        #    - return_overflowing_tokens=True: trả về nhiều cửa sổ khi context dài
+        encodings = self.tokenizer(
             segmented_question,
             segmented_context,
             return_tensors="pt",
             truncation=True,
-            max_length=258  # Giới hạn max_position_embeddings của PhoBERT QA
-        ).to(self.device)
+            max_length=384,
+            stride=96,
+            return_overflowing_tokens=True,
+            padding=True,
+        )
 
-        # 3. Chạy model dự báo
-        with torch.no_grad():
-            outputs = self.model(**inputs)
+        # Loại bỏ overflow_to_sample_mapping (không phải input của model)
+        encodings.pop("overflow_to_sample_mapping", None)
 
-        # 4. Tìm các token EOS (2) để định vị context
-        input_ids = inputs.input_ids[0].tolist()
-        eos_token_id = self.tokenizer.eos_token_id if self.tokenizer.eos_token_id is not None else 2
-        eos_indices = [i for i, token_id in enumerate(input_ids) if token_id == eos_token_id]
-
-        if len(eos_indices) >= 2:
-            context_start = eos_indices[1] + 1
-            context_end = eos_indices[-1] - 1
-        else:
-            context_start = 0
-            context_end = len(input_ids) - 1
-
-        context_start = max(0, min(context_start, len(input_ids) - 1))
-        context_end = max(context_start, min(context_end, len(input_ids) - 1))
-
-        # 5. Chỉ lấy Logits trong phạm vi của context
-        start_logits = outputs.start_logits[0, context_start : context_end + 1]
-        end_logits = outputs.end_logits[0, context_start : context_end + 1]
-
-        # 6. Tìm các cặp (start, end) tốt nhất bằng PyTorch (Joint Scoring)
-        n_best = 20
-        best_start_values, best_start_indices = torch.topk(start_logits, min(n_best, len(start_logits)))
-        best_end_values, best_end_indices = torch.topk(end_logits, min(n_best, len(end_logits)))
-
-        best_start_indices = best_start_indices.tolist()
-        best_end_indices = best_end_indices.tolist()
-
+        num_windows = encodings.input_ids.shape[0]
         candidates = []
         seen_texts = set()
 
-        for start_idx in best_start_indices:
-            for end_idx in best_end_indices:
-                if start_idx <= end_idx and end_idx - start_idx + 1 <= 100:
-                    score = start_logits[start_idx].item() + end_logits[end_idx].item()
-                    actual_start = start_idx + context_start
-                    actual_end = end_idx + context_start
+        # 3. Chạy inference trên từng cửa sổ
+        for w in range(num_windows):
+            window_inputs = {
+                key: val[w : w + 1].to(self.device)
+                for key, val in encodings.items()
+            }
 
-                    tokens = inputs.input_ids[0, actual_start : actual_end + 1]
-                    ans_text = self.tokenizer.decode(tokens, skip_special_tokens=True).replace("_", " ").strip()
+            with torch.no_grad():
+                outputs = self.model(**window_inputs)
 
-                    # Lọc bỏ câu trả lời rỗng hoặc toàn dấu câu
-                    if ans_text and not all(c in ".,!?-_():;\"' " for c in ans_text):
-                        if ans_text not in seen_texts:
-                            candidates.append({
-                                "text": ans_text,
-                                "score": score
-                            })
-                            seen_texts.add(ans_text)
+            # 4. Tìm các token EOS (2) để định vị phạm vi context
+            input_ids = window_inputs["input_ids"][0].tolist()
+            eos_token_id = self.tokenizer.eos_token_id if self.tokenizer.eos_token_id is not None else 2
+            eos_indices = [i for i, tid in enumerate(input_ids) if tid == eos_token_id]
 
+            if len(eos_indices) >= 2:
+                ctx_start = eos_indices[1] + 1
+                ctx_end = eos_indices[-1] - 1
+            else:
+                ctx_start = 0
+                ctx_end = len(input_ids) - 1
+
+            ctx_start = max(0, min(ctx_start, len(input_ids) - 1))
+            ctx_end = max(ctx_start, min(ctx_end, len(input_ids) - 1))
+
+            # 5. Chỉ lấy Logits trong phạm vi context
+            start_logits = outputs.start_logits[0, ctx_start : ctx_end + 1]
+            end_logits = outputs.end_logits[0, ctx_start : ctx_end + 1]
+
+            # 6. Joint Scoring: tìm top N cặp (start, end) tốt nhất
+            n_best = 20
+            _, best_start_indices = torch.topk(start_logits, min(n_best, len(start_logits)))
+            _, best_end_indices = torch.topk(end_logits, min(n_best, len(end_logits)))
+
+            for si in best_start_indices.tolist():
+                for ei in best_end_indices.tolist():
+                    if si <= ei and ei - si + 1 <= 100:
+                        score = start_logits[si].item() + end_logits[ei].item()
+                        actual_start = si + ctx_start
+                        actual_end = ei + ctx_start
+
+                        tokens = window_inputs["input_ids"][0, actual_start : actual_end + 1]
+                        ans_text = self.tokenizer.decode(tokens, skip_special_tokens=True).replace("_", " ").strip()
+
+                        # Lọc bỏ câu trả lời rỗng hoặc toàn dấu câu
+                        if ans_text and not all(c in ".,!?-_():;\"' " for c in ans_text):
+                            if ans_text not in seen_texts:
+                                candidates.append({
+                                    "text": ans_text,
+                                    "score": score
+                                })
+                                seen_texts.add(ans_text)
+
+        # 7. Sắp xếp và trả về câu trả lời có score cao nhất từ tất cả cửa sổ
         candidates = sorted(candidates, key=lambda x: x["score"], reverse=True)
 
         if not candidates:
