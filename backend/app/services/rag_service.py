@@ -33,13 +33,13 @@ class RAGService:
         # 1. Sinh vector embedding cho câu hỏi
         query_vector = embedding_service.embed_text([question], is_query=True)[0]
 
-        # 2. Truy vấn các chunks liên quan nhất bằng pgvector (cosine distance)
+        # 2. Truy vấn top 20 chunks liên quan nhất bằng pgvector (cosine distance)
         statement = (
             select(DocumentChunk)
             .join(Document, DocumentChunk.document_id == Document.document_id)
             .where(Document.notebook_id == notebook_id)
             .order_by(DocumentChunk.embedding.cosine_distance(query_vector))
-            .limit(3)
+            .limit(20)
         )
         related_chunks = session.exec(statement).all()
 
@@ -49,10 +49,47 @@ class RAGService:
                 detail="ERR_NO_DOCUMENTS"
             )
 
-        # 3. Tạo context từ các chunks tìm được
-        context = "\n".join([chunk.content for chunk in related_chunks])
+        # 3. Rerank bằng ViRanker qua AI Microservice (chọn top 3 tốt nhất)
+        passages = [chunk.content for chunk in related_chunks]
+        try:
+            response = httpx.post(
+                f"{settings.AI_SERVICE_URL}/rerank",
+                json={
+                    "question": question,
+                    "passages": passages,
+                    "top_k": 3
+                },
+                timeout=60.0
+            )
 
-        # 4. Chạy mô hình PhoBERT QA để lấy câu trả lời trích xuất
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"ERR_AI_SERVICE_ERROR: {response.text}"
+                )
+
+            rerank_data = response.json()
+            rerank_results = rerank_data["results"]
+        except httpx.RequestError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="ERR_AI_SERVICE_UNAVAILABLE"
+            )
+
+        # Lấy top 3 chunks sau khi rerank và lưu điểm relevance_score
+        reranked_chunks = []
+        scores_by_chunk_id = {}
+        for item in rerank_results:
+            orig_idx = item["index"]
+            score = item["score"]
+            chunk = related_chunks[orig_idx]
+            reranked_chunks.append(chunk)
+            scores_by_chunk_id[chunk.docuchunk_id] = score
+
+        # 4. Tạo context từ các chunks đã qua rerank
+        context = "\n".join([chunk.content for chunk in reranked_chunks])
+
+        # 5. Chạy mô hình PhoBERT QA để lấy câu trả lời trích xuất
         answer = qa_service.answer_question(context, question)
 
         if answer and answer.startswith("ERR_"):
@@ -85,18 +122,18 @@ class RAGService:
                     answer = sentence.strip()
                     break
 
-        # 5. Tìm xem answer thuộc về chunk nào để đánh dấu trích dẫn dạng [x]
+        # 6. Tìm xem answer thuộc về chunk nào để đánh dấu trích dẫn dạng [x]
         matched_chunk_idx = None
         clean_ans = answer.lower().replace(" ", "").replace("_", "")
         
-        for idx, chunk in enumerate(related_chunks):
+        for idx, chunk in enumerate(reranked_chunks):
             clean_chunk = chunk.content.lower().replace(" ", "").replace("_", "")
             if clean_ans in clean_chunk:
                 matched_chunk_idx = idx
                 break
 
         # Nếu không trùng khớp hoàn hảo, lấy chunk đầu tiên có độ tương đồng cao nhất
-        if matched_chunk_idx is None and len(related_chunks) > 0:
+        if matched_chunk_idx is None and len(reranked_chunks) > 0:
             matched_chunk_idx = 0
 
         if matched_chunk_idx is not None:
@@ -106,7 +143,7 @@ class RAGService:
             else:
                 answer = f"{answer.strip()} [{citation_num}]"
 
-        # 6. Ghi lại lịch sử hỏi đáp vào Database
+        # 7. Ghi lại lịch sử hỏi đáp vào Database
         qa_id = uuid.uuid4()
         qa_history = QAHistory(
             qahistory_id=qa_id,
@@ -118,22 +155,22 @@ class RAGService:
         )
         session.add(qa_history)
 
-        # Ghi nhận các trích dẫn nguồn
-        for chunk in related_chunks:
+        # Ghi nhận các trích dẫn nguồn kèm điểm relevance_score từ Rerank
+        for chunk in reranked_chunks:
             citation = Citation(
                 citation_id=uuid.uuid4(),
                 qa_id=qa_id,
                 chunk_id=chunk.docuchunk_id,
-                relevance_score=None
+                relevance_score=scores_by_chunk_id.get(chunk.docuchunk_id)
             )
             session.add(citation)
 
         session.commit()
 
-        # 7. Tạo danh sách nguồn và trích dẫn chi tiết trả về
+        # 8. Tạo danh sách nguồn và trích dẫn chi tiết trả về
         sources = []
         citations_list = []
-        for idx, chunk in enumerate(related_chunks):
+        for idx, chunk in enumerate(reranked_chunks):
             doc_name = chunk.document.file_name if chunk.document else "Tài liệu không tên"
             page_info = f"Trang {chunk.page_number}" if chunk.page_number else "Không rõ trang"
             sources.append(f"{doc_name} ({page_info})")

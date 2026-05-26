@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ai.services.embedding_service import embedding_service
 from ai.services.qa_service import qa_service
 from ai.services.summarization_service import summarization_service
+from ai.services.reranker_service import reranker_service
 
 app = FastAPI(
     title="DocuMind AI Service",
@@ -38,17 +39,33 @@ class SummarizeRequest(BaseModel):
 class SummarizeResponse(BaseModel):
     summary: str
 
+class RerankRequest(BaseModel):
+    question: str
+    passages: List[str]
+    top_k: int = 3
+
+class RerankResult(BaseModel):
+    index: int
+    text: str
+    score: float
+
+class RerankResponse(BaseModel):
+    results: List[RerankResult]
+
 @app.get("/health")
 async def health():
     qa_loaded = qa_service.model is not None
     summarization_loaded = summarization_service.model is not None
+    reranker_loaded = reranker_service.model is not None
     return {
         "status": "healthy",
         "embedding_model": embedding_service.model_name,
         "qa_model_path": qa_service.model_path,
         "qa_model_loaded": qa_loaded,
         "summarization_model_path": summarization_service.model_path,
-        "summarization_model_loaded": summarization_loaded
+        "summarization_model_loaded": summarization_loaded,
+        "reranker_model": reranker_service.model_name,
+        "reranker_model_loaded": reranker_loaded
     }
 
 @app.post("/embed", response_model=EmbedResponse)
@@ -74,6 +91,14 @@ async def summarize(request: SummarizeRequest):
         return SummarizeResponse(summary=summary)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi khi chạy summarization inference: {str(e)}")
+
+@app.post("/rerank", response_model=RerankResponse)
+async def rerank(request: RerankRequest):
+    try:
+        results = reranker_service.rerank(request.question, request.passages, request.top_k)
+        return RerankResponse(results=results)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi khi chạy rerank inference: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
