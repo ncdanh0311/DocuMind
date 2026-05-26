@@ -9,6 +9,8 @@ from backend.app.models.models import Document, DocumentChunk, QAHistory, Citati
 from backend.app.services.embedding_service import embedding_service
 from backend.app.services.qa_service import qa_service
 from backend.app.schemas.schemas import ChatResponse
+from backend.app.core.config import settings
+import httpx
 
 class RAGService:
     def answer_notebook_question(
@@ -53,8 +55,27 @@ class RAGService:
         # 4. Chạy mô hình PhoBERT QA để lấy câu trả lời trích xuất
         answer = qa_service.answer_question(context, question)
 
+        if answer and answer.startswith("ERR_"):
+            # Ghi lại lịch sử hỏi đáp vào Database (không trích dẫn)
+            qa_id = uuid.uuid4()
+            qa_history = QAHistory(
+                qahistory_id=qa_id,
+                notebook_id=notebook_id,
+                question=question,
+                answer=answer,
+                model_name="phobert_qa",
+                created_at=datetime.utcnow()
+            )
+            session.add(qa_history)
+            session.commit()
+            return ChatResponse(
+                answer=answer,
+                sources=[],
+                citations=[]
+            )
+
         # Tự động mở rộng câu trả lời ra toàn bộ câu chứa nó trong context
-        if answer and "Không tìm thấy" not in answer:
+        if answer:
             # Tách context thành các câu
             sentences = re.split(r'(?<=[.!?])\s+|\n+', context)
             clean_ans = answer.lower().replace(" ", "").replace("_", "").replace(".", "")
@@ -129,5 +150,62 @@ class RAGService:
             sources=list(set(sources)), 
             citations=citations_list
         )
+
+    def summarize_notebook(
+        self,
+        *,
+        notebook_id: uuid.UUID,
+        session: Session
+    ) -> str:
+        """
+        Tóm tắt nội dung chính của sổ tay:
+        1. Lấy tất cả các chunks tài liệu thuộc sổ tay.
+        2. Ghép nội dung lại và cắt lấy 800 từ (words) đầu tiên.
+        3. Gửi POST request sang AI service endpoint `/summarize` với timeout = 180s.
+        4. Trả về nội dung tóm tắt.
+        """
+        # 1. Lấy danh sách các chunks tài liệu thuộc Sổ tay, sắp xếp theo thứ tự tài liệu và số trang
+        statement = (
+            select(DocumentChunk)
+            .join(Document, DocumentChunk.document_id == Document.document_id)
+            .where(Document.notebook_id == notebook_id)
+            .order_by(DocumentChunk.document_id, DocumentChunk.page_number, DocumentChunk.docuchunk_id)
+        )
+        chunks = session.exec(statement).all()
+
+        if not chunks:
+            raise HTTPException(
+                status_code=400,
+                detail="ERR_NO_DOCUMENTS"
+            )
+
+        # 2. Ghép nội dung các chunks lại và cắt lấy 800 từ đầu tiên
+        full_text = " ".join([chunk.content for chunk in chunks])
+        words = full_text.split()
+        truncated_text = " ".join(words[:800])
+
+        # 3. Gửi request tóm tắt tới AI Microservice
+        try:
+            # Sử dụng timeout 180 giây vì model load lần đầu hoặc inference trên CPU có thể chậm
+            response = httpx.post(
+                f"{settings.AI_SERVICE_URL}/summarize",
+                json={"text": truncated_text},
+                timeout=180.0
+            )
+
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"ERR_AI_SERVICE_ERROR: {response.text}"
+                )
+
+            data = response.json()
+            return data["summary"]
+
+        except httpx.RequestError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="ERR_AI_SERVICE_UNAVAILABLE"
+            )
 
 rag_service = RAGService()
