@@ -16,6 +16,10 @@ COPY uv.lock .
 
 # Cài đặt uv để quản lý thư viện nhanh hơn
 RUN pip install uv
+
+# Tối ưu: Cài đặt trước bản PyTorch & Torchvision CPU-only để tránh lỗi tương thích và tránh tải các gói CUDA cực nặng (>4GB) của NVIDIA
+RUN uv pip install --system torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
 RUN uv pip install --system .
 
 # Copy chỉ thư mục backend vào container

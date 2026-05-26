@@ -224,7 +224,12 @@
     "ERR_DOC_FORBIDDEN": "Bạn không có quyền xóa tài liệu này.",
     "ERR_UNAUTHORIZED": "Phiên đăng nhập đã hết hạn hoặc không hợp lệ.",
     "ERR_SESSION_EXPIRED": "Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.",
-    "ERR_OLD_PASSWORD_INCORRECT": "Mật khẩu hiện tại không chính xác."
+    "ERR_OLD_PASSWORD_INCORRECT": "Mật khẩu hiện tại không chính xác.",
+    "ERR_NO_DOCUMENTS": "Sổ tay này chưa có tài liệu nào được phân tích thành công. Bạn vui lòng tải tài liệu lên trước khi đặt câu hỏi nhé!",
+    "ERR_ANSWER_NOT_FOUND": "Không tìm thấy câu trả lời trong văn bản.",
+    "ERR_INVALID_INPUT": "Văn bản hoặc câu hỏi không hợp lệ.",
+    "ERR_AI_SERVICE_UNAVAILABLE": "Trợ lý AI hiện đang bận hoặc đang khởi động. Vui lòng thử lại sau ít phút!",
+    "ERR_CONNECTION_FAILED": "Kết nối thất bại. Vui lòng kiểm tra lại mạng Internet!"
   },
   "messages": {
     "MSG_OTP_SENT": "Mã xác thực đã được gửi vào email của bạn.",
@@ -262,7 +267,9 @@
     "summary_keywords_heading": "Từ khóa cốt lõi cần nhớ",
     "summary_k1": "Hệ thống định nghĩa cơ bản xoay quanh '{}'.",
     "summary_k2": "Mối tương quan giữa các phần lý thuyết và bài tập thực hành.",
-    "summary_k3": "Phương án so sánh, đối chiếu các khía cạnh liên quan."
+    "summary_k3": "Phương án so sánh, đối chiếu các khía cạnh liên quan.",
+    "error_title": "Đã xảy ra lỗi",
+    "retry": "Thử lại"
   },
   "notifications_sheet": {
     "title": "Thông báo hệ thống",

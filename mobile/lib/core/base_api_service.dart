@@ -31,9 +31,14 @@ abstract class BaseApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = jsonDecode(response.body);
       String? message;
-      if (data is Map && data.containsKey("message") && data["message"] != null) {
-        message = _translateMessage(data["message"].toString());
-        data["message"] = message;
+      if (data is Map) {
+        if (data.containsKey("message") && data["message"] != null) {
+          message = _translateMessage(data["message"].toString());
+          data["message"] = message;
+        }
+        if (data.containsKey("answer") && data["answer"] != null) {
+          data["answer"] = _translateMessage(data["answer"].toString());
+        }
       }
       return {"success": true, "data": data, "message": message};
     } else {

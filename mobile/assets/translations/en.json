@@ -224,7 +224,12 @@
     "ERR_DOC_FORBIDDEN": "You do not have permission to delete this document.",
     "ERR_UNAUTHORIZED": "Session expired or invalid credentials.",
     "ERR_SESSION_EXPIRED": "Your session has expired. Please log in again.",
-    "ERR_OLD_PASSWORD_INCORRECT": "Current password is incorrect."
+    "ERR_OLD_PASSWORD_INCORRECT": "Current password is incorrect.",
+    "ERR_NO_DOCUMENTS": "This notebook has no documents analyzed yet. Please upload a document before asking questions!",
+    "ERR_ANSWER_NOT_FOUND": "No answer found in the document.",
+    "ERR_INVALID_INPUT": "Invalid document context or question.",
+    "ERR_AI_SERVICE_UNAVAILABLE": "AI assistant is busy or initializing. Please try again in a few minutes!",
+    "ERR_CONNECTION_FAILED": "Connection failed. Please check your internet connection!"
   },
   "messages": {
     "MSG_OTP_SENT": "Verification code has been sent to your email.",
@@ -262,7 +267,9 @@
     "summary_keywords_heading": "Core Keywords to Remember",
     "summary_k1": "Basic definitions revolving around '{}'.",
     "summary_k2": "Correlation between theoretical concepts and practical exercises.",
-    "summary_k3": "Methods of comparing and contrasting related aspects."
+    "summary_k3": "Methods of comparing and contrasting related aspects.",
+    "error_title": "An error occurred",
+    "retry": "Retry"
   },
   "notifications_sheet": {
     "title": "System Notifications",
