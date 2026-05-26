@@ -158,7 +158,15 @@ class QAService:
         if not candidates:
             return "ERR_ANSWER_NOT_FOUND"
 
-        return candidates[0]["text"]
+        best_candidate = candidates[0]
+        # Lọc theo ngưỡng tự tin tối thiểu (THRESHOLD = 1.0) để tránh trích xuất bừa bãi
+        # các câu trả lời sai lệch khi người dùng hỏi các câu hỏi chung chung hoặc ngoài phạm vi
+        THRESHOLD = 1.0
+        if best_candidate["score"] < THRESHOLD:
+            print(f"⚠️ Từ chối câu trả lời do điểm tự tin thấp: {best_candidate['score']:.4f} < {THRESHOLD}")
+            return "ERR_ANSWER_NOT_FOUND"
+
+        return best_candidate["text"]
 
 # Singleton instance
 qa_service = QAService()

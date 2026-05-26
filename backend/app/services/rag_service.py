@@ -31,6 +31,46 @@ class RAGService:
         6. Lưu lịch sử QAHistory và Citations vào Database.
         7. Trả về kết quả dưới dạng ChatResponse.
         """
+        # 0. Phân luồng ý định câu hỏi (Intent Routing) bằng RegEx cơ bản
+        clean_question = question.strip().lower()
+        
+        # Nhóm 1: Chào hỏi chit-chat
+        if re.search(r"^(chào|hello|hi|xin chào|chào bạn|chào robot|alo|hey|helo|chao em|chao anh|chao ban)$", clean_question):
+            return ChatResponse(
+                answer="Chào bạn! Tôi là Trợ lý Học tập AI của DocuMind. Tôi có thể giúp bạn giải đáp các thắc mắc dựa trên tài liệu trong Sổ tay của bạn. Bạn cần tôi hỗ trợ tìm kiếm hay ôn tập phần nào hôm nay?",
+                sources=[],
+                citations=[]
+            )
+
+        if re.search(r"^(bạn là ai|tên bạn là gì|ai đây|who are you|introduce yourself|giới thiệu về bạn|bạn làm được gì)$", clean_question):
+            return ChatResponse(
+                answer="Tôi là Trợ lý Học tập DocuMind AI. Nhiệm vụ của tôi là giúp bạn phân tích, tóm tắt tài liệu, tạo Flashcard ôn tập và trả lời các câu hỏi dựa trên nội dung trong Sổ tay của bạn. Hãy gửi cho tôi câu hỏi liên quan đến tài liệu nhé!",
+                sources=[],
+                citations=[]
+            )
+
+        if re.search(r"^(bạn khỏe không|how are you|khỏe không|khoe khong|chuyện gì thế)$", clean_question):
+            return ChatResponse(
+                answer="Cảm ơn bạn đã hỏi thăm! Tôi luôn trong trạng thái sẵn sàng để hỗ trợ bạn học tập. Hôm nay bạn muốn học hay ôn tập chủ đề gì?",
+                sources=[],
+                citations=[]
+            )
+
+        if re.search(r"^(cảm ơn|cám ơn|thank|thanks|thank you|cảm ơn nhiều|tuyệt vời|ok|okay|tốt lắm)$", clean_question):
+            return ChatResponse(
+                answer="Rất vui được đồng hành cùng bạn học tập! Hãy tiếp tục gửi câu hỏi nếu bạn có điểm nào chưa rõ trong tài liệu nhé. Chúc bạn học tốt!",
+                sources=[],
+                citations=[]
+            )
+
+        # Nhóm 2: Nhắc nhở sử dụng chức năng tóm tắt chuyên dụng
+        if re.search(r"^(tóm tắt|tom tat|tóm tắt sổ tay|tóm tắt tài liệu|tóm tắt nội dung|hãy tóm tắt|giúp tôi tóm tắt)(.*)$", clean_question):
+            return ChatResponse(
+                answer="Để tóm tắt Sổ tay này, bạn vui lòng sử dụng tính năng 'Tóm tắt Sổ tay này' ngay ở phần 'Gợi ý câu hỏi' ở đầu khung chat để tôi có thể tạo ra bản tóm tắt đầy đủ, mạch lạc nhất cho bạn nhé!",
+                sources=[],
+                citations=[]
+            )
+
         # 1. Sinh vector embedding cho câu hỏi
         query_vector = embedding_service.embed_text([question], is_query=True)[0]
 
