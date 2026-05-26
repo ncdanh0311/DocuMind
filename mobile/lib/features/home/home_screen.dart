@@ -469,14 +469,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       _currentIndex = 2;
                     });
                   } else if (key == "action_summary") {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SummaryScreen(
-                          notebookId: id,
-                          title: "Tóm tắt: $title",
-                        ),
-                      ),
+                    SummaryScreen.showModelSelection(
+                      context: context,
+                      notebookId: id,
+                      title: "Tóm tắt: $title",
                     );
                   } else {
                     Navigator.push(

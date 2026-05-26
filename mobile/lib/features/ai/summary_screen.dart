@@ -8,12 +8,171 @@ import 'package:documind_mobile/core/api_service.dart';
 class SummaryScreen extends StatefulWidget {
   final String? notebookId;
   final String title;
+  final String model;
 
   const SummaryScreen({
     super.key,
     this.notebookId,
     this.title = "Tóm tắt",
+    this.model = "vit5",
   });
+
+  static void showModelSelection({
+    required BuildContext context,
+    required String notebookId,
+    required String title,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  "Chọn mô hình tóm tắt",
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Chọn mô hình phù hợp để có bản tóm tắt tốt nhất cho Sổ tay của bạn",
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: Colors.grey.shade500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                _buildModelOption(
+                  context: context,
+                  notebookId: notebookId,
+                  title: title,
+                  modelCode: "vit5",
+                  modelName: "ViT5 (Khuyên dùng)",
+                  description: "Mô hình tóm tắt Seq2Seq gọn nhẹ, tốc độ sinh cực nhanh và giữ nguyên sắc thái văn bản.",
+                  icon: Icons.flash_on_rounded,
+                  iconColor: Colors.amber.shade700,
+                  bgColor: Colors.amber.shade50,
+                ),
+                const SizedBox(height: 12),
+                _buildModelOption(
+                  context: context,
+                  notebookId: notebookId,
+                  title: title,
+                  modelCode: "bartpho",
+                  modelName: "BARTpho",
+                  description: "Mô hình cấp từ (BPE) nâng cao, phân tích cấu trúc câu và tóm tắt học thuật sâu sắc.",
+                  icon: Icons.psychology_rounded,
+                  iconColor: Colors.blue.shade700,
+                  bgColor: Colors.blue.shade50,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static Widget _buildModelOption({
+    required BuildContext context,
+    required String notebookId,
+    required String title,
+    required String modelCode,
+    required String modelName,
+    required String description,
+    required IconData icon,
+    required Color iconColor,
+    required Color bgColor,
+  }) {
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context); // Đóng Bottom Sheet
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SummaryScreen(
+              notebookId: notebookId,
+              title: title,
+              model: modelCode,
+            ),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade200, width: 1),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: bgColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    modelName,
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   State<SummaryScreen> createState() => _SummaryScreenState();
@@ -23,11 +182,13 @@ class _SummaryScreenState extends State<SummaryScreen> {
   bool _isLoading = true;
   String? _summaryText;
   String? _errorMessage;
+  late String _selectedModel;
   final ApiService _apiService = ApiService();
 
   @override
   void initState() {
     super.initState();
+    _selectedModel = widget.model;
     _fetchSummary();
   }
 
@@ -46,7 +207,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
     });
 
     try {
-      final result = await _apiService.summarizeNotebook(widget.notebookId!);
+      final result = await _apiService.summarizeNotebook(widget.notebookId!, model: _selectedModel);
       if (mounted) {
         if (result["success"] == true) {
           setState(() {

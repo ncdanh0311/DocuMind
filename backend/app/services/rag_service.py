@@ -233,6 +233,7 @@ class RAGService:
         self,
         *,
         notebook_id: uuid.UUID,
+        model: str = "vit5",
         session: Session
     ) -> str:
         """
@@ -267,7 +268,10 @@ class RAGService:
             # Sử dụng timeout 180 giây vì model load lần đầu hoặc inference trên CPU có thể chậm
             response = httpx.post(
                 f"{settings.AI_SERVICE_URL}/summarize",
-                json={"text": truncated_text},
+                json={
+                    "text": truncated_text,
+                    "model_type": model
+                },
                 timeout=180.0
             )
 

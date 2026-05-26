@@ -488,14 +488,10 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
             color: const Color(0xFFE8F5E9),
             iconColor: const Color(0xFF2E7D32),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SummaryScreen(
-                    notebookId: widget.notebookId,
-                    title: "Tóm tắt: ${widget.notebookTitle}",
-                  ),
-                ),
+              SummaryScreen.showModelSelection(
+                context: context,
+                notebookId: widget.notebookId,
+                title: "Tóm tắt: ${widget.notebookTitle}",
               );
             },
           ),

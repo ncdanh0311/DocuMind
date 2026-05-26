@@ -350,11 +350,12 @@ class ApiService extends BaseApiService {
     }
   }
 
-  Future<Map<String, dynamic>> summarizeNotebook(String notebookId) async {
+  Future<Map<String, dynamic>> summarizeNotebook(String notebookId, {String model = "vit5"}) async {
     try {
       final response = await _sendWithAuthRetry(() async => http.post(
         Uri.parse("${ApiConstants.baseUrl}/notebooks/$notebookId/summarize"),
         headers: await getHeaders(isAuth: true),
+        body: jsonEncode({"model": model}),
       ));
       return handleResponse(response);
     } catch (e) {

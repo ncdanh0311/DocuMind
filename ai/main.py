@@ -36,6 +36,7 @@ class QAResponse(BaseModel):
 
 class SummarizeRequest(BaseModel):
     text: str
+    model_type: str = "vit5"
 
 class SummarizeResponse(BaseModel):
     summary: str
@@ -57,15 +58,16 @@ class RerankResponse(BaseModel):
 async def health():
     qa_phobert_loaded = qa_service.models["phobert_qa"] is not None
     qa_xlmroberta_loaded = qa_service.models["xlmroberta_qa"] is not None
-    summarization_loaded = summarization_service.model is not None
+    vit5_loaded = summarization_service.models["vit5"] is not None
+    bartpho_loaded = summarization_service.models["bartpho"] is not None
     reranker_loaded = reranker_service.model is not None
     return {
         "status": "healthy",
         "embedding_model": embedding_service.model_name,
         "qa_phobert_loaded": qa_phobert_loaded,
         "qa_xlmroberta_loaded": qa_xlmroberta_loaded,
-        "summarization_model_path": summarization_service.model_path,
-        "summarization_model_loaded": summarization_loaded,
+        "vit5_summarization_loaded": vit5_loaded,
+        "bartpho_summarization_loaded": bartpho_loaded,
         "reranker_model": reranker_service.model_name,
         "reranker_model_loaded": reranker_loaded
     }
@@ -89,7 +91,7 @@ async def qa(request: QARequest):
 @app.post("/summarize", response_model=SummarizeResponse)
 async def summarize(request: SummarizeRequest):
     try:
-        summary = summarization_service.summarize(request.text)
+        summary = summarization_service.summarize(request.text, request.model_type)
         return SummarizeResponse(summary=summary)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi khi chạy summarization inference: {str(e)}")

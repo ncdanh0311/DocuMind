@@ -89,4 +89,7 @@ class ChatResponse(BaseModel):
     sources: list[str] = []
     citations: list[CitationResponse] = []
 
+class NotebookSummarizeRequest(BaseModel):
+    model: Optional[str] = "vit5"
+
 

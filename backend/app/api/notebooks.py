@@ -39,7 +39,7 @@ def read_notebook(notebook_id: uuid.UUID, session: Session = Depends(get_session
     return notebook
 
 
-from backend.app.schemas.schemas import ChatRequest, ChatResponse
+from backend.app.schemas.schemas import ChatRequest, ChatResponse, NotebookSummarizeRequest
 from backend.app.services import rag_service
 
 @router.post("/{notebook_id}/chat", response_model=ChatResponse)
@@ -71,11 +71,12 @@ def chat_with_notebook(
 def summarize_notebook_endpoint(
     *,
     notebook_id: uuid.UUID,
+    request: NotebookSummarizeRequest = NotebookSummarizeRequest(model="vit5"),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Tóm tắt nội dung chính của sổ tay sử dụng mô hình ViT5.
+    Tóm tắt nội dung chính của sổ tay sử dụng mô hình ViT5 hoặc BARTpho.
     """
     # 1. Kiểm tra quyền sở hữu sổ tay
     notebook = session.get(Notebook, notebook_id)
@@ -85,6 +86,7 @@ def summarize_notebook_endpoint(
     # 2. Thực hiện tóm tắt sổ tay qua rag_service
     summary = rag_service.summarize_notebook(
         notebook_id=notebook_id,
+        model=request.model or "vit5",
         session=session
     )
     return {"summary": summary}
