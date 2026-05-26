@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:documind_mobile/core/api_service.dart';
 
 class SummaryScreen extends StatefulWidget {
   final String? notebookId;
@@ -20,19 +21,66 @@ class SummaryScreen extends StatefulWidget {
 
 class _SummaryScreenState extends State<SummaryScreen> {
   bool _isLoading = true;
+  String? _summaryText;
+  String? _errorMessage;
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
     super.initState();
-    // Simulate AI synthesis process
-    Timer(const Duration(milliseconds: 1500), () {
+    _fetchSummary();
+  }
+
+  Future<void> _fetchSummary() async {
+    if (widget.notebookId == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "errors.ERR_INVALID_INPUT".tr();
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await _apiService.summarizeNotebook(widget.notebookId!);
+      if (mounted) {
+        if (result["success"] == true) {
+          setState(() {
+            _summaryText = result["data"]["summary"];
+            _isLoading = false;
+          });
+        } else {
+          final errCode = result["message"] ?? "ERR_UNKNOWN";
+          setState(() {
+            _errorMessage = _getLocalizedError(errCode);
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
       if (mounted) {
         setState(() {
+          _errorMessage = "errors.ERR_CONNECTION_FAILED".tr();
           _isLoading = false;
         });
       }
-    });
+    }
   }
+
+  String _getLocalizedError(String code) {
+    if (code.contains("ERR_NO_DOCUMENTS")) {
+      return "errors.ERR_NO_DOCUMENTS".tr();
+    } else if (code.contains("ERR_AI_SERVICE_UNAVAILABLE")) {
+      return "errors.ERR_AI_SERVICE_UNAVAILABLE".tr();
+    } else {
+      return "strings.unknown_error".tr();
+    }
+  }
+
 
   Map<String, dynamic> _getGeneratedContent() {
     final isFlashcard = widget.title.toLowerCase().contains("flashcards") || 
@@ -64,15 +112,19 @@ class _SummaryScreenState extends State<SummaryScreen> {
         ]
       };
     } else {
+      final List<String> points = _summaryText != null && _summaryText!.trim().isNotEmpty
+          ? _summaryText!.split(RegExp(r'(?<=[.!?])\s+')).where((s) => s.trim().isNotEmpty).toList()
+          : [
+              "summary.summary_p1".tr(args: [subject]),
+              "summary.summary_p2".tr(),
+              "summary.summary_p3".tr(),
+              "summary.summary_p4".tr(),
+            ];
+
       return {
         "heading": "summary.summary_heading".tr(),
         "intro": "summary.summary_intro".tr(),
-        "points": [
-          "summary.summary_p1".tr(args: [subject]),
-          "summary.summary_p2".tr(),
-          "summary.summary_p3".tr(),
-          "summary.summary_p4".tr(),
-        ],
+        "points": points,
         "card2_heading": "summary.summary_keywords_heading".tr(),
         "card2_points": [
           "summary.summary_k1".tr(args: [subject]),
@@ -81,6 +133,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
         ]
       };
     }
+
   }
 
   @override
@@ -124,7 +177,9 @@ class _SummaryScreenState extends State<SummaryScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: _isLoading ? _buildLoading() : _buildContent(),
+      body: _isLoading 
+          ? _buildLoading() 
+          : (_errorMessage != null ? _buildError() : _buildContent()),
     );
   }
 
@@ -162,6 +217,62 @@ class _SummaryScreenState extends State<SummaryScreen> {
       ),
     );
   }
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              color: Colors.redAccent,
+              size: 64,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "summary.error_title".tr(),
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage ?? "",
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: _fetchSummary,
+              icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+              label: Text(
+                "summary.retry".tr(),
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildContent() {
     final content = _getGeneratedContent();

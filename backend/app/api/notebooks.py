@@ -65,3 +65,27 @@ def chat_with_notebook(
         session=session
     )
 
+
+@router.post("/{notebook_id}/summarize")
+def summarize_notebook_endpoint(
+    *,
+    notebook_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Tóm tắt nội dung chính của sổ tay sử dụng mô hình ViT5.
+    """
+    # 1. Kiểm tra quyền sở hữu sổ tay
+    notebook = session.get(Notebook, notebook_id)
+    if not notebook or notebook.user_id != current_user.user_id:
+        raise HTTPException(status_code=404, detail="ERR_NOTEBOOK_NOT_FOUND")
+
+    # 2. Thực hiện tóm tắt sổ tay qua rag_service
+    summary = rag_service.summarize_notebook(
+        notebook_id=notebook_id,
+        session=session
+    )
+    return {"summary": summary}
+
+

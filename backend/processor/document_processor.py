@@ -141,3 +141,18 @@ class DocumentProcessor:
         
         logger.info(f"✅ Đã băm thành {len(final_chunks)} mảnh (lớp 2) với overlap {self.chunk_overlap}")
         return final_chunks
+
+    @staticmethod
+    def split_text(text: str, chunk_size: int = 1000) -> List[str]:
+        """
+        Chia nhỏ văn bản thành các đoạn nhỏ mà không bị cắt đôi từ (không bị cắt chữ ở giữa).
+        Sử dụng RecursiveCharacterTextSplitter với chunk_overlap = 0.
+        """
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=0,
+            length_function=len,
+            separators=["\n\n", "\n", ". ", " ", ""]
+        )
+        return splitter.split_text(text)
+

@@ -349,6 +349,19 @@ class ApiService extends BaseApiService {
     }
   }
 
+  Future<Map<String, dynamic>> summarizeNotebook(String notebookId) async {
+    try {
+      final response = await _sendWithAuthRetry(() async => http.post(
+        Uri.parse("${ApiConstants.baseUrl}/notebooks/$notebookId/summarize"),
+        headers: await getHeaders(isAuth: true),
+      ));
+      return handleResponse(response);
+    } catch (e) {
+      return handleError(e);
+    }
+  }
+
+
 
   // --- DOCUMENT METHODS ---
 
