@@ -4,7 +4,6 @@
   DOCUMIND
 </h1>
 
-### Đồ Án Cuối Kỳ Deep Learning
 **IBM Docling • BARTpho & ViT5 • PhoBERT & XLM-RoBERTa • Sentence Transformers**
 
 ---
@@ -18,10 +17,9 @@
 
 <br/>
 
-[![Portfolio](https://img.shields.io/badge/Portfolio-667eea?style=for-the-badge&logo=vercel&logoColor=white)](#)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/tandoanminh/)
-[![Email](https://img.shields.io/badge/Email-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](#)
-[![Facebook](https://img.shields.io/badge/Facebook-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](#)
+> [!NOTE]
+> **Nguồn gốc dự án & Tham khảo:**
+> Dự án này được tham khảo và phát triển từ dự án của tác giả **Đoàn Tấn Minh Tân** ([@TanDoan1234](https://github.com/TanDoan1234)).
 
 <br/>
 
@@ -59,20 +57,6 @@
 </table>
 
 <p align="center"><i>Và nhiều tính năng khác như Cài đặt, Thông báo...</i></p>
-
----
-
-## Thông tin sinh viên
-
-<p align="center">
-  <a href="https://huit.edu.vn/">
-    <img src="./assets/Logo%20HUIT-03.png" alt="HUIT Logo" width="450">
-  </a>
-</p>
-
-| MSSV | Họ và tên | GitHub | Email |
-|:----------:|------------------|-----------------------------------------|------------------------|
-| 2001230791 | Đoàn Tấn Minh Tân | [TanDoan1234](https://github.com/TanDoan1234) | doanminhtan.dev@gmail.com |
 
 ---
 

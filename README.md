@@ -4,7 +4,6 @@
   DOCUMIND
 </h1>
 
-### Deep Learning Final Project
 **IBM Docling • BARTpho & ViT5 • PhoBERT & XLM-RoBERTa • Sentence Transformers**
 
 ---
@@ -18,10 +17,9 @@
 
 <br/>
 
-[![Portfolio](https://img.shields.io/badge/Portfolio-667eea?style=for-the-badge&logo=vercel&logoColor=white)](#)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/tandoanminh/)
-[![Email](https://img.shields.io/badge/Email-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](#)
-[![Facebook](https://img.shields.io/badge/Facebook-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](#)
+> [!NOTE]
+> **Project Attribution & Reference:**
+> This repository is referenced and developed based on the project by **Doan Tan Minh Tan** ([@TanDoan1234](https://github.com/TanDoan1234)).
 
 <br/>
 
@@ -59,20 +57,6 @@
 </table>
 
 <p align="center"><i>And more features like Settings, Notifications...</i></p>
-
----
-
-## Student information
-
-<p align="center">
-  <a href="https://huit.edu.vn/">
-    <img src="./assets/Logo%20HUIT-03.png" alt="HUIT Logo" width="450">
-  </a>
-</p>
-
-| Student ID | Full name | GitHub | Email |
-|:----------:|------------------|-----------------------------------------|------------------------|
-| 2001230791 | Doan Tan Minh Tan | [TanDoan1234](https://github.com/TanDoan1234) | doanminhtan.dev@gmail.com |
 
 ---
 
