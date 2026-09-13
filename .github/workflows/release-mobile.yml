@@ -19,8 +19,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build & Release APK
+  build-and-release:
+    name: Test, Build & Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -43,6 +43,14 @@ jobs:
         working-directory: ./mobile
         run: flutter pub get
 
+      - name: Analyze Flutter code
+        working-directory: ./mobile
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Run Flutter Tests
+        working-directory: ./mobile
+        run: flutter test
+
       - name: Build Universal Release APK
         working-directory: ./mobile
         run: flutter build apk --release
@@ -55,6 +63,13 @@ jobs:
             TAG="${{ inputs.tag_name }}"
           fi
           cp mobile/build/app/outputs/flutter-apk/app-release.apk release-artifacts/DocuMind-${TAG}.apk
+
+      - name: Upload APK to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: DocuMind-Release-APK
+          path: release-artifacts/*.apk
+          retention-days: 30
 
       - name: Create GitHub Release and Upload APK
         uses: softprops/action-gh-release@v2
