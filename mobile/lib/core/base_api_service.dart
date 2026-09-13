@@ -28,6 +28,7 @@ abstract class BaseApiService {
   }
 
   Map<String, dynamic> handleResponse(http.Response response) {
+    print("[BaseApiService] Response ${response.statusCode}: ${response.body}");
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = jsonDecode(response.body);
       String? message;
@@ -55,6 +56,7 @@ abstract class BaseApiService {
   }
 
   Map<String, dynamic> handleError(Object e) {
+    print("[BaseApiService] Connection Error: $e");
     return {"success": false, "message": "${AppStrings.connectionError}: $e"};
   }
 }

@@ -59,8 +59,10 @@ class ApiService extends BaseApiService {
   
   Future<Map<String, dynamic>> register(String email, String password, String? fullName) async {
     try {
+      final url = "${ApiConstants.baseUrl}${ApiConstants.registerEndpoint}";
+      print("[ApiService] Registering to: $url with email: $email");
       final response = await http.post(
-        Uri.parse("${ApiConstants.baseUrl}${ApiConstants.registerEndpoint}"),
+        Uri.parse(url),
         headers: await getHeaders(isAuth: false),
         body: jsonEncode({
           "email": email,
@@ -91,8 +93,10 @@ class ApiService extends BaseApiService {
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
+      final url = "${ApiConstants.baseUrl}${ApiConstants.loginEndpoint}";
+      print("[ApiService] Logging in to: $url with email: $email");
       final response = await http.post(
-        Uri.parse("${ApiConstants.baseUrl}${ApiConstants.loginEndpoint}"),
+        Uri.parse(url),
         headers: await getHeaders(isAuth: false),
         body: jsonEncode({
           "email": email,
