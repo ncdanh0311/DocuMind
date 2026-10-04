@@ -1,0 +1,163 @@
+name: DocuMind CI/CD - Full System Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - plan
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+      - plan
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (ví dụ: v1.0.0)'
+        required: false
+        default: 'v1.0.0'
+      release_name:
+        description: 'Release Title'
+        required: false
+        default: 'DocuMind Release'
+
+permissions:
+  contents: write
+
+jobs:
+  # ==========================================
+  # 1. BACKEND CI (Python / FastAPI / UV)
+  # ==========================================
+  backend-ci:
+    name: Backend CI (Syntax & Build Check)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: |
+          uv sync --frozen || uv pip install --system -r pyproject.toml || pip install -r pyproject.toml || true
+
+      - name: Syntax & Compilation Validation
+        working-directory: ./backend
+        run: |
+          python -m compileall app
+
+  # ==========================================
+  # 2. WEB CI (Next.js / TypeScript / ESLint)
+  # ==========================================
+  web-ci:
+    name: Web CI (Lint & Production Build)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: './web/package-lock.json'
+
+      - name: Install Web Dependencies
+        working-directory: ./web
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: ./web
+        run: npm run lint
+
+      - name: Build Next.js Application
+        working-directory: ./web
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
+        run: npm run build
+
+  # ==========================================
+  # 3. MOBILE CI & RELEASE (Flutter / APK)
+  # ==========================================
+  mobile-ci:
+    name: Mobile CI & APK Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get Flutter dependencies
+        working-directory: ./mobile
+        run: flutter pub get
+
+      - name: Analyze Flutter code
+        working-directory: ./mobile
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Run Flutter Tests
+        working-directory: ./mobile
+        run: flutter test
+
+      - name: Build Universal Release APK
+        working-directory: ./mobile
+        run: flutter build apk --release
+
+      - name: Prepare APK Artifacts
+        run: |
+          mkdir -p release-artifacts
+          if [ "${{ startsWith(github.ref, 'refs/tags/v') }}" = "true" ]; then
+            TAG="${{ github.ref_name }}"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag_name }}" ]; then
+            TAG="${{ inputs.tag_name }}"
+          else
+            TAG="${{ github.ref_name }}-${{ github.sha }}"
+          fi
+          cp mobile/build/app/outputs/flutter-apk/app-release.apk release-artifacts/DocuMind-${TAG}.apk
+
+      - name: Upload APK to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: DocuMind-Release-APK
+          path: release-artifacts/*.apk
+          retention-days: 14
+
+      - name: Publish GitHub Release (Only on Tags or Manual Dispatch)
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.tag_name != '')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+          name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_name || github.ref_name }}
+          files: release-artifacts/*.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
