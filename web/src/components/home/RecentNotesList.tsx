@@ -3,14 +3,15 @@
 import React from 'react';
 import Link from 'next/link';
 import { DocumentItem } from '@/types';
-import { FileText, ChevronRight, MessageSquare, Sparkles, CheckCircle2, Clock } from 'lucide-react';
+import { ChevronRight, MessageSquare, Sparkles, CheckCircle2, Clock, UploadCloud } from 'lucide-react';
 
 interface RecentNotesListProps {
   documents: DocumentItem[];
 }
 
 export default function RecentNotesList({ documents }: RecentNotesListProps) {
-  const formatTime = (dateStr: string) => {
+  const formatTime = (dateStr?: string) => {
+    if (!dateStr) return '';
     try {
       const date = new Date(dateStr);
       return date.toLocaleDateString('vi-VN', {
@@ -41,92 +42,101 @@ export default function RecentNotesList({ documents }: RecentNotesListProps) {
         <h3 className="font-outfit text-xl font-bold text-[#2D3E50]">
           Ghi chú & Tài liệu gần đây
         </h3>
-        <Link
-          href="/recent"
-          className="text-sm font-bold text-[#26A69A] hover:text-[#1E877B] flex items-center gap-1 transition-colors"
-        >
-          <span>Xem tất cả</span>
-          <ChevronRight className="w-4 h-4" />
-        </Link>
+        {documents.length > 0 && (
+          <Link
+            href="/recent"
+            className="text-sm font-bold text-[#26A69A] hover:text-[#1E877B] flex items-center gap-1 transition-colors"
+          >
+            <span>Xem tất cả</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        )}
       </div>
 
-      {/* Documents List */}
-      <div className="space-y-3">
-        {documents.map((doc) => {
-          const docId = doc.document_id || doc.id || '';
-          const badge = getFileBadge(doc.file_type);
-          const isReady = doc.status === 'ready';
+      {documents.length === 0 ? (
+        <div className="p-8 bg-white border border-[#EAEFEA] rounded-2xl text-center">
+          <div className="w-12 h-12 rounded-full bg-[#F5F8F5] text-[#26A69A] flex items-center justify-center mx-auto mb-3">
+            <UploadCloud className="w-6 h-6" />
+          </div>
+          <h4 className="font-outfit font-bold text-base text-[#2D3E50]">Chưa có tài liệu nào gần đây</h4>
+          <p className="text-xs text-[#8E9DAE] mt-1 max-w-sm mx-auto">
+            Khi bạn tải lên các tài liệu PDF, DOCX hoặc tạo ghi chú văn bản trong sổ tay, chúng sẽ xuất hiện tại đây.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {documents.map((doc) => {
+            const docId = doc.document_id || doc.id || '';
+            const badge = getFileBadge(doc.file_type);
+            const isReady = doc.status === 'ready';
 
-          return (
-            <div
-              key={docId}
-              className="bg-white hover:bg-[#F9FCFA] border border-[#EAEFEA] hover:border-[#26A69A]/30 rounded-2xl p-4 transition-all duration-200 hover:shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group"
-            >
-              {/* File Info */}
-              <div className="flex items-center gap-3.5 min-w-0">
-                {/* File Type Pill */}
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-outfit font-extrabold text-xs shrink-0 ${badge.bg} ${badge.text}`}>
-                  {badge.label}
+            return (
+              <div
+                key={docId}
+                className="bg-white hover:bg-[#F9FCFA] border border-[#EAEFEA] hover:border-[#26A69A]/30 rounded-2xl p-4 transition-all duration-200 hover:shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group"
+              >
+                {/* File Info */}
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-outfit font-extrabold text-xs shrink-0 ${badge.bg} ${badge.text}`}>
+                    {badge.label}
+                  </div>
+
+                  <div className="min-w-0">
+                    <h4 className="font-inter font-bold text-sm text-[#2D3E50] truncate group-hover:text-[#26A69A] transition-colors">
+                      {doc.file_name || doc.title}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-[#8E9DAE]">
+                      <span className="font-medium text-[#26A69A]/90">
+                        {doc.notebook_title || 'Tài liệu nghiên cứu'}
+                      </span>
+                      <span>•</span>
+                      <span>{formatTime(doc.uploaded_at)}</span>
+                      {doc.page_count && (
+                        <>
+                          <span>•</span>
+                          <span>{doc.page_count} trang</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Details */}
-                <div className="min-w-0">
-                  <h4 className="font-inter font-bold text-sm text-[#2D3E50] truncate group-hover:text-[#26A69A] transition-colors">
-                    {doc.file_name || doc.title}
-                  </h4>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-[#8E9DAE]">
-                    <span className="font-medium text-[#26A69A]/90">
-                      {doc.notebook_title || 'Tài liệu nghiên cứu'}
-                    </span>
-                    <span>•</span>
-                    <span>{formatTime(doc.uploaded_at)}</span>
-                    {doc.page_count && (
-                      <>
-                        <span>•</span>
-                        <span>{doc.page_count} trang</span>
-                      </>
-                    )}
+                {/* Status and Action Buttons */}
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0">
+                  {isReady ? (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E6F7F1] text-[#26A69A] text-xs font-semibold">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Sẵn sàng</span>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF8E1] text-[#F57F17] text-xs font-semibold">
+                      <Clock className="w-3.5 h-3.5 animate-spin" />
+                      <span>Đang phân tích</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-1.5">
+                    <Link
+                      href={`/ai-chat?notebookId=${doc.notebook_id}`}
+                      className="p-2 rounded-xl bg-[#F5F7F7] hover:bg-[#E6F7F1] text-[#8E9DAE] hover:text-[#26A69A] transition-all cursor-pointer"
+                      title="Hỏi đáp AI trên tài liệu này"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                    </Link>
+                    <Link
+                      href={`/summary?notebookId=${doc.notebook_id}`}
+                      className="p-2 rounded-xl bg-[#F5F7F7] hover:bg-[#E6F7F1] text-[#8E9DAE] hover:text-[#26A69A] transition-all cursor-pointer"
+                      title="Tóm tắt tài liệu"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                    </Link>
                   </div>
                 </div>
               </div>
-
-              {/* Status and Action Buttons */}
-              <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0">
-                {/* Status Badge */}
-                {isReady ? (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E6F7F1] text-[#26A69A] text-xs font-semibold">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Sẵn sàng</span>
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF8E1] text-[#F57F17] text-xs font-semibold animate-pulse">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Đang phân tích</span>
-                  </div>
-                )}
-
-                {/* Quick Actions */}
-                <div className="flex items-center gap-1.5">
-                  <Link
-                    href={`/ai-chat?notebookId=${doc.notebook_id}&docId=${docId}`}
-                    className="p-2 rounded-xl text-[#8E9DAE] hover:text-[#26A69A] hover:bg-[#E6F7F1] transition-colors"
-                    title="Chat với tài liệu này"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                  </Link>
-                  <Link
-                    href={`/summary?notebookId=${doc.notebook_id}`}
-                    className="p-2 rounded-xl text-[#8E9DAE] hover:text-[#26A69A] hover:bg-[#E6F7F1] transition-colors"
-                    title="Tóm tắt tài liệu"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

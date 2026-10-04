@@ -1,40 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { apiService, MOCK_NOTEBOOKS } from '@/lib/api';
-import { Notebook, NotebookCategory } from '@/types';
-import CreateNotebookModal from '@/components/notebooks/CreateNotebookModal';
-import { Plus, Search, Trash2, BookOpen, Layers, ArrowRight, Loader2 } from 'lucide-react';
+import { apiService } from '@/lib/api';
+import { useNotebooks } from '@/contexts/NotebookContext';
+import { Plus, Search, Trash2, BookOpen, Layers, ArrowRight } from 'lucide-react';
 
 export default function NotebooksPage() {
-  const [notebooks, setNotebooks] = useState<Notebook[]>(MOCK_NOTEBOOKS);
-  const [filteredNotebooks, setFilteredNotebooks] = useState<Notebook[]>(MOCK_NOTEBOOKS);
+  const { notebooks, loading, refreshNotebooks, openCreateModal } = useNotebooks();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  const fetchNotebooks = async () => {
-    setLoading(true);
-    try {
-      const data = await apiService.getNotebooks();
-      if (data && data.length > 0) {
-        setNotebooks(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch notebooks:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotebooks();
-  }, []);
-
-  useEffect(() => {
+  const filteredNotebooks = useMemo(() => {
     let result = notebooks;
     if (selectedCategory !== 'all') {
       result = result.filter((nb) => nb.category === selectedCategory);
@@ -43,8 +21,8 @@ export default function NotebooksPage() {
       const q = searchQuery.toLowerCase();
       result = result.filter((nb) => nb.title.toLowerCase().includes(q));
     }
-    setFilteredNotebooks(result);
-  }, [selectedCategory, searchQuery, notebooks]);
+    return result;
+  }, [notebooks, selectedCategory, searchQuery]);
 
   const handleDelete = async (e: React.MouseEvent, id: string, title: string) => {
     e.stopPropagation();
@@ -53,9 +31,10 @@ export default function NotebooksPage() {
 
     try {
       await apiService.deleteNotebook(id);
-      setNotebooks((prev) => prev.filter((nb) => (nb.notebook_id || nb.id) !== id));
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Không thể xóa vở bài tập');
+      await refreshNotebooks();
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { detail?: string } } };
+      alert(axiosErr.response?.data?.detail || 'Không thể xóa vở bài tập');
     }
   };
 
@@ -81,7 +60,7 @@ export default function NotebooksPage() {
         </div>
 
         <button
-          onClick={() => setIsCreateOpen(true)}
+          onClick={openCreateModal}
           className="bg-[#26A69A] hover:bg-[#1E877B] text-white font-bold py-2.5 px-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 text-xs cursor-pointer"
         >
           <Plus className="w-4 h-4" />
@@ -100,7 +79,7 @@ export default function NotebooksPage() {
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
                 selectedCategory === cat.key
                   ? 'bg-[#26A69A] text-white shadow-xs'
-                  : 'text-[#8E9DAE] hover:text-[#2D3E50] hover:bg-[#F5F8F5]'
+                  : 'bg-[#F7FAF7] text-[#8E9DAE] hover:text-[#2D3E50]'
               }`}
             >
               {cat.label}
@@ -109,101 +88,97 @@ export default function NotebooksPage() {
         </div>
 
         {/* Search Input */}
-        <div className="relative flex items-center bg-[#F5F7F7] rounded-xl px-3 h-10 md:w-72">
+        <div className="relative flex items-center bg-[#F7FAF7] rounded-xl px-3 h-10 w-full md:w-72 border border-transparent focus-within:border-[#26A69A] focus-within:bg-white transition-all">
           <Search className="w-4 h-4 text-[#8E9DAE] shrink-0" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm kiếm vở bài tập..."
-            className="w-full bg-transparent border-none outline-hidden px-2.5 text-xs text-[#2D3E50] placeholder-[#8E9DAE]"
+            className="w-full bg-transparent border-none outline-hidden px-2 text-xs text-[#2D3E50] placeholder-[#8E9DAE]"
           />
         </div>
       </div>
 
-      {/* Grid of Notebooks */}
+      {/* Notebook Cards Grid */}
       {loading ? (
-        <div className="py-20 flex flex-col items-center justify-center text-[#8E9DAE] gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-[#26A69A]" />
+        <div className="py-20 text-center text-[#8E9DAE]">
+          <BookOpen className="w-8 h-8 animate-bounce mx-auto mb-2 text-[#26A69A]" />
           <p className="text-sm font-medium">Đang tải danh sách vở bài tập...</p>
         </div>
       ) : filteredNotebooks.length === 0 ? (
-        <div className="py-20 flex flex-col items-center justify-center text-center bg-white rounded-3xl border border-[#EAEFEA] p-8">
-          <div className="w-16 h-16 rounded-2xl bg-[#E6F7F1] flex items-center justify-center text-[#26A69A] mb-3">
+        <div className="py-16 bg-white border border-[#EAEFEA] rounded-3xl text-center p-8">
+          <div className="w-16 h-16 rounded-full bg-[#E6F7F1] text-[#26A69A] flex items-center justify-center mx-auto mb-4">
             <BookOpen className="w-8 h-8" />
           </div>
-          <h3 className="font-outfit font-bold text-lg text-[#2D3E50]">Chưa có vở bài tập nào</h3>
-          <p className="text-xs text-[#8E9DAE] max-w-sm mt-1 mb-5">
-            Bắt đầu tổ chức tài liệu học tập của bạn bằng cách tạo vở bài tập đầu tiên
+          <h3 className="font-outfit font-bold text-lg text-[#2D3E50]">
+            Không tìm thấy vở bài tập nào
+          </h3>
+          <p className="text-xs text-[#8E9DAE] mt-1.5 max-w-sm mx-auto">
+            {searchQuery
+              ? `Không có kết quả nào phù hợp với từ khóa "${searchQuery}". Hãy thử tìm kiếm khác.`
+              : 'Hãy bắt đầu tạo vở bài tập mới để tải lên tài liệu và sử dụng AI nghiên cứu.'}
           </p>
           <button
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-[#26A69A] hover:bg-[#1E877B] text-white text-xs font-bold py-2.5 px-5 rounded-xl transition-all cursor-pointer"
+            onClick={openCreateModal}
+            className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#26A69A] text-white text-xs font-bold shadow-md hover:bg-[#1E877B] transition-all cursor-pointer"
           >
-            Tạo vở bài tập ngay
+            <Plus className="w-4 h-4" />
+            <span>Tạo vở bài tập ngay</span>
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredNotebooks.map((nb) => {
             const nbId = nb.notebook_id || nb.id || '';
             return (
               <Link
                 key={nbId}
                 href={`/notebooks/${nbId}`}
-                className="group bg-white hover:bg-[#F9FCFA] border border-[#EAEFEA] hover:border-[#26A69A]/40 rounded-3xl p-5 transition-all duration-300 hover:shadow-md cursor-pointer flex flex-col justify-between min-h-[170px]"
+                className="group relative bg-white border border-[#EAEFEA] hover:border-[#26A69A]/40 rounded-3xl p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer flex flex-col justify-between"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3.5">
-                    <div className="relative w-14 h-14 shrink-0 transition-transform group-hover:scale-105">
+                <div>
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="relative w-14 h-14 shrink-0 p-2 rounded-2xl bg-[#F7FAF7] border border-[#EAEFEA]">
                       <Image
                         src={nb.icon || '/assets/icons/categories/icon-category-study.png'}
                         alt={nb.title}
                         fill
-                        className="object-contain"
+                        className="object-contain p-2"
                       />
                     </div>
-                    <div>
-                      <h4 className="font-outfit font-bold text-base text-[#2D3E50] group-hover:text-[#26A69A] transition-colors line-clamp-1">
-                        {nb.title}
-                      </h4>
-                      <span className="text-xs text-[#8E9DAE] font-medium mt-0.5 block">
-                        {nb.count ?? 0} tài liệu
-                      </span>
-                    </div>
+
+                    <button
+                      onClick={(e) => handleDelete(e, nbId, nb.title)}
+                      className="p-2 rounded-xl text-[#B0BEC5] hover:text-[#EF5350] hover:bg-[#FFEBEE] transition-colors cursor-pointer"
+                      title="Xóa vở bài tập"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
 
-                  {/* Delete button */}
-                  <button
-                    onClick={(e) => handleDelete(e, nbId, nb.title)}
-                    className="p-2 rounded-xl text-gray-400 hover:text-[#E53935] hover:bg-[#FFEBEE] transition-colors cursor-pointer"
-                    title="Xóa vở bài tập"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <h3 className="font-outfit font-bold text-lg text-[#2D3E50] group-hover:text-[#26A69A] transition-colors mb-2 line-clamp-1">
+                    {nb.title}
+                  </h3>
+                  <div className="flex items-center gap-3 text-xs text-[#8E9DAE]">
+                    <span className="flex items-center gap-1">
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>{nb.count ?? 0} tài liệu</span>
+                    </span>
+                    <span>•</span>
+                    <span className="capitalize">{nb.category || 'Học tập'}</span>
+                  </div>
                 </div>
 
-                <div className="pt-4 border-t border-[#F5F8F5] flex items-center justify-between mt-4">
-                  <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-[#E6F7F1] text-[#26A69A]">
-                    {nb.category || 'Môn học'}
-                  </span>
-                  <div className="text-xs font-bold text-[#26A69A] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                    <span>Mở sổ tay</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </div>
+                <div className="mt-6 pt-4 border-t border-[#F5F8F5] flex items-center justify-between text-xs font-bold text-[#26A69A]">
+                  <span>Mở không gian học tập</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>
             );
           })}
         </div>
       )}
-
-      {/* Modal */}
-      <CreateNotebookModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onCreated={fetchNotebooks}
-      />
     </div>
   );
 }

@@ -5,30 +5,24 @@ import HomeBanner from '@/components/home/HomeBanner';
 import QuickActions from '@/components/home/QuickActions';
 import NotebookGrid from '@/components/home/NotebookGrid';
 import RecentNotesList from '@/components/home/RecentNotesList';
-import { apiService, MOCK_NOTEBOOKS, MOCK_RECENT_DOCUMENTS } from '@/lib/api';
-import { Notebook, DocumentItem } from '@/types';
+import { apiService } from '@/lib/api';
+import { DocumentItem } from '@/types';
+import { useNotebooks } from '@/contexts/NotebookContext';
 
 export default function DashboardHomePage() {
-  const [notebooks, setNotebooks] = useState<Notebook[]>(MOCK_NOTEBOOKS);
-  const [recentDocs, setRecentDocs] = useState<DocumentItem[]>(MOCK_RECENT_DOCUMENTS);
-  const [loading, setLoading] = useState(true);
+  const { notebooks } = useNotebooks();
+  const [recentDocs, setRecentDocs] = useState<DocumentItem[]>([]);
 
   useEffect(() => {
-    async function loadData() {
+    async function loadRecentDocs() {
       try {
-        const [nbData, docsData] = await Promise.all([
-          apiService.getNotebooks(),
-          apiService.getRecentDocuments(),
-        ]);
-        if (nbData && nbData.length > 0) setNotebooks(nbData);
-        if (docsData && docsData.length > 0) setRecentDocs(docsData);
+        const docsData = await apiService.getRecentDocuments();
+        setRecentDocs(docsData);
       } catch (err) {
-        console.error('Error loading dashboard data:', err);
-      } finally {
-        setLoading(false);
+        console.error('Error loading recent documents:', err);
       }
     }
-    loadData();
+    loadRecentDocs();
   }, []);
 
   return (

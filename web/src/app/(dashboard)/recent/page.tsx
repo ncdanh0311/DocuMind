@@ -1,25 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { apiService, MOCK_RECENT_DOCUMENTS } from '@/lib/api';
+import axios from 'axios';
+import { apiService } from '@/lib/api';
 import { DocumentItem } from '@/types';
 import { 
   FileText, 
   Search, 
   MessageSquare, 
-  Sparkles, 
   Trash2, 
   CheckCircle2, 
   Clock, 
   AlertCircle,
-  Loader2,
-  Filter
+  Loader2
 } from 'lucide-react';
 
 export default function RecentDocumentsPage() {
-  const [documents, setDocuments] = useState<DocumentItem[]>(MOCK_RECENT_DOCUMENTS);
-  const [filteredDocs, setFilteredDocs] = useState<DocumentItem[]>(MOCK_RECENT_DOCUMENTS);
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'ready' | 'processing'>('all');
   const [loading, setLoading] = useState(true);
@@ -28,7 +26,7 @@ export default function RecentDocumentsPage() {
     setLoading(true);
     try {
       const data = await apiService.getRecentDocuments();
-      if (data && data.length > 0) {
+      if (data) {
         setDocuments(data);
       }
     } catch (err) {
@@ -42,7 +40,7 @@ export default function RecentDocumentsPage() {
     fetchDocuments();
   }, []);
 
-  useEffect(() => {
+  const filteredDocs = useMemo(() => {
     let result = documents;
     if (statusFilter !== 'all') {
       result = result.filter((d) => d.status === statusFilter);
@@ -51,7 +49,7 @@ export default function RecentDocumentsPage() {
       const q = searchQuery.toLowerCase();
       result = result.filter((d) => (d.file_name || d.title || '').toLowerCase().includes(q));
     }
-    setFilteredDocs(result);
+    return result;
   }, [statusFilter, searchQuery, documents]);
 
   const handleDelete = async (docId: string, title: string) => {
@@ -59,8 +57,12 @@ export default function RecentDocumentsPage() {
     try {
       await apiService.deleteDocument(docId);
       setDocuments((prev) => prev.filter((d) => (d.document_id || d.id) !== docId));
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Không thể xóa tài liệu');
+    } catch (err: unknown) {
+      let msg = 'Không thể xóa tài liệu';
+      if (axios.isAxiosError(err) && err.response?.data?.detail) {
+        msg = err.response.data.detail;
+      }
+      alert(msg);
     }
   };
 

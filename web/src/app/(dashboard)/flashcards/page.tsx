@@ -1,16 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
 import { 
   Sparkles, 
   RotateCw, 
   ArrowLeft, 
   ArrowRight, 
-  CheckCircle2, 
-  HelpCircle,
-  Layers,
-  BookOpen
+  CheckCircle2
 } from 'lucide-react';
 
 interface Flashcard {

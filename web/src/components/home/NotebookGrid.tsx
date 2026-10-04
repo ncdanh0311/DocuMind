@@ -4,13 +4,16 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Notebook } from '@/types';
-import { ChevronRight, Plus } from 'lucide-react';
+import { ChevronRight, Plus, BookOpen } from 'lucide-react';
+import { useNotebooks } from '@/contexts/NotebookContext';
 
 interface NotebookGridProps {
   notebooks: Notebook[];
 }
 
 export default function NotebookGrid({ notebooks }: NotebookGridProps) {
+  const { openCreateModal } = useNotebooks();
+
   const getCategoryColor = (category?: string) => {
     switch (category) {
       case 'study':
@@ -33,13 +36,15 @@ export default function NotebookGrid({ notebooks }: NotebookGridProps) {
         <h3 className="font-outfit text-xl font-bold text-[#2D3E50]">
           Vở bài tập gần đây
         </h3>
-        <Link
-          href="/notebooks"
-          className="text-sm font-bold text-[#26A69A] hover:text-[#1E877B] flex items-center gap-1 transition-colors"
-        >
-          <span>Xem tất cả</span>
-          <ChevronRight className="w-4 h-4" />
-        </Link>
+        {notebooks.length > 0 && (
+          <Link
+            href="/notebooks"
+            className="text-sm font-bold text-[#26A69A] hover:text-[#1E877B] flex items-center gap-1 transition-colors"
+          >
+            <span>Xem tất cả</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        )}
       </div>
 
       {/* Grid of Notebooks */}
@@ -81,19 +86,32 @@ export default function NotebookGrid({ notebooks }: NotebookGridProps) {
         })}
 
         {/* Create New Card */}
-        <Link
-          href="/notebooks"
-          className="border-2 border-dashed border-[#D2EFE6] hover:border-[#26A69A] hover:bg-[#E6F7F1]/30 rounded-2xl p-4 transition-all duration-300 flex items-center justify-center gap-3 cursor-pointer group"
+        <button
+          type="button"
+          onClick={openCreateModal}
+          className="border-2 border-dashed border-[#D2EFE6] hover:border-[#26A69A] hover:bg-[#E6F7F1]/30 rounded-2xl p-4 transition-all duration-300 flex items-center justify-center gap-3 cursor-pointer group text-left w-full"
         >
-          <div className="w-10 h-10 rounded-xl bg-[#E6F7F1] text-[#26A69A] flex items-center justify-center group-hover:scale-110 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-[#E6F7F1] text-[#26A69A] flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
             <Plus className="w-5 h-5" />
           </div>
-          <div className="text-left">
+          <div>
             <div className="font-outfit font-bold text-sm text-[#2D3E50] group-hover:text-[#26A69A]">Thêm vở bài tập</div>
             <div className="text-xs text-[#8E9DAE]">Tạo chủ đề mới</div>
           </div>
-        </Link>
+        </button>
       </div>
+
+      {notebooks.length === 0 && (
+        <div className="mt-4 p-8 bg-white border border-[#EAEFEA] rounded-2xl text-center">
+          <div className="w-12 h-12 rounded-full bg-[#E6F7F1] text-[#26A69A] flex items-center justify-center mx-auto mb-3">
+            <BookOpen className="w-6 h-6" />
+          </div>
+          <h4 className="font-outfit font-bold text-base text-[#2D3E50]">Chưa có vở bài tập nào</h4>
+          <p className="text-xs text-[#8E9DAE] mt-1 max-w-sm mx-auto">
+            Hãy bấm vào nút &quot;Thêm vở bài tập&quot; ở trên để bắt đầu tổ chức và nghiên cứu tài liệu học tập của bạn.
+          </p>
+        </div>
+      )}
     </section>
   );
 }

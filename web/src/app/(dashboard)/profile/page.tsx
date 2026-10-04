@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import axios from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiService } from '@/lib/api';
 import { 
   User, 
-  Mail, 
-  Lock, 
   LogOut, 
   Check, 
   AlertCircle, 
@@ -31,6 +30,12 @@ export default function ProfilePage() {
   const [securitySuccess, setSecuritySuccess] = useState(false);
   const [securityError, setSecurityError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (user?.full_name) {
+      setFullName(user.full_name);
+    }
+  }, [user?.full_name]);
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim()) return;
@@ -44,8 +49,12 @@ export default function ProfilePage() {
       await refreshUser();
       setProfileSuccess(true);
       setTimeout(() => setProfileSuccess(false), 3000);
-    } catch (err: any) {
-      setProfileError(err.response?.data?.detail || 'Không thể cập nhật hồ sơ');
+    } catch (err: unknown) {
+      let msg = 'Không thể cập nhật hồ sơ';
+      if (axios.isAxiosError(err) && err.response?.data?.detail) {
+        msg = err.response.data.detail;
+      }
+      setProfileError(msg);
     } finally {
       setProfileLoading(false);
     }
@@ -71,8 +80,12 @@ export default function ProfilePage() {
       setNewPassword('');
       setConfirmPassword('');
       setTimeout(() => setSecuritySuccess(false), 3000);
-    } catch (err: any) {
-      setSecurityError(err.response?.data?.detail || 'Mật khẩu cũ không chính xác');
+    } catch (err: unknown) {
+      let msg = 'Mật khẩu cũ không chính xác';
+      if (axios.isAxiosError(err) && err.response?.data?.detail) {
+        msg = err.response.data.detail;
+      }
+      setSecurityError(msg);
     } finally {
       setSecurityLoading(false);
     }

@@ -3,26 +3,23 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { apiService, MOCK_NOTEBOOKS } from '@/lib/api';
-import { Notebook } from '@/types';
+import axios from 'axios';
+import { apiService } from '@/lib/api';
+import { useNotebooks } from '@/contexts/NotebookContext';
 import ReactMarkdown from 'react-markdown';
 import { 
   Sparkles, 
-  BookOpen, 
   Loader2, 
   Copy, 
   Check, 
-  FileText, 
-  RefreshCw,
-  Layers,
-  ArrowRight
+  FileText
 } from 'lucide-react';
 
 function SummaryContent() {
   const searchParams = useSearchParams();
   const initialNotebookId = searchParams.get('notebookId') || '';
 
-  const [notebooks, setNotebooks] = useState<Notebook[]>(MOCK_NOTEBOOKS);
+  const { notebooks, isLoading: notebooksLoading } = useNotebooks();
   const [selectedNotebookId, setSelectedNotebookId] = useState<string>(initialNotebookId);
   const [selectedModel, setSelectedModel] = useState<'vit5' | 'bartpho'>('vit5');
   const [summary, setSummary] = useState<string | null>(null);
@@ -31,21 +28,10 @@ function SummaryContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadNotebooks() {
-      try {
-        const data = await apiService.getNotebooks();
-        if (data && data.length > 0) {
-          setNotebooks(data);
-          if (!selectedNotebookId) {
-            setSelectedNotebookId(data[0].notebook_id || data[0].id || '');
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load notebooks:', err);
-      }
+    if (!selectedNotebookId && notebooks.length > 0) {
+      setSelectedNotebookId(notebooks[0].notebook_id || notebooks[0].id || '');
     }
-    loadNotebooks();
-  }, []);
+  }, [notebooks, selectedNotebookId]);
 
   const handleSummarize = async () => {
     if (!selectedNotebookId || loading) return;
@@ -55,12 +41,13 @@ function SummaryContent() {
     try {
       const res = await apiService.summarizeNotebook(selectedNotebookId, selectedModel);
       setSummary(res.summary || 'Không tìm thấy nội dung tóm tắt.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Summary error:', err);
-      setError(
-        err.response?.data?.detail ||
-          'Không thể thực hiện tóm tắt. Vui lòng đảm bảo bạn đã tải lên tài liệu trong vở bài tập này và dịch vụ AI đang hoạt động.'
-      );
+      let detailMsg = 'Không thể thực hiện tóm tắt. Vui lòng đảm bảo bạn đã tải lên tài liệu trong vở bài tập này và dịch vụ AI đang hoạt động.';
+      if (axios.isAxiosError(err) && err.response?.data?.detail) {
+        detailMsg = err.response.data.detail;
+      }
+      setError(detailMsg);
     } finally {
       setLoading(false);
     }
@@ -101,20 +88,31 @@ function SummaryContent() {
           <label className="block text-xs font-bold text-[#2D3E50] uppercase tracking-wider mb-2">
             Chọn vở bài tập nguồn
           </label>
-          <select
-            value={selectedNotebookId}
-            onChange={(e) => setSelectedNotebookId(e.target.value)}
-            className="w-full bg-[#F5F7F7] hover:bg-[#EAEFEA] text-sm font-semibold text-[#2D3E50] py-3 px-4 rounded-2xl appearance-none outline-hidden border border-transparent focus:border-[#26A69A] transition-all cursor-pointer"
-          >
-            {notebooks.map((nb) => {
-              const id = nb.notebook_id || nb.id || '';
-              return (
-                <option key={id} value={id}>
-                  {nb.title} ({nb.count ?? 0} tài liệu)
-                </option>
-              );
-            })}
-          </select>
+          {notebooksLoading ? (
+            <div className="w-full bg-[#F5F7F7] text-xs text-[#8E9DAE] py-3.5 px-4 rounded-2xl flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-[#26A69A]" />
+              <span>Đang tải danh sách vở bài tập...</span>
+            </div>
+          ) : notebooks.length === 0 ? (
+            <div className="w-full bg-[#F5F7F7] text-xs text-[#8E9DAE] py-3.5 px-4 rounded-2xl">
+              Chưa có vở bài tập nào. Hãy tạo một vở mới trước!
+            </div>
+          ) : (
+            <select
+              value={selectedNotebookId}
+              onChange={(e) => setSelectedNotebookId(e.target.value)}
+              className="w-full bg-[#F5F7F7] hover:bg-[#EAEFEA] text-sm font-semibold text-[#2D3E50] py-3 px-4 rounded-2xl appearance-none outline-hidden border border-transparent focus:border-[#26A69A] transition-all cursor-pointer"
+            >
+              {notebooks.map((nb) => {
+                const id = nb.notebook_id || nb.id || '';
+                return (
+                  <option key={id} value={id}>
+                    {nb.title} ({nb.count ?? 0} tài liệu)
+                  </option>
+                );
+              })}
+            </select>
+          )}
         </div>
 
         {/* Model Selector */}
@@ -136,7 +134,7 @@ function SummaryContent() {
         <div className="md:col-span-3">
           <button
             onClick={handleSummarize}
-            disabled={loading || !selectedNotebookId}
+            disabled={loading || !selectedNotebookId || notebooks.length === 0}
             className="w-full bg-[#26A69A] hover:bg-[#1E877B] text-white font-bold h-12 rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 text-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
@@ -214,7 +212,7 @@ function SummaryContent() {
             Sẵn sàng tóm tắt kiến thức
           </h4>
           <p className="text-xs text-[#8E9DAE] max-w-md mx-auto mt-1">
-            Chọn vở bài tập và bấm nút "Bắt đầu tóm tắt" để nhận bản tóm tắt súc tích, cô đọng nhất từ các tài liệu của bạn.
+            Chọn vở bài tập và bấm nút &quot;Bắt đầu tóm tắt&quot; để nhận bản tóm tắt súc tích, cô đọng nhất từ các tài liệu của bạn.
           </p>
         </div>
       )}

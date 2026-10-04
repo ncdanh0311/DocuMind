@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import axios from 'axios';
 import { apiService } from '@/lib/api';
 import { X, Plus, Loader2, Check } from 'lucide-react';
 import { NotebookCategory } from '@/types';
@@ -77,9 +78,13 @@ export default function CreateNotebookModal({ isOpen, onClose, onCreated }: Crea
       setTitle('');
       onCreated();
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating notebook:', err);
-      setError(err.response?.data?.detail || 'Không thể tạo vở bài tập. Vui lòng thử lại.');
+      let msg = 'Không thể tạo vở bài tập. Vui lòng thử lại.';
+      if (axios.isAxiosError(err) && err.response?.data?.detail) {
+        msg = err.response.data.detail;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }

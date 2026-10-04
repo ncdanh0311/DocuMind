@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { apiService, MOCK_NOTEBOOKS } from '@/lib/api';
+import { apiService } from '@/lib/api';
+import { useNotebooks } from '@/contexts/NotebookContext';
 import { Notebook, DocumentItem } from '@/types';
 import { 
   ArrowLeft, 
@@ -17,13 +18,16 @@ import {
   Clock, 
   AlertCircle,
   Loader2,
-  ChevronRight
+  ChevronRight,
+  PlusCircle,
+  X
 } from 'lucide-react';
 
 export default function NotebookDetailPage() {
   const params = useParams();
   const router = useRouter();
   const notebookId = params.id as string;
+  const { refreshNotebooks } = useNotebooks();
 
   const [notebook, setNotebook] = useState<Notebook | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -33,35 +37,33 @@ export default function NotebookDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Text Note Modal State
+  const [isTextModalOpen, setIsTextModalOpen] = useState(false);
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+  const [noteLoading, setNoteLoading] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
+
   // Load Notebook & Documents
-  const loadData = async (showLoading = true) => {
+  const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const [nbData, docsData] = await Promise.allSettled([
+      const [nbData, docsData] = await Promise.all([
         apiService.getNotebook(notebookId),
         apiService.getDocuments(notebookId),
       ]);
-
-      if (nbData.status === 'fulfilled') {
-        setNotebook(nbData.value);
-      } else {
-        const fallback = MOCK_NOTEBOOKS.find((n) => n.id === notebookId || n.notebook_id === notebookId);
-        if (fallback) setNotebook(fallback);
-      }
-
-      if (docsData.status === 'fulfilled') {
-        setDocuments(docsData.value);
-      }
-    } catch (err) {
+      setNotebook(nbData);
+      setDocuments(docsData);
+    } catch (err: unknown) {
       console.error('Failed to load notebook detail:', err);
     } finally {
       if (showLoading) setLoading(false);
     }
-  };
+  }, [notebookId]);
 
   useEffect(() => {
     loadData(true);
-  }, [notebookId]);
+  }, [loadData]);
 
   // Polling logic matching mobile's _checkProcessingStatus: poll every 3 seconds if any doc is processing
   useEffect(() => {
@@ -75,7 +77,7 @@ export default function NotebookDetailPage() {
     }, 3000);
 
     return () => clearInterval(timer);
-  }, [documents]);
+  }, [documents, loadData]);
 
   // Handle File Upload
   const handleFileUpload = async (files: FileList | null) => {
@@ -91,13 +93,41 @@ export default function NotebookDetailPage() {
         setUploadProgress(percent);
       });
       await loadData(false);
-    } catch (err: any) {
+      await refreshNotebooks();
+    } catch (err: unknown) {
       console.error('Upload failed:', err);
-      setError(err.response?.data?.detail || 'Không thể tải lên tài liệu. Vui lòng kiểm tra lại định dạng file.');
+      const axiosErr = err as { response?: { data?: { detail?: string } } };
+      setError(axiosErr.response?.data?.detail || 'Không thể tải lên tài liệu. Vui lòng kiểm tra lại định dạng file.');
     } finally {
       setUploading(false);
       setUploadProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle Create Text Document
+  const handleCreateTextDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noteTitle.trim() || !noteContent.trim()) {
+      setNoteError('Vui lòng nhập tiêu đề và nội dung ghi chú.');
+      return;
+    }
+
+    setNoteLoading(true);
+    setNoteError(null);
+    try {
+      await apiService.createDocumentFromText(notebookId, noteTitle.trim(), noteContent.trim());
+      setNoteTitle('');
+      setNoteContent('');
+      setIsTextModalOpen(false);
+      await loadData(false);
+      await refreshNotebooks();
+    } catch (err: unknown) {
+      console.error('Failed to create text note:', err);
+      const axiosErr = err as { response?: { data?: { detail?: string } } };
+      setNoteError(axiosErr.response?.data?.detail || 'Không thể tạo ghi chú văn bản.');
+    } finally {
+      setNoteLoading(false);
     }
   };
 
@@ -107,19 +137,23 @@ export default function NotebookDetailPage() {
     try {
       await apiService.deleteDocument(docId);
       setDocuments((prev) => prev.filter((d) => (d.document_id || d.id) !== docId));
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Không thể xóa tài liệu');
+      await refreshNotebooks();
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { detail?: string } } };
+      alert(axiosErr.response?.data?.detail || 'Không thể xóa tài liệu');
     }
   };
 
   // Handle Delete Notebook
   const handleDeleteNotebook = async () => {
-    if (!confirm(`Bạn có chắc muốn xóa toàn bộ vở bài tập này không?`)) return;
+    if (!confirm('Bạn có chắc muốn xóa toàn bộ vở bài tập này không?')) return;
     try {
       await apiService.deleteNotebook(notebookId);
+      await refreshNotebooks();
       router.push('/notebooks');
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Không thể xóa vở bài tập');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { detail?: string } } };
+      alert(axiosErr.response?.data?.detail || 'Không thể xóa vở bài tập');
     }
   };
 
@@ -129,6 +163,8 @@ export default function NotebookDetailPage() {
         return { bg: 'bg-[#FFEBEE]', text: 'text-[#E53935]', label: 'PDF' };
       case 'docx':
         return { bg: 'bg-[#E3F2FD]', text: 'text-[#1E88E5]', label: 'DOCX' };
+      case 'txt':
+        return { bg: 'bg-[#FFF8E1]', text: 'text-[#F57F17]', label: 'TXT' };
       default:
         return { bg: 'bg-[#EDE7F6]', text: 'text-[#5E35B1]', label: (fileType || 'FILE').toUpperCase() };
     }
@@ -162,35 +198,35 @@ export default function NotebookDetailPage() {
               <h2 className="font-outfit text-2xl lg:text-3xl font-extrabold text-[#2D3E50]">
                 {notebook?.title || 'Đang tải...'}
               </h2>
-              <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-[#E6F7F1] text-[#26A69A]">
-                {notebook?.category || 'Sổ tay'}
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#E6F7F1] text-[#26A69A] capitalize">
+                {notebook?.category || 'Chủ đề'}
               </span>
             </div>
             <p className="text-xs text-[#8E9DAE] font-medium mt-1">
-              {documents.length} tài liệu trong sổ tay này
+              {documents.length} tài liệu nghiên cứu • Tự động phân tích bằng IBM Docling
             </p>
           </div>
         </div>
 
-        {/* Quick Action Buttons */}
+        {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
           <Link
             href={`/ai-chat?notebookId=${notebookId}`}
-            className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-[#E6F7F1] hover:bg-[#26A69A] text-[#26A69A] hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+            className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-[#E6F7F1] hover:bg-[#D2EFE6] text-[#26A69A] text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
           >
             <MessageSquare className="w-4 h-4" />
             <span>Chat với AI</span>
           </Link>
           <Link
             href={`/summary?notebookId=${notebookId}`}
-            className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-[#D6F0FF] hover:bg-[#0088CC] text-[#0088CC] hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+            className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-[#FFF8E1] hover:bg-[#FFE082] text-[#B78103] text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
           >
             <Sparkles className="w-4 h-4" />
             <span>Tóm tắt</span>
           </Link>
           <button
             onClick={handleDeleteNotebook}
-            className="p-2.5 rounded-xl text-gray-400 hover:text-[#E53935] hover:bg-[#FFEBEE] transition-colors cursor-pointer"
+            className="p-2.5 rounded-xl border border-[#FFCDD2] text-[#EF5350] hover:bg-[#FFEBEE] transition-all cursor-pointer"
             title="Xóa vở bài tập này"
           >
             <Trash2 className="w-4 h-4" />
@@ -198,110 +234,107 @@ export default function NotebookDetailPage() {
         </div>
       </div>
 
-      {/* Drag & Drop Upload Zone */}
-      <div
-        onClick={() => fileInputRef.current?.click()}
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          handleFileUpload(e.dataTransfer.files);
-        }}
-        className={`border-2 border-dashed rounded-3xl p-8 text-center transition-all cursor-pointer ${
-          uploading
-            ? 'border-[#26A69A] bg-[#E6F7F1]/30 cursor-not-allowed'
-            : 'border-[#D2EFE6] hover:border-[#26A69A] hover:bg-white bg-white/60 shadow-2xs'
-        }`}
-      >
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={(e) => handleFileUpload(e.target.files)}
-          accept=".pdf,.docx,.txt"
-          className="hidden"
-          disabled={uploading}
-        />
-
-        <div className="flex flex-col items-center justify-center max-w-md mx-auto">
-          <div className="w-14 h-14 rounded-2xl bg-[#E6F7F1] text-[#26A69A] flex items-center justify-center mb-3">
-            {uploading ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : (
-              <UploadCloud className="w-7 h-7" />
-            )}
-          </div>
-
-          <h3 className="font-outfit font-bold text-base text-[#2D3E50]">
-            {uploading ? 'Đang tải lên và phân tích tài liệu...' : 'Kéo thả file vào đây hoặc bấm để chọn'}
-          </h3>
-          <p className="text-xs text-[#8E9DAE] mt-1">
-            Hỗ trợ tài liệu định dạng PDF, DOCX, TXT. IBM Docling sẽ tự động OCR và trích xuất cấu trúc.
-          </p>
-
-          {uploading && (
-            <div className="w-full max-w-xs mt-4">
-              <div className="w-full h-2 bg-[#EAEFEA] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#26A69A] rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-              <span className="text-[11px] font-bold text-[#26A69A] mt-1 block">
-                {uploadProgress}%
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
       {error && (
-        <div className="p-4 rounded-2xl bg-[#FFEBEE] border border-[#FFCDD2] text-[#C62828] text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+        <div className="p-4 rounded-2xl bg-[#FFEBEE] border border-[#FFCDD2] text-[#C62828] text-sm flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Documents List */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-outfit text-xl font-bold text-[#2D3E50]">
-            Danh sách tài liệu ({documents.length})
-          </h3>
+      {/* Upload Zone & Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Upload File Zone */}
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-3xl p-6 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[160px] ${
+            uploading
+              ? 'border-[#26A69A] bg-[#E6F7F1]/30'
+              : 'border-[#D2EFE6] hover:border-[#26A69A] hover:bg-[#F9FCFA] bg-white'
+          }`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.docx,.txt"
+            onChange={(e) => handleFileUpload(e.target.files)}
+            className="hidden"
+          />
+          {uploading ? (
+            <div className="space-y-3 w-full max-w-xs">
+              <Loader2 className="w-8 h-8 animate-spin text-[#26A69A] mx-auto" />
+              <div className="text-xs font-bold text-[#2D3E50]">Đang tải lên ({uploadProgress}%)...</div>
+              <div className="w-full h-2 bg-[#EAEFEA] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#26A69A] transition-all duration-300 rounded-full"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="w-12 h-12 rounded-2xl bg-[#E6F7F1] text-[#26A69A] flex items-center justify-center mb-3">
+                <UploadCloud className="w-6 h-6" />
+              </div>
+              <h4 className="font-outfit font-bold text-sm text-[#2D3E50]">
+                Tải lên tài liệu PDF hoặc DOCX
+              </h4>
+              <p className="text-xs text-[#8E9DAE] mt-1">
+                Kéo thả file hoặc bấm vào đây để tải lên và trích xuất tự động
+              </p>
+            </>
+          )}
         </div>
 
+        {/* Text Note Creation Zone */}
+        <div
+          onClick={() => setIsTextModalOpen(true)}
+          className="border-2 border-dashed border-[#D2EFE6] hover:border-[#26A69A] hover:bg-[#F9FCFA] bg-white rounded-3xl p-6 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[160px]"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-[#D6F0FF] text-[#0088CC] flex items-center justify-center mb-3">
+            <PlusCircle className="w-6 h-6" />
+          </div>
+          <h4 className="font-outfit font-bold text-sm text-[#2D3E50]">
+            Tạo ghi chú từ văn bản thuần
+          </h4>
+          <p className="text-xs text-[#8E9DAE] mt-1">
+            Soạn thảo trực tiếp nội dung bài học, ý tưởng nghiên cứu để AI phân tích
+          </p>
+        </div>
+      </div>
+
+      {/* Documents List */}
+      <div className="bg-white border border-[#EAEFEA] rounded-3xl p-6 lg:p-8 shadow-xs">
+        <h3 className="font-outfit font-bold text-lg text-[#2D3E50] mb-4">
+          Danh sách tài liệu ({documents.length})
+        </h3>
+
         {loading ? (
-          <div className="py-16 flex flex-col items-center justify-center text-[#8E9DAE] gap-2">
-            <Loader2 className="w-7 h-7 animate-spin text-[#26A69A]" />
-            <span className="text-xs font-medium">Đang tải tài liệu...</span>
+          <div className="py-12 text-center text-[#8E9DAE] flex flex-col items-center justify-center gap-2">
+            <Loader2 className="w-6 h-6 animate-spin text-[#26A69A]" />
+            <span className="text-xs font-medium">Đang tải danh sách tài liệu...</span>
           </div>
         ) : documents.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-[#EAEFEA] p-10 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-[#F5F7F7] text-[#8E9DAE] flex items-center justify-center mx-auto mb-3">
-              <FileText className="w-6 h-6" />
-            </div>
-            <h4 className="font-outfit font-bold text-sm text-[#2D3E50]">Chưa có tài liệu nào</h4>
+          <div className="py-12 text-center text-[#8E9DAE]">
+            <FileText className="w-10 h-10 mx-auto mb-2 text-[#B0BEC5]" />
+            <p className="text-sm font-semibold text-[#2D3E50]">Chưa có tài liệu nào trong sổ tay này</p>
             <p className="text-xs text-[#8E9DAE] mt-1">
-              Hãy tải lên tài liệu đầu tiên ở khung bên trên để bắt đầu nghiên cứu cùng AI.
+              Hãy tải lên tài liệu PDF hoặc tạo ghi chú văn bản ở trên để bắt đầu nghiên cứu.
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="divide-y divide-[#F5F8F5]">
             {documents.map((doc) => {
               const docId = doc.document_id || doc.id || '';
               const badge = getBadgeInfo(doc.file_type);
               const isReady = doc.status === 'ready';
-              const isProcessing = doc.status === 'processing' || doc.status === 'uploaded';
 
               return (
                 <div
                   key={docId}
-                  className="bg-white hover:bg-[#F9FCFA] border border-[#EAEFEA] hover:border-[#26A69A]/30 rounded-2xl p-4.5 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs group"
+                  className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-outfit font-extrabold text-xs shrink-0 ${badge.bg} ${badge.text}`}>
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-outfit font-extrabold text-xs shrink-0 ${badge.bg} ${badge.text}`}>
                       {badge.label}
                     </div>
                     <div className="min-w-0">
@@ -309,13 +342,11 @@ export default function NotebookDetailPage() {
                         {doc.file_name || doc.title}
                       </h4>
                       <div className="flex items-center gap-2 mt-1 text-xs text-[#8E9DAE]">
-                        <span>{doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString('vi-VN') : 'Mới'}</span>
-                        {doc.file_size && (
-                          <>
-                            <span>•</span>
-                            <span>{(doc.file_size / 1024 / 1024).toFixed(1)} MB</span>
-                          </>
-                        )}
+                        <span>
+                          {doc.uploaded_at
+                            ? new Date(doc.uploaded_at).toLocaleDateString('vi-VN')
+                            : 'Mới đây'}
+                        </span>
                         {doc.page_count && (
                           <>
                             <span>•</span>
@@ -326,41 +357,26 @@ export default function NotebookDetailPage() {
                     </div>
                   </div>
 
-                  {/* Status & Actions */}
                   <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0">
                     {isReady ? (
                       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E6F7F1] text-[#26A69A] text-xs font-semibold">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Sẵn sàng</span>
                       </div>
-                    ) : isProcessing ? (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF8E1] text-[#F57F17] text-xs font-semibold animate-pulse">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>Đang phân tích Docling...</span>
-                      </div>
                     ) : (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFEBEE] text-[#C62828] text-xs font-semibold">
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        <span>Lỗi xử lý</span>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF8E1] text-[#F57F17] text-xs font-semibold">
+                        <Clock className="w-3.5 h-3.5 animate-spin" />
+                        <span>Đang xử lý</span>
                       </div>
                     )}
 
-                    <div className="flex items-center gap-1">
-                      <Link
-                        href={`/ai-chat?notebookId=${notebookId}&docId=${docId}`}
-                        className="p-2 rounded-xl text-[#8E9DAE] hover:text-[#26A69A] hover:bg-[#E6F7F1] transition-colors"
-                        title="Chat với tài liệu này"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                      </Link>
-                      <button
-                        onClick={() => handleDeleteDocument(docId, doc.file_name || doc.title || '')}
-                        className="p-2 rounded-xl text-gray-400 hover:text-[#E53935] hover:bg-[#FFEBEE] transition-colors cursor-pointer"
-                        title="Xóa tài liệu"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleDeleteDocument(docId, doc.file_name || doc.title || 'tài liệu')}
+                      className="p-2 rounded-xl text-[#B0BEC5] hover:text-[#EF5350] hover:bg-[#FFEBEE] transition-colors cursor-pointer"
+                      title="Xóa tài liệu"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               );
@@ -368,6 +384,91 @@ export default function NotebookDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Modal: Thêm Ghi Chú Văn Bản Thuần */}
+      {isTextModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#EAEFEA] overflow-hidden">
+            <div className="px-6 py-5 border-b border-[#F5F8F5] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#D6F0FF] text-[#0088CC] flex items-center justify-center">
+                  <PlusCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-outfit font-bold text-lg text-[#2D3E50]">Tạo ghi chú văn bản</h3>
+                  <p className="text-xs text-[#8E9DAE]">Nội dung sẽ được trích xuất và xử lý bằng AI</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsTextModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-gray-100 text-[#8E9DAE] hover:text-[#2D3E50] transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTextDoc} className="p-6 space-y-4">
+              {noteError && (
+                <div className="p-3 rounded-xl bg-[#FFEBEE] text-[#C62828] text-xs font-medium">
+                  {noteError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-[#2D3E50] uppercase tracking-wider mb-2">
+                  Tiêu đề ghi chú
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={noteTitle}
+                  onChange={(e) => setNoteTitle(e.target.value)}
+                  placeholder="VD: Khái niệm Attention, Tóm tắt bài giảng..."
+                  className="w-full bg-[#F5F7F7] focus:bg-white border border-transparent focus:border-[#26A69A] rounded-2xl px-4 py-3 text-sm text-[#2D3E50] placeholder-[#8E9DAE] outline-hidden transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#2D3E50] uppercase tracking-wider mb-2">
+                  Nội dung ghi chú
+                </label>
+                <textarea
+                  required
+                  rows={6}
+                  value={noteContent}
+                  onChange={(e) => setNoteContent(e.target.value)}
+                  placeholder="Nhập nội dung kiến thức, câu hỏi hoặc văn bản cần nghiên cứu..."
+                  className="w-full bg-[#F5F7F7] focus:bg-white border border-transparent focus:border-[#26A69A] rounded-2xl p-4 text-sm text-[#2D3E50] placeholder-[#8E9DAE] outline-hidden transition-all resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsTextModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-[#EAEFEA] text-xs font-bold text-[#8E9DAE] hover:text-[#2D3E50] hover:bg-gray-50 transition-all cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={noteLoading}
+                  className="px-5 py-2.5 rounded-xl bg-[#26A69A] hover:bg-[#1E877B] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                >
+                  {noteLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Đang lưu...</span>
+                    </>
+                  ) : (
+                    <span>Lưu ghi chú</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
