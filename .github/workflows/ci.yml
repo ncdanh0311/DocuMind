@@ -140,7 +140,8 @@ jobs:
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag_name }}" ]; then
             TAG="${{ inputs.tag_name }}"
           else
-            TAG="${{ github.ref_name }}-${{ github.sha }}"
+            CLEAN_REF=$(echo "${{ github.ref_name }}" | tr '/' '-')
+            TAG="${CLEAN_REF}-${{ github.sha }}"
           fi
           cp mobile/build/app/outputs/flutter-apk/app-release.apk release-artifacts/DocuMind-${TAG}.apk
 
