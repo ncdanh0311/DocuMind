@@ -25,9 +25,10 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(email.trim(), password);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Login error:', err);
-      const msg = err.response?.data?.detail || 'Đăng nhập không thành công. Vui lòng kiểm tra lại email và mật khẩu.';
+      const axiosErr = err as { response?: { data?: { detail?: string } } };
+      const msg = axiosErr.response?.data?.detail || 'Đăng nhập không thành công. Vui lòng kiểm tra lại email và mật khẩu.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -147,9 +148,9 @@ export default function LoginPage() {
                   <label className="text-xs font-bold text-[#2D3E50] uppercase tracking-wider">
                     Mật khẩu
                   </label>
-                  <a href="#" onClick={(e) => { e.preventDefault(); alert('Chức năng quên mật khẩu: Vui lòng kiểm tra email xác thực OTP'); }} className="text-xs font-bold text-[#26A69A] hover:underline">
+                  <Link href="/forgot-password" className="text-xs font-bold text-[#26A69A] hover:underline">
                     Quên mật khẩu?
-                  </a>
+                  </Link>
                 </div>
                 <div className="relative flex items-center bg-[#F5F7F7] border border-transparent focus-within:border-[#26A69A] focus-within:bg-white rounded-2xl px-4 h-13 transition-all">
                   <Lock className="w-5 h-5 text-[#8E9DAE] shrink-0" />

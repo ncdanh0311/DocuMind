@@ -37,9 +37,10 @@ export default function RegisterPage() {
     setError(null);
     try {
       await register(email.trim(), password, fullName.trim());
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Register error:', err);
-      const msg = err.response?.data?.detail || 'Đăng ký không thành công. Email này có thể đã được sử dụng.';
+      const axiosErr = err as { response?: { data?: { detail?: string } } };
+      const msg = axiosErr.response?.data?.detail || 'Đăng ký không thành công. Email này có thể đã được sử dụng.';
       setError(msg);
     } finally {
       setLoading(false);

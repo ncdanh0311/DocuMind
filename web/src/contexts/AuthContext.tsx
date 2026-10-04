@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/types';
 import { apiService, tokenManager } from '@/lib/api';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
@@ -23,12 +23,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     async function initAuth() {
       const savedToken = tokenManager.getAccessToken();
-      const savedName = localStorage.getItem('full_name');
 
       if (savedToken) {
         setToken(savedToken);
@@ -36,21 +34,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const profile = await apiService.getProfile();
           setUser(profile);
         } catch {
-          // Fallback user from local storage
-          setUser({
-            user_id: 'user-me',
-            email: 'user@documind.vn',
-            full_name: savedName || 'Danh',
-          });
+          // Token is expired or invalid -> clear
+          tokenManager.clearAuth();
+          setToken(null);
+          setUser(null);
         }
       } else {
-        // Mock default for smooth preview if not logged in yet
-        const defaultName = savedName || 'Danh';
-        setUser({
-          user_id: 'user-default',
-          email: 'danh@documind.vn',
-          full_name: defaultName,
-        });
+        setToken(null);
+        setUser(null);
       }
       setIsLoading(false);
     }
@@ -62,11 +53,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await apiService.login(email, password);
       setToken(res.access_token);
-      setUser({
-        user_id: res.user_id || 'user-logged',
-        email,
-        full_name: res.full_name || 'Người dùng',
-      });
+      // Fetch full user profile
+      try {
+        const profile = await apiService.getProfile();
+        setUser(profile);
+      } catch {
+        setUser({
+          user_id: res.user_id || 'user-logged',
+          email,
+          full_name: res.full_name || email.split('@')[0],
+        });
+      }
       router.push('/');
     } finally {
       setIsLoading(false);
@@ -78,11 +75,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await apiService.register(email, password, fullName);
       setToken(res.access_token);
-      setUser({
-        user_id: res.user_id || 'user-new',
-        email,
-        full_name: fullName || res.full_name || 'Người dùng mới',
-      });
+      try {
+        const profile = await apiService.getProfile();
+        setUser(profile);
+      } catch {
+        setUser({
+          user_id: res.user_id || 'user-new',
+          email,
+          full_name: fullName || res.full_name || email.split('@')[0],
+        });
+      }
       router.push('/');
     } finally {
       setIsLoading(false);
@@ -90,7 +92,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await apiService.logout();
+    try {
+      await apiService.logout();
+    } catch {
+      // Continue logout even if server fails
+    }
+    tokenManager.clearAuth();
     setToken(null);
     setUser(null);
     router.push('/login');
@@ -100,7 +107,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const profile = await apiService.getProfile();
       setUser(profile);
-    } catch {}
+    } catch {
+      // Keep existing state
+    }
   };
 
   return (
@@ -108,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         token,
-        isAuthenticated: !!token,
+        isAuthenticated: !!token && !!user,
         isLoading,
         login,
         register,

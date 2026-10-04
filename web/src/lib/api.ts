@@ -65,6 +65,7 @@ apiClient.interceptors.response.use(
         } catch {
           tokenManager.clearAuth();
           if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
             window.location.href = '/login';
           }
         }
@@ -99,95 +100,27 @@ export function getCategoryType(title: string): 'study' | 'project' | 'research'
   return 'personal';
 }
 
-// Fallback Mock Data for smooth rendering and offline preview
-export const MOCK_NOTEBOOKS: Notebook[] = [
-  {
-    notebook_id: 'nb-1',
-    id: 'nb-1',
-    title: 'Toán Cao Cấp & Giải Tích',
-    category: 'study',
-    color: '#E6F7F1',
-    icon: '/assets/icons/categories/icon-category-study.png',
-    count: 6,
-    show_on_home: true,
-    created_at: '2026-09-08T09:00:00Z',
-  },
-  {
-    notebook_id: 'nb-2',
-    id: 'nb-2',
-    title: 'Học Máy & Deep Learning',
-    category: 'research',
-    color: '#FFE1E6',
-    icon: '/assets/icons/categories/icon-category-research.png',
-    count: 12,
-    show_on_home: true,
-    created_at: '2026-09-07T14:30:00Z',
-  },
-  {
-    notebook_id: 'nb-3',
-    id: 'nb-3',
-    title: 'Dự án DocuMind AI',
-    category: 'project',
-    color: '#D6F0FF',
-    icon: '/assets/icons/categories/icon-category-project.png',
-    count: 8,
-    show_on_home: true,
-    created_at: '2026-09-06T11:20:00Z',
-  },
-  {
-    notebook_id: 'nb-4',
-    id: 'nb-4',
-    title: 'Ghi chú nghiên cứu cá nhân',
-    category: 'personal',
-    color: '#FFE9B3',
-    icon: '/assets/icons/categories/icon-category-personal.png',
-    count: 4,
-    show_on_home: true,
-    created_at: '2026-09-05T16:00:00Z',
-  },
-];
+interface RawNotebook {
+  notebook_id: string;
+  title: string;
+  icon_path?: string;
+  document_count?: number;
+  count?: number;
+  is_private?: boolean;
+  show_on_home?: boolean;
+  created_at?: string;
+}
 
-export const MOCK_RECENT_DOCUMENTS: DocumentItem[] = [
-  {
-    document_id: 'doc-1',
-    id: 'doc-1',
-    notebook_id: 'nb-2',
-    notebook_title: 'Học Máy & Deep Learning',
-    file_name: 'Kien_truc_Transformer_va_Attention.pdf',
-    title: 'Kien_truc_Transformer_va_Attention.pdf',
-    file_type: 'pdf',
-    file_size: 4200000,
-    status: 'ready',
-    uploaded_at: '2026-09-10T08:30:00Z',
-    page_count: 24,
-  },
-  {
-    document_id: 'doc-2',
-    id: 'doc-2',
-    notebook_id: 'nb-1',
-    notebook_title: 'Toán Cao Cấp & Giải Tích',
-    file_name: 'Giao_trinh_Giai_tich_Ham_Nhieu_Bien.pdf',
-    title: 'Giao_trinh_Giai_tich_Ham_Nhieu_Bien.pdf',
-    file_type: 'pdf',
-    file_size: 6100000,
-    status: 'ready',
-    uploaded_at: '2026-09-09T15:45:00Z',
-    page_count: 58,
-  },
-  {
-    document_id: 'doc-3',
-    id: 'doc-3',
-    notebook_id: 'nb-3',
-    notebook_title: 'Dự án DocuMind AI',
-    file_name: 'Tai_lieu_Thiet_ke_He_thong_DocuMind.docx',
-    title: 'Tai_lieu_Thiet_ke_He_thong_DocuMind.docx',
-    file_type: 'docx',
-    file_size: 2800000,
-    status: 'processing',
-    uploaded_at: '2026-09-10T12:15:00Z',
-    page_count: 14,
-  },
-];
+interface RawDocument {
+  document_id: string;
+  notebook_id: string;
+  notebook_title?: string;
+  file_name: string;
+  status: 'processing' | 'ready' | 'error' | 'uploaded';
+  file_size?: number;
+  page_count?: number;
+  uploaded_at: string;
+}
 
 // --- API SERVICES (Matching mobile ApiService 1:1) ---
 export const apiService = {
@@ -211,8 +144,28 @@ export const apiService = {
   async logout() {
     try {
       await apiClient.post('/auth/logout');
-    } catch {}
+    } catch {
+      // Ignore network errors on logout
+    }
     tokenManager.clearAuth();
+  },
+
+  async forgotPassword(email: string) {
+    const res = await apiClient.post('/auth/forgot-password', { email });
+    return res.data;
+  },
+
+  async verifyOtp(email: string, otp_code: string) {
+    const res = await apiClient.post('/auth/verify-otp', { email, otp_code });
+    return res.data;
+  },
+
+  async resetPassword(token: string, new_password: string) {
+    const res = await apiClient.post('/auth/reset-password', { token, new_password });
+    if (res.data?.access_token) {
+      tokenManager.setTokens(res.data.access_token, res.data.refresh_token, res.data.full_name);
+    }
+    return res.data;
   },
 
   async getProfile(): Promise<User> {
@@ -222,6 +175,9 @@ export const apiService = {
 
   async updateProfile(data: { full_name?: string; avatar_id?: string }) {
     const res = await apiClient.put('/auth/me', data);
+    if (data.full_name) {
+      localStorage.setItem('full_name', data.full_name);
+    }
     return res.data;
   },
 
@@ -233,8 +189,8 @@ export const apiService = {
   // 2. NOTEBOOKS
   async getNotebooks(): Promise<Notebook[]> {
     const res = await apiClient.get('/notebooks/');
-    const list = Array.isArray(res.data) ? res.data : [];
-    return list.map((item: any) => ({
+    const list: RawNotebook[] = Array.isArray(res.data) ? res.data : [];
+    return list.map((item) => ({
       ...item,
       id: item.notebook_id,
       category: getCategoryType(item.title),
@@ -250,6 +206,7 @@ export const apiService = {
       id: res.data.notebook_id,
       category: getCategoryType(res.data.title),
       icon: res.data.icon_path || getCategoryIcon(res.data.title, res.data.icon_path),
+      count: res.data.document_count || res.data.count || 0,
     };
   },
 
@@ -263,6 +220,11 @@ export const apiService = {
     return res.data;
   },
 
+  async updateNotebook(notebookId: string, data: { title?: string; is_private?: boolean; show_on_home?: boolean; icon_path?: string }) {
+    const res = await apiClient.put(`/notebooks/${notebookId}`, data);
+    return res.data;
+  },
+
   async deleteNotebook(notebookId: string) {
     const res = await apiClient.delete(`/notebooks/${notebookId}`);
     return res.data;
@@ -271,8 +233,8 @@ export const apiService = {
   // 3. DOCUMENTS
   async getDocuments(notebookId: string): Promise<DocumentItem[]> {
     const res = await apiClient.get(`/notebooks/${notebookId}/documents`);
-    const list = Array.isArray(res.data) ? res.data : [];
-    return list.map((item: any) => ({
+    const list: RawDocument[] = Array.isArray(res.data) ? res.data : [];
+    return list.map((item) => ({
       ...item,
       id: item.document_id,
       title: item.file_name,
@@ -298,6 +260,19 @@ export const apiService = {
     return res.data;
   },
 
+  async createDocumentFromText(notebookId: string, title: string, content: string): Promise<DocumentItem> {
+    const res = await apiClient.post(`/notebooks/${notebookId}/documents/text`, {
+      title,
+      content,
+    });
+    return {
+      ...res.data,
+      id: res.data.document_id,
+      title: res.data.file_name,
+      file_type: 'txt',
+    };
+  },
+
   async deleteDocument(documentId: string) {
     const res = await apiClient.delete(`/documents/${documentId}`);
     return res.data;
@@ -305,13 +280,18 @@ export const apiService = {
 
   async getRecentDocuments(): Promise<DocumentItem[]> {
     const res = await apiClient.get('/documents/recent');
-    const list = Array.isArray(res.data) ? res.data : [];
-    return list.map((item: any) => ({
+    const list: RawDocument[] = Array.isArray(res.data) ? res.data : [];
+    return list.map((item) => ({
       ...item,
       id: item.document_id,
       title: item.file_name,
       file_type: item.file_name?.split('.').pop()?.toLowerCase() || 'pdf',
     }));
+  },
+
+  async getDocumentChunks(documentId: string) {
+    const res = await apiClient.get(`/documents/${documentId}/chunks`);
+    return res.data;
   },
 
   // 4. AI SERVICE (RAG Chat & Summarization)
@@ -338,6 +318,11 @@ export const apiService = {
 
   async markAllNotificationsAsRead() {
     const res = await apiClient.post('/notifications/read');
+    return res.data;
+  },
+
+  async markNotificationAsRead(notificationId: string) {
+    const res = await apiClient.post(`/notifications/${notificationId}/read`);
     return res.data;
   },
 };

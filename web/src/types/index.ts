@@ -45,7 +45,10 @@ export interface DocumentItem {
 export interface ChatCitation {
   content: string;
   page_number?: number;
+  page?: number | string;
   score?: number;
+  doc_name?: string;
+  document_title?: string;
 }
 
 export interface ChatMessage {
@@ -69,6 +72,8 @@ export interface QuickActionItem {
 
 export interface NotificationItem {
   notification_id: string;
+  id?: string;
+  type?: string;
   title: string;
   message: string;
   is_read: boolean;
