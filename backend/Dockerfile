@@ -25,8 +25,8 @@ RUN uv pip install --system .
 # Copy chỉ thư mục backend vào container
 COPY backend/ ./backend/
 
-# Mở cổng 8000
+# Mở cổng (Render hoặc local)
 EXPOSE 8000
 
-# Lệnh khởi chạy server (chạy module backend.main)
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Lệnh khởi chạy server (hỗ trợ biến môi trường $PORT của Render, mặc định 8000)
+CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

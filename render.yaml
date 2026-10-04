@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: documind-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: free
+    region: singapore
+    envVars:
+      - key: DATABASE_URL_OVERRIDE
+        fromDatabase:
+          name: documind-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+
+databases:
+  - name: documind-db
+    plan: free
+    region: singapore
+    databaseName: documind
+    user: documind_user
