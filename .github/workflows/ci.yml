@@ -5,14 +5,16 @@ on:
     branches:
       - main
       - master
-      - plan
+      - 'feature/**'
+      - 'feat/**'
     tags:
       - 'v*'
   pull_request:
     branches:
       - main
       - master
-      - plan
+      - 'feature/**'
+      - 'feat/**'
   workflow_dispatch:
     inputs:
       tag_name:
