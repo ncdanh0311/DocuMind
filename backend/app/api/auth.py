@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 from backend.app.core.db import get_session
 from backend.app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token
 from backend.app.core.config import settings
@@ -12,6 +13,17 @@ from backend.app.schemas.schemas import (
 from backend.app.api.deps import get_current_user
 from jose import jwt, JWTError
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
+
+def get_utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+def is_expired(expiry: Optional[datetime]) -> bool:
+    if expiry is None:
+        return True
+    now = datetime.now(timezone.utc)
+    if expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+    return now > expiry
 
 router = APIRouter()
 
@@ -84,7 +96,7 @@ def register(user_in: UserCreate, session: Session = Depends(get_session)):
         refresh_token = create_refresh_token(str(db_user.user_id))
         
         db_user.refresh_token = refresh_token
-        db_user.refresh_token_expiry = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        db_user.refresh_token_expiry = get_utc_now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
         session.add(db_user)
         session.commit()
         
@@ -118,7 +130,7 @@ def login(user_in: UserLogin, session: Session = Depends(get_session)):
         refresh_token = create_refresh_token(subject=user.user_id)
         
         user.refresh_token = refresh_token
-        user.refresh_token_expiry = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        user.refresh_token_expiry = get_utc_now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
         session.add(user)
         session.commit()
         
@@ -149,7 +161,7 @@ def refresh_token(data: RefreshTokenRequest, session: Session = Depends(get_sess
         raise HTTPException(status_code=401, detail="ERR_TOKEN_EXPIRED")
     
     user = session.get(User, user_id)
-    if not user or user.refresh_token != data.refresh_token or user.refresh_token_expiry < datetime.utcnow():
+    if not user or user.refresh_token != data.refresh_token or is_expired(user.refresh_token_expiry):
         raise HTTPException(status_code=401, detail="ERR_SESSION_EXPIRED")
     
     # Tạo cặp token mới
@@ -157,7 +169,7 @@ def refresh_token(data: RefreshTokenRequest, session: Session = Depends(get_sess
     new_refresh = create_refresh_token(subject=user.user_id)
     
     user.refresh_token = new_refresh
-    user.refresh_token_expiry = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    user.refresh_token_expiry = get_utc_now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     session.add(user)
     session.commit()
     
@@ -189,7 +201,7 @@ async def forgot_password(data: ForgotPassword, session: Session = Depends(get_s
     
     otp = f"{random.randint(100000, 999999)}"
     user.otp_code = otp
-    user.otp_expiry = datetime.utcnow() + timedelta(minutes=5)
+    user.otp_expiry = get_utc_now() + timedelta(minutes=5)
     
     session.add(user)
     session.commit()
@@ -203,7 +215,7 @@ def verify_otp(data: VerifyOTP, session: Session = Depends(get_session)):
     if not user or user.otp_code != data.otp_code:
         raise HTTPException(status_code=400, detail="ERR_OTP_INVALID")
     
-    if datetime.utcnow() > user.otp_expiry:
+    if is_expired(user.otp_expiry):
         raise HTTPException(status_code=400, detail="ERR_OTP_EXPIRED")
     
     reset_token = create_access_token(
@@ -234,7 +246,7 @@ def reset_password(data: ResetPassword, session: Session = Depends(get_session))
     refresh_token = create_refresh_token(subject=str(user.user_id))
     
     user.refresh_token = refresh_token
-    user.refresh_token_expiry = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    user.refresh_token_expiry = get_utc_now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     session.add(user)
     session.commit()
     session.refresh(user)

@@ -1,9 +1,12 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 import uuid
 from sqlmodel import Field, Relationship, SQLModel, Column
 from pgvector.sqlalchemy import Vector
 import sqlalchemy as sa
+
+def get_utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 class User(SQLModel, table=True):
     __tablename__ = "users"
@@ -11,7 +14,7 @@ class User(SQLModel, table=True):
     email: str = Field(unique=True, index=True)
     full_name: Optional[str] = None
     hashed_password: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=get_utc_now)
     
     # OTP for Password Reset
     otp_code: Optional[str] = None
@@ -36,7 +39,7 @@ class Notebook(SQLModel, table=True):
     is_private: bool = Field(default=True)
     show_on_home: bool = Field(default=True)
     icon_path: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=get_utc_now)
     
     # Relationships
     user: User = Relationship(back_populates="notebooks")
@@ -49,7 +52,7 @@ class Document(SQLModel, table=True):
     notebook_id: uuid.UUID = Field(foreign_key="notebooks.notebook_id", ondelete="CASCADE")
     file_name: str
     status: str = Field(default="processing") # processing | ready | error
-    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    uploaded_at: datetime = Field(default_factory=get_utc_now)
     
     # Relationships
     notebook: Notebook = Relationship(back_populates="documents")
@@ -76,7 +79,7 @@ class Summary(SQLModel, table=True):
     document_id: uuid.UUID = Field(foreign_key="documents.document_id", ondelete="CASCADE")
     content: str
     model_name: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=get_utc_now)
     
     # Relationships
     document: Document = Relationship(back_populates="summaries")
@@ -88,7 +91,7 @@ class QAHistory(SQLModel, table=True):
     question: str
     answer: str
     model_name: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=get_utc_now)
     
     # Relationships
     notebook: Notebook = Relationship(back_populates="qa_histories")
@@ -113,7 +116,7 @@ class Notification(SQLModel, table=True):
     body: str
     is_read: bool = Field(default=False)
     type: str = Field(default="info") # success | info | warning | welcome
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=get_utc_now)
 
     # Relationships
     user: User = Relationship(back_populates="notifications")

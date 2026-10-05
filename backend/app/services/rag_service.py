@@ -1,6 +1,6 @@
 import uuid
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any
 from sqlmodel import Session, select
 from fastapi import HTTPException
@@ -142,7 +142,7 @@ class RAGService:
                 question=question,
                 answer=answer,
                 model_name=model,
-                created_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc)
             )
             session.add(qa_history)
             session.commit()
@@ -192,7 +192,7 @@ class RAGService:
             question=question,
             answer=answer,
             model_name=model,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         session.add(qa_history)
 
