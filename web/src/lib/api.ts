@@ -8,7 +8,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 60000,
 });
 
 // Helper for Token Management (matching mobile's secure storage)
@@ -352,6 +352,9 @@ const ERROR_TRANSLATIONS: Record<string, string> = {
 export function getErrorMessage(err: unknown, defaultMessage = 'Đã có lỗi xảy ra. Vui lòng thử lại.'): string {
   if (axios.isAxiosError(err)) {
     if (!err.response) {
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        return `Máy chủ phản hồi quá lâu (có thể đang khởi động từ chế độ ngủ trên Render). Vui lòng đợi 30 giây rồi thử lại!`;
+      }
       if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
         return `Không thể kết nối tới máy chủ backend (${API_BASE_URL}). Vui lòng đảm bảo backend đang chạy.`;
       }

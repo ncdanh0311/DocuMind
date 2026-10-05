@@ -45,6 +45,40 @@ async def root():
         "version": settings.VERSION
     }
 
+@app.get("/health")
+async def health():
+    db_status = "unknown"
+    db_error = None
+    tables = []
+    try:
+        from sqlalchemy import inspect
+        from backend.app.core.db import engine
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        db_status = "connected"
+    except Exception as e:
+        db_status = "error"
+        db_error = str(e)
+    return {
+        "status": "online",
+        "database": db_status,
+        "tables": tables,
+        "error": db_error
+    }
+
+@app.get("/init-db")
+@app.post("/init-db")
+async def trigger_init_db():
+    try:
+        init_db()
+        from sqlalchemy import inspect
+        from backend.app.core.db import engine
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        return {"status": "success", "tables": tables}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 # Import các router
 from backend.app.api import notebooks, auth, documents, notifications
 
