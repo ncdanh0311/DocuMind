@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
+import { getErrorMessage } from '@/lib/api';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
@@ -27,9 +28,7 @@ export default function LoginPage() {
       await login(email.trim(), password);
     } catch (err: unknown) {
       console.error('Login error:', err);
-      const axiosErr = err as { response?: { data?: { detail?: string } } };
-      const msg = axiosErr.response?.data?.detail || 'Đăng nhập không thành công. Vui lòng kiểm tra lại email và mật khẩu.';
-      setError(msg);
+      setError(getErrorMessage(err, 'Đăng nhập không thành công. Vui lòng kiểm tra lại email và mật khẩu.'));
     } finally {
       setLoading(false);
     }

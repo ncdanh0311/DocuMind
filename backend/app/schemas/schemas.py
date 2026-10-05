@@ -13,6 +13,7 @@ class UserLogin(BaseModel):
     password: str
 
 class Token(BaseModel):
+    user_id: Optional[str] = None
     access_token: str
     refresh_token: Optional[str] = None
     token_type: str

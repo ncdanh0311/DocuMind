@@ -88,6 +88,7 @@ def register(user_in: UserCreate, session: Session = Depends(get_session)):
     session.commit()
     
     return {
+        "user_id": str(db_user.user_id),
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
@@ -114,6 +115,7 @@ def login(user_in: UserLogin, session: Session = Depends(get_session)):
     session.commit()
     
     return {
+        "user_id": str(user.user_id),
         "access_token": access_token, 
         "refresh_token": refresh_token,
         "token_type": "bearer",
@@ -146,6 +148,7 @@ def refresh_token(data: RefreshTokenRequest, session: Session = Depends(get_sess
     session.commit()
     
     return {
+        "user_id": str(user.user_id),
         "access_token": new_access,
         "refresh_token": new_refresh,
         "token_type": "bearer",
@@ -223,6 +226,7 @@ def reset_password(data: ResetPassword, session: Session = Depends(get_session))
     session.refresh(user)
 
     return {
+        "user_id": str(user.user_id),
         "message": "MSG_PASSWORD_RESET_SUCCESS",
         "access_token": access_token,
         "refresh_token": refresh_token,

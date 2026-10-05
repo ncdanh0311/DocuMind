@@ -326,3 +326,72 @@ export const apiService = {
     return res.data;
   },
 };
+
+const ERROR_TRANSLATIONS: Record<string, string> = {
+  ERR_EMAIL_TAKEN: 'Email này đã được sử dụng. Vui lòng chọn email khác hoặc đăng nhập.',
+  ERR_INVALID_CREDENTIALS: 'Email hoặc mật khẩu không chính xác.',
+  ERR_EMAIL_NOT_FOUND: 'Email này chưa được đăng ký trong hệ thống.',
+  ERR_OTP_INVALID: 'Mã xác thực OTP không chính xác.',
+  ERR_OTP_EXPIRED: 'Mã xác thực OTP đã hết hạn. Vui lòng yêu cầu mã mới.',
+  ERR_TOKEN_INVALID: 'Token không hợp lệ.',
+  ERR_TOKEN_EXPIRED: 'Phiên làm việc đã hết hạn. Vui lòng thử lại.',
+  ERR_USER_NOT_FOUND: 'Không tìm thấy người dùng.',
+  ERR_NOTEBOOK_NOT_FOUND: 'Không tìm thấy sổ tay hoặc bạn không có quyền truy cập.',
+  ERR_DOC_NOT_FOUND: 'Không tìm thấy tài liệu.',
+  ERR_DOC_FORBIDDEN: 'Bạn không có quyền thao tác với tài liệu này.',
+  ERR_UNAUTHORIZED: 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ.',
+  ERR_SESSION_EXPIRED: 'Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.',
+  ERR_OLD_PASSWORD_INCORRECT: 'Mật khẩu hiện tại không chính xác.',
+  ERR_NO_DOCUMENTS: 'Sổ tay này chưa có tài liệu nào được phân tích thành công.',
+  ERR_ANSWER_NOT_FOUND: 'Không tìm thấy câu trả lời trong tài liệu.',
+  ERR_INVALID_INPUT: 'Dữ liệu đầu vào không hợp lệ.',
+  ERR_AI_SERVICE_UNAVAILABLE: 'Dịch vụ AI hiện đang bận hoặc đang khởi động. Vui lòng thử lại sau!',
+  ERR_CONNECTION_FAILED: 'Kết nối thất bại. Vui lòng kiểm tra lại kết nối mạng!',
+};
+
+export function getErrorMessage(err: unknown, defaultMessage = 'Đã có lỗi xảy ra. Vui lòng thử lại.'): string {
+  if (axios.isAxiosError(err)) {
+    if (!err.response) {
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+        return `Không thể kết nối tới máy chủ backend (${API_BASE_URL}). Vui lòng đảm bảo backend đang chạy.`;
+      }
+      return `Lỗi kết nối máy chủ: ${err.message || 'Không thể liên lạc với máy chủ'}`;
+    }
+
+    const data = err.response.data;
+    if (data) {
+      if (typeof data.detail === 'string') {
+        return ERROR_TRANSLATIONS[data.detail] || data.detail;
+      }
+      if (Array.isArray(data.detail)) {
+        const messages = data.detail.map((item: unknown) => {
+          if (typeof item === 'string') return item;
+          if (typeof item === 'object' && item !== null) {
+            const errObj = item as { loc?: unknown[]; msg?: string };
+            const field = Array.isArray(errObj.loc) ? errObj.loc[errObj.loc.length - 1] : '';
+            const msg = errObj.msg || 'Không hợp lệ';
+            if (field === 'email') return 'Địa chỉ email không đúng định dạng';
+            if (field === 'password') return 'Mật khẩu không hợp lệ';
+            return field ? `${String(field)}: ${msg}` : msg;
+          }
+          return 'Dữ liệu không hợp lệ';
+        });
+        return messages.join('. ');
+      }
+      if (typeof data.message === 'string') {
+        return ERROR_TRANSLATIONS[data.message] || data.message;
+      }
+    }
+
+    if (err.response.status === 404) return 'Không tìm thấy dịch vụ yêu cầu (404).';
+    if (err.response.status === 500) return 'Lỗi máy chủ nội bộ (500). Vui lòng thử lại sau.';
+    if (err.response.status === 403) return 'Bạn không có quyền thực hiện hành động này (403).';
+  }
+
+  if (err instanceof Error) {
+    return err.message;
+  }
+
+  return defaultMessage;
+}
+

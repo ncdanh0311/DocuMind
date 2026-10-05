@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { apiService } from '@/lib/api';
+import { apiService, getErrorMessage } from '@/lib/api';
 import { Mail, ArrowLeft, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
@@ -31,8 +31,7 @@ export default function ForgotPasswordPage() {
       }, 1500);
     } catch (err: unknown) {
       console.error('Forgot password error:', err);
-      const axiosErr = err as { response?: { data?: { detail?: string } } };
-      setError(axiosErr.response?.data?.detail || 'Không thể gửi mã xác thực. Vui lòng kiểm tra lại email.');
+      setError(getErrorMessage(err, 'Không thể gửi mã xác thực. Vui lòng kiểm tra lại email.'));
     } finally {
       setLoading(false);
     }

@@ -4,7 +4,7 @@ import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { apiService } from '@/lib/api';
+import { apiService, getErrorMessage } from '@/lib/api';
 import { KeyRound, Lock, Eye, EyeOff, ArrowLeft, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 function ResetPasswordForm() {
@@ -53,8 +53,7 @@ function ResetPasswordForm() {
       }, 2000);
     } catch (err: unknown) {
       console.error('Reset password error:', err);
-      const axiosErr = err as { response?: { data?: { detail?: string } } };
-      setError(axiosErr.response?.data?.detail || 'Mã OTP không hợp lệ hoặc đã hết hạn.');
+      setError(getErrorMessage(err, 'Mã OTP không hợp lệ hoặc đã hết hạn.'));
     } finally {
       setLoading(false);
     }

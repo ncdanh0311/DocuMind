@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
+import { getErrorMessage } from '@/lib/api';
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -39,9 +40,7 @@ export default function RegisterPage() {
       await register(email.trim(), password, fullName.trim());
     } catch (err: unknown) {
       console.error('Register error:', err);
-      const axiosErr = err as { response?: { data?: { detail?: string } } };
-      const msg = axiosErr.response?.data?.detail || 'Đăng ký không thành công. Email này có thể đã được sử dụng.';
-      setError(msg);
+      setError(getErrorMessage(err, 'Đăng ký không thành công. Vui lòng thử lại.'));
     } finally {
       setLoading(false);
     }
