@@ -63,65 +63,79 @@ async def send_reset_otp_email(email: str, otp: str):
 
 @router.post("/register", response_model=Token)
 def register(user_in: UserCreate, session: Session = Depends(get_session)):
-    user = session.exec(select(User).where(User.email == user_in.email)).first()
-    if user:
-        raise HTTPException(
-            status_code=400,
-            detail="ERR_EMAIL_TAKEN"
+    try:
+        user = session.exec(select(User).where(User.email == user_in.email)).first()
+        if user:
+            raise HTTPException(
+                status_code=400,
+                detail="ERR_EMAIL_TAKEN"
+            )
+        
+        db_user = User(
+            email=user_in.email,
+            full_name=user_in.full_name,
+            hashed_password=get_password_hash(user_in.password)
         )
-    
-    db_user = User(
-        email=user_in.email,
-        full_name=user_in.full_name,
-        hashed_password=get_password_hash(user_in.password)
-    )
-    session.add(db_user)
-    session.commit()
-    session.refresh(db_user)
-    
-    access_token = create_access_token(str(db_user.user_id))
-    refresh_token = create_refresh_token(str(db_user.user_id))
-    
-    db_user.refresh_token = refresh_token
-    db_user.refresh_token_expiry = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    session.add(db_user)
-    session.commit()
-    
-    return {
-        "user_id": str(db_user.user_id),
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "full_name": db_user.full_name,
-        "avatar_id": db_user.avatar_id
-    }
+        session.add(db_user)
+        session.commit()
+        session.refresh(db_user)
+        
+        access_token = create_access_token(str(db_user.user_id))
+        refresh_token = create_refresh_token(str(db_user.user_id))
+        
+        db_user.refresh_token = refresh_token
+        db_user.refresh_token_expiry = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        session.add(db_user)
+        session.commit()
+        
+        return {
+            "user_id": str(db_user.user_id),
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "full_name": db_user.full_name,
+            "avatar_id": db_user.avatar_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"REGISTER_FAILED: {type(e).__name__}: {str(e)}")
 
 @router.post("/login", response_model=Token)
 def login(user_in: UserLogin, session: Session = Depends(get_session)):
-    user = session.exec(select(User).where(User.email == user_in.email)).first()
-    if not user or not verify_password(user_in.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="ERR_INVALID_CREDENTIALS",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    access_token = create_access_token(subject=user.user_id)
-    refresh_token = create_refresh_token(subject=user.user_id)
-    
-    user.refresh_token = refresh_token
-    user.refresh_token_expiry = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    session.add(user)
-    session.commit()
-    
-    return {
-        "user_id": str(user.user_id),
-        "access_token": access_token, 
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "full_name": user.full_name,
-        "avatar_id": user.avatar_id
-    }
+    try:
+        user = session.exec(select(User).where(User.email == user_in.email)).first()
+        if not user or not verify_password(user_in.password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="ERR_INVALID_CREDENTIALS",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        access_token = create_access_token(subject=user.user_id)
+        refresh_token = create_refresh_token(subject=user.user_id)
+        
+        user.refresh_token = refresh_token
+        user.refresh_token_expiry = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        session.add(user)
+        session.commit()
+        
+        return {
+            "user_id": str(user.user_id),
+            "access_token": access_token, 
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "full_name": user.full_name,
+            "avatar_id": user.avatar_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"LOGIN_FAILED: {type(e).__name__}: {str(e)}")
 
 @router.post("/refresh-token", response_model=Token)
 def refresh_token(data: RefreshTokenRequest, session: Session = Depends(get_session)):

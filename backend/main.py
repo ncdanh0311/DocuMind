@@ -31,7 +31,7 @@ app = FastAPI(
 # Cấu hình CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,11 +50,14 @@ async def health():
     db_status = "unknown"
     db_error = None
     tables = []
+    columns = {}
     try:
         from sqlalchemy import inspect
         from backend.app.core.db import engine
         inspector = inspect(engine)
         tables = inspector.get_table_names()
+        for t in tables:
+            columns[t] = [c["name"] for c in inspector.get_columns(t)]
         db_status = "connected"
     except Exception as e:
         db_status = "error"
@@ -63,6 +66,7 @@ async def health():
         "status": "online",
         "database": db_status,
         "tables": tables,
+        "columns": columns,
         "error": db_error
     }
 
