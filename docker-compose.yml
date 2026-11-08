@@ -1,6 +1,6 @@
 services:
   db:
-    image: ankane/pgvector:latest
+    image: pgvector/pgvector:pg16
     container_name: documind-db
     ports:
       - "5432:5432"
@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: documind
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_phase1_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -17,17 +17,32 @@ services:
       retries: 5
 
   ai:
+    profiles: ["ai"]
     build:
       context: .
       dockerfile: ai/Dockerfile
     container_name: documind-ai
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
     volumes:
       - ./ai:/app/ai
       - ./hf_cache:/root/.cache/huggingface
     environment:
       - HF_HOME=/root/.cache/huggingface
+
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL_OVERRIDE=postgresql://postgres:password@db:5432/documind
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uv run --no-sync alembic upgrade head
+    restart: "no"
 
   backend:
     build:
@@ -40,20 +55,37 @@ services:
       - .env
     environment:
       - DATABASE_URL_OVERRIDE=postgresql://postgres:password@db:5432/documind
-      - SECRET_KEY=your-secret-key-change-it-in-production
       - AI_SERVICE_URL=http://ai:8001
     depends_on:
       db:
         condition: service_healthy
-      ai:
-        condition: service_started
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - ./backend:/app/backend
       - ./alembic.ini:/app/alembic.ini
       - ./.uploads:/app/.uploads
-    # Tự động chạy migration nâng cấp DB trước khi chạy server
-    command: sh -c "alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000
+
+  worker:
+    profiles: ["ai"]
+    build:
+      context: .
+      dockerfile: backend/worker.Dockerfile
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL_OVERRIDE=postgresql://postgres:password@db:5432/documind
+      - AI_SERVICE_URL=http://ai:8001
+      - UPLOAD_DIR=/app/.uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./.uploads:/app/.uploads
+    command: python -m backend.worker
+    restart: on-failure
 
 volumes:
-  postgres_data:
+  postgres_phase1_data:
 

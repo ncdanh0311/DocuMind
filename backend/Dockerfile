@@ -1,32 +1,11 @@
-# Sử dụng Python 3.12 bản nhẹ
 FROM python:3.12-slim
-
-# Thiết lập thư mục làm việc
 WORKDIR /app
-
-# Cài đặt các công cụ hệ thống cần thiết
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy file định nghĩa thư viện từ thư mục gốc
-COPY pyproject.toml .
-COPY uv.lock .
-
-# Cài đặt uv để quản lý thư viện nhanh hơn
-RUN pip install uv
-
-# Tối ưu: Cài đặt trước bản PyTorch & Torchvision CPU-only để tránh lỗi tương thích và tránh tải các gói CUDA cực nặng (>4GB) của NVIDIA
-RUN uv pip install --system torch torchvision --index-url https://download.pytorch.org/whl/cpu
-
-RUN uv pip install --system .
-
-# Copy chỉ thư mục backend vào container
+RUN apt-get update && apt-get install -y build-essential libpq-dev && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir uv==0.13.7
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --frozen --only-group backend
+ENV PATH="/app/.venv/bin:$PATH"
 COPY backend/ ./backend/
-
-# Mở cổng (Render hoặc local)
+COPY alembic.ini ./
 EXPOSE 8000
-
-# Lệnh khởi chạy server (hỗ trợ biến môi trường $PORT của Render, mặc định 8000)
 CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
