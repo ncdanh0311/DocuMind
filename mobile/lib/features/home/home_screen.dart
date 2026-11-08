@@ -77,8 +77,8 @@ class _HomeScreenState extends State<HomeScreen> {
           return {
             "id": item["notebook_id"],
             "title": item["title"],
-            "count": 0,
-            "icon": item["icon_path"] ?? _getCategoryIcon(item["title"]),
+            "count": item["document_count"] ?? 0,
+            "icon": (item["icon_path"] as String?)?.replaceFirst(RegExp(r'^/'), '') ?? _getCategoryIcon(item["category"] ?? "personal"),
           };
         }).toList();
       }
@@ -102,23 +102,15 @@ class _HomeScreenState extends State<HomeScreen> {
         _hasUnreadNotifications = list.any((item) => item["is_read"] == false);
       }
 
+      if (!mounted) return;
       setState(() {
         _isLoadingContent = false;
       });
     }
   }
 
-  String _getCategoryIcon(String title) {
-    if (title.contains("Học")) {
-      return "assets/icons/categories/icon-category-study.png";
-    }
-    if (title.contains("Dự")) {
-      return "assets/icons/categories/icon-category-project.png";
-    }
-    if (title.contains("Cá")) {
-      return "assets/icons/categories/icon-category-personal.png";
-    }
-    return "assets/icons/categories/icon-category-research.png";
+  String _getCategoryIcon(String category) {
+    return 'assets/icons/categories/icon-category-$category.png';
   }
 
   @override

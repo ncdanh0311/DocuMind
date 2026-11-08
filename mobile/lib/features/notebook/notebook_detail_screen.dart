@@ -7,6 +7,9 @@ import 'package:documind_mobile/features/ai/summary_screen.dart';
 import 'package:documind_mobile/core/api_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:documind_mobile/core/management.dart';
+import 'create_notebook_screen.dart';
+import 'rename_document_dialog.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class NotebookDetailScreen extends StatefulWidget {
@@ -14,12 +17,14 @@ class NotebookDetailScreen extends StatefulWidget {
   final String notebookTitle;
   final String? iconPath;
   final Color themeColor;
+  final VoidCallback? onChanged;
 
   const NotebookDetailScreen({
     super.key, 
     required this.notebookId,
     required this.notebookTitle, 
     this.iconPath,
+    this.onChanged,
     this.themeColor = const Color(0xFFE0F2F1),
   });
 
@@ -35,15 +40,83 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   String? _deletingDocId;
   String? _errorMessage;
   Timer? _statusTimer;
+  bool _aiEnabled = false;
+  Map<String, dynamic>? _notebook;
+  late String _title;
+  String _query = '', _extension = 'all', _status = 'all', _sort = 'newest';
+  int _generation = 0;
+  int _metadataGeneration = 0;
+  bool _deletingNotebook = false;
+  List<Map<String, dynamic>> get _visibleDocuments => selectDocuments(_documents.map((item) => Map<String, dynamic>.from(item)).toList(), query: _query, extension: _extension, status: _status, sort: _sort);
+
+  Future<void> _loadMetadata() async {
+    final request = ++_metadataGeneration;
+    final id = widget.notebookId;
+    final values = await Future.wait([_apiService.getNotebook(id), _apiService.getAppConfig()]);
+    if (!mounted || widget.notebookId != id || request != _metadataGeneration) return;
+    setState(() {
+      if (values[0]['success'] == true) { _notebook = Map<String, dynamic>.from(values[0]['data']); _title = _notebook!['title']; }
+      _aiEnabled = values[1]['success'] == true && values[1]['data']['ai_enabled'] == true;
+    });
+    _checkProcessingStatus();
+  }
+
+  Future<void> _editNotebook() async {
+    if (_notebook == null) return;
+    final id = widget.notebookId;
+    final changed = await Navigator.push(context, MaterialPageRoute(builder: (_) => CreateNotebookScreen(notebook: _notebook)));
+    if (!mounted || widget.notebookId != id) return;
+    if (changed == true) { await _loadMetadata(); widget.onChanged?.call(); }
+  }
+
+  Future<void> _renameDocument(Map<String, dynamic> document) async {
+    final id = widget.notebookId;
+    final fileName = document['file_name'] as String;
+    final title = await showDialog<String>(context: context, builder: (_) => RenameDocumentDialog(fileName: fileName));
+    if (title == null || !mounted || widget.notebookId != id) return;
+    final result = await _apiService.renameDocument(document['document_id'], title);
+    if (!mounted || widget.notebookId != id) return;
+    if (result['success'] == true) { await _fetchDocuments(showLoading: false); widget.onChanged?.call(); }
+    else { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']))); }
+  }
+
+  Future<void> _deleteNotebook() async {
+    if (_deletingNotebook) return;
+    final id = widget.notebookId;
+    final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(
+      title: const Text('Xóa sổ tay'), content: const Text('Xóa sổ tay và toàn bộ tài liệu bên trong? Thao tác này không thể hoàn tác.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Hủy')), TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Xóa'))],
+    ));
+    if (confirmed != true || !mounted || widget.notebookId != id) return;
+    setState(() => _deletingNotebook = true);
+    final result = await _apiService.deleteNotebook(id);
+    if (!mounted || widget.notebookId != id) return;
+    setState(() => _deletingNotebook = false);
+    if (result['success'] == true) { widget.onChanged?.call(); Navigator.pop(context, true); }
+    else { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']))); }
+  }
 
   @override
   void initState() {
     super.initState();
+    _title = widget.notebookTitle;
+    _loadMetadata();
     _fetchDocuments();
   }
 
   @override
+  void didUpdateWidget(covariant NotebookDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.notebookId != widget.notebookId) {
+      _generation++; _statusTimer?.cancel(); _documents = []; _notebook = null;
+      _title = widget.notebookTitle; _aiEnabled = false; _query = ''; _extension = 'all'; _status = 'all';
+      _loadMetadata(); _fetchDocuments();
+    }
+  }
+
+  @override
   void dispose() {
+    _generation++; _metadataGeneration++;
     _statusTimer?.cancel();
     super.dispose();
   }
@@ -51,7 +124,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   void _checkProcessingStatus() {
     _statusTimer?.cancel();
     final hasProcessing = _documents.any((doc) => doc['status'] == 'processing' || doc['status'] == 'uploaded');
-    if (hasProcessing && mounted) {
+    if (_aiEnabled && hasProcessing && mounted) {
       _statusTimer = Timer(const Duration(seconds: 3), () {
         if (mounted) _fetchDocuments(showLoading: false);
       });
@@ -59,6 +132,8 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   }
 
   Future<void> _fetchDocuments({bool showLoading = true}) async {
+    final generation = ++_generation;
+    final id = widget.notebookId;
     if (showLoading) {
       setState(() {
         _isLoading = true;
@@ -66,12 +141,12 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
       });
     }
 
-    final result = await _apiService.getDocuments(widget.notebookId);
+    final result = await _apiService.getDocuments(id);
 
-    if (mounted) {
+    if (mounted && generation == _generation && widget.notebookId == id) {
       if (result["success"]) {
         setState(() {
-          _documents = result["data"];
+          _documents = result["data"]; _errorMessage = null;
           if (showLoading) _isLoading = false;
         });
         _checkProcessingStatus();
@@ -85,13 +160,14 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   }
 
   Future<void> _uploadDocument() async {
+    final id = widget.notebookId;
     try {
       final FilePickerResult? pickResult = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'docx', 'txt'],
       );
 
-      if (pickResult == null || pickResult.files.isEmpty) return;
+      if (!mounted || widget.notebookId != id || pickResult == null || pickResult.files.isEmpty) return;
 
       final file = pickResult.files.first;
 
@@ -104,13 +180,13 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
       );
 
       final result = await _apiService.uploadDocument(
-        widget.notebookId,
+        id,
         fileName: file.name,
         filePath: file.path,
         fileBytes: file.bytes,
       );
 
-      if (mounted) {
+      if (mounted && widget.notebookId == id) {
         setState(() {
           _isUploading = false;
         });
@@ -119,7 +195,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Tải file lên thành công!"), backgroundColor: Colors.green),
           );
-          _fetchDocuments();
+          _fetchDocuments(); widget.onChanged?.call();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Lỗi: ${result['message']}"), backgroundColor: Colors.red),
@@ -127,7 +203,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
         }
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && widget.notebookId == id) {
         setState(() {
           _isUploading = false;
         });
@@ -224,6 +300,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   }
 
   Future<void> _showPasteTextDialog() async {
+    final id = widget.notebookId;
     final titleController = TextEditingController();
     final contentController = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -304,7 +381,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   onPressed: () async {
-                    if (formKey.currentState!.validate()) {
+                    if (formKey.currentState!.validate() && mounted && widget.notebookId == id) {
                       final title = titleController.text.trim();
                       final content = contentController.text.trim();
                       Navigator.pop(dialogContext); // Close dialog
@@ -318,12 +395,12 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
                       );
 
                       final result = await _apiService.createDocumentFromText(
-                        widget.notebookId,
+                        id,
                         title: title,
                         content: content,
                       );
 
-                      if (mounted) {
+                      if (mounted && widget.notebookId == id) {
                         setState(() {
                           _isUploading = false;
                         });
@@ -332,7 +409,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text("notebook.save_text_success".tr()), backgroundColor: Colors.green),
                           );
-                          _fetchDocuments();
+                          _fetchDocuments(); widget.onChanged?.call();
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text("Lỗi: ${result['message']}"), backgroundColor: Colors.red),
@@ -355,6 +432,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   }
 
   Future<void> _deleteDocument(String documentId) async {
+    final id = widget.notebookId;
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -373,14 +451,14 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
       ),
     );
 
-    if (confirm != true) return;
+    if (confirm != true || !mounted || widget.notebookId != id) return;
 
     setState(() {
       _deletingDocId = documentId;
     });
 
     final result = await _apiService.deleteDocument(documentId);
-    if (mounted) {
+    if (mounted && widget.notebookId == id) {
       setState(() {
         _deletingDocId = null;
       });
@@ -388,7 +466,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Đã xóa tài liệu"), backgroundColor: Colors.green),
         );
-        _fetchDocuments();
+        _fetchDocuments(); widget.onChanged?.call();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Lỗi: ${result['message']}"), backgroundColor: Colors.red),
@@ -416,11 +494,19 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
       appBar: _buildAppBar(),
       body: Column(
         children: [
+          if (!_aiEnabled) const Padding(padding: EdgeInsets.all(12), child: Text('Tính năng AI đang tạm hoãn. Tài liệu mới chỉ được lưu.')),
+          if ((_notebook?['description'] as String? ?? '').isNotEmpty) Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Text(_notebook!['description'], maxLines: 3, overflow: TextOverflow.ellipsis)),
           _buildActionGrid(),
           if (_isUploading)
             LinearProgressIndicator(backgroundColor: Colors.grey.shade200, color: AppColors.primary),
           const SizedBox(height: 10),
           _buildContentHeader(),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: TextField(decoration: const InputDecoration(labelText: 'Tìm tài liệu', prefixIcon: Icon(Icons.search)), onChanged: (value) => setState(() => _query = value))),
+          SingleChildScrollView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 20), child: Row(children: [
+            DropdownButton<String>(value: _extension, items: const [DropdownMenuItem(value: 'all', child: Text('Mọi định dạng')), DropdownMenuItem(value: 'pdf', child: Text('PDF')), DropdownMenuItem(value: 'docx', child: Text('DOCX')), DropdownMenuItem(value: 'txt', child: Text('TXT'))], onChanged: (value) => setState(() => _extension = value!)),
+            const SizedBox(width: 12), DropdownButton<String>(value: _status, items: const [DropdownMenuItem(value: 'all', child: Text('Mọi trạng thái')), DropdownMenuItem(value: 'uploaded', child: Text('Đã lưu')), DropdownMenuItem(value: 'ready', child: Text('Sẵn sàng')), DropdownMenuItem(value: 'processing', child: Text('Đang xử lý')), DropdownMenuItem(value: 'error', child: Text('Lỗi'))], onChanged: (value) => setState(() => _status = value!)),
+            const SizedBox(width: 12), DropdownButton<String>(value: _sort, items: const [DropdownMenuItem(value: 'newest', child: Text('Mới nhất')), DropdownMenuItem(value: 'oldest', child: Text('Cũ nhất')), DropdownMenuItem(value: 'name', child: Text('Tên A–Z'))], onChanged: (value) => setState(() => _sort = value!)),
+          ])),
           Expanded(
             child: _isLoading
                 ? _buildShimmerLoading()
@@ -428,7 +514,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
                     ? _buildErrorState()
                     : _documents.isEmpty
                         ? _buildEmptyState()
-                        : RefreshIndicator(
+                        : _visibleDocuments.isEmpty ? const Center(child: Text('Không có tài liệu phù hợp bộ lọc')) : RefreshIndicator(
                             onRefresh: _fetchDocuments,
                             child: _buildDocumentList(),
                           ),
@@ -453,24 +539,19 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textDark, size: 22),
         onPressed: () => Navigator.pop(context),
       ),
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (widget.iconPath != null) ...[
-            Image.asset(widget.iconPath!, width: 24, height: 24, fit: BoxFit.contain),
-            const SizedBox(width: 8),
-          ],
-          Text(
-            widget.notebookTitle,
-            style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark),
-          ),
+      title: Row(children: [
+        if ((_notebook?['icon_path'] ?? widget.iconPath) != null) ...[
+          Image.asset(((_notebook?['icon_path'] ?? widget.iconPath) as String).replaceFirst(RegExp(r'^/'), ''), width: 24, height: 24),
+          const SizedBox(width: 8),
         ],
-      ),
+        Expanded(child: Text(_title, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark))),
+      ]),
       centerTitle: true,
       actions: [
+        IconButton(tooltip: 'Xóa sổ tay', icon: const Icon(Icons.delete_outline), onPressed: _deletingNotebook ? null : _deleteNotebook),
         IconButton(
-          icon: const Icon(Icons.more_horiz_rounded, color: AppColors.textDark),
-          onPressed: () {},
+          icon: const Icon(Icons.edit_outlined, color: AppColors.textDark),
+          onPressed: _notebook == null ? null : _editNotebook,
         ),
       ],
     );
@@ -487,7 +568,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
             icon: "assets/icons/actions/icon-actions-summary.png",
             color: const Color(0xFFE8F5E9),
             iconColor: const Color(0xFF2E7D32),
-            onTap: () {
+            onTap: !_aiEnabled ? null : () {
               SummaryScreen.showModelSelection(
                 context: context,
                 notebookId: widget.notebookId,
@@ -500,7 +581,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
             icon: "assets/icons/actions/icon-actions-ai-chat.png",
             color: const Color(0xFFE3F2FD),
             iconColor: const Color(0xFF1565C0),
-            onTap: () {
+            onTap: !_aiEnabled ? null : () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -529,7 +610,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
     required String icon,
     required Color color,
     required Color iconColor,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -594,16 +675,16 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   Widget _buildDocumentList() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: _documents.length,
+      itemCount: _visibleDocuments.length,
       physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       itemBuilder: (context, index) {
-        final doc = _documents[index];
+        final doc = _visibleDocuments[index];
         final fileName = doc['file_name'] ?? 'Tài liệu không tên';
         final status = doc['status'] ?? 'uploaded';
         final isPdf = fileName.toString().toLowerCase().endsWith('.pdf');
 
         return GestureDetector(
-          onTap: () => _showChunksDialog(doc['document_id'].toString(), fileName),
+          onTap: (doc['current_version'] ?? 0) > 0 ? () => _showChunksDialog(doc['document_id'].toString(), fileName) : null,
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
@@ -654,13 +735,23 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          status == 'ready' ? "notebook.status_ready".tr() : status == 'processing' ? "notebook.status_processing".tr() : "notebook.status_uploaded".tr(),
+                          status == 'error' ? "errors.ERR_REPROCESS_REQUIRED".tr() : status == 'ready' ? "notebook.status_ready".tr() : status == 'processing' ? (_aiEnabled ? "notebook.status_processing".tr() : "Xử lý đang tạm hoãn") : "Đã lưu",
                           style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
                         ),
                       ],
                     ),
                   ],
                 ),
+              ),
+              IconButton(icon: const Icon(Icons.edit_outlined), tooltip: 'Đổi tên tài liệu', onPressed: () => _renameDocument(doc)),
+              if (status == 'error' && _aiEnabled) IconButton(
+                icon: const Icon(Icons.refresh), tooltip: 'errors.ERR_REPROCESS_REQUIRED'.tr(),
+                onPressed: () async {
+                  final result = await _apiService.reprocessDocument(doc['document_id']);
+                  if (!context.mounted) return;
+                  if (result['success'] == true) { _fetchDocuments(); }
+                  else { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']))); }
+                },
               ),
               _deletingDocId == doc['document_id']
                   ? const Padding(
