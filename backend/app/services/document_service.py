@@ -1,79 +1,57 @@
-import os
-import logging
-import uuid
-from sqlmodel import Session
-from backend.app.core.db import engine
-from backend.app.models.models import Document, DocumentChunk, Notification
+"""Ingestion preparation and atomic publication, guarded by a live job lease."""
+import hashlib
+import math
+from sqlmodel import Session, select
+from backend.app.models.models import Document, DocumentChunk, DocumentVersion, Job, Notification
+from backend.app.services.job_service import PipelineError, job_service
+from backend.app.services.storage import source_path
+from backend.processor.canonical import PIPELINE_VERSION
 from backend.processor.document_processor import DocumentProcessor
 
-logger = logging.getLogger(__name__)
+class DocumentService:
+    def __init__(self, engine, ai, processor_factory=DocumentProcessor):
+        self.engine, self.ai, self.processor_factory = engine, ai, processor_factory
 
-def process_document_background(doc_id: uuid.UUID, file_path: str):
-    """
-    Tác vụ nền xử lý tài liệu bằng Docling và lưu các phân mảnh (chunks) vào Database.
-    """
-    logger.info(f"⚡ Bắt đầu xử lý nền tài liệu: {doc_id}")
-    with Session(engine) as session:
-        doc = session.get(Document, doc_id)
-        if not doc:
-            logger.error(f"Không tìm thấy Document {doc_id} trong DB")
-            return
-
-        doc.status = "processing"
-        session.commit()
-
-        try:
-            processor = DocumentProcessor(chunk_size=1000, chunk_overlap=200)
-            chunks_data = processor.process_document(file_path)
-
-            # Sinh vector embedding hàng loạt (batch) cho tất cả các chunks
-            from backend.app.services.embedding_service import embedding_service
-            contents = [chunk["content"] for chunk in chunks_data]
-            embeddings = embedding_service.embed_text(contents, is_query=False)
-
-            for idx, chunk in enumerate(chunks_data):
-                page_num = 1
-                if "metadata" in chunk and "page" in chunk["metadata"]:
-                    try:
-                        page_num = int(chunk["metadata"]["page"])
-                    except (ValueError, TypeError):
-                        pass
-
-                db_chunk = DocumentChunk(
-                    docuchunk_id=uuid.uuid4(),
-                    document_id=doc_id,
-                    content=chunk["content"],
-                    embedding=embeddings[idx],
-                    embedding_model="intfloat/multilingual-e5-small",
-                    page_number=page_num
-                )
-                session.add(db_chunk)
-
-            # Tạo thông báo thành công cho người dùng sở hữu tài liệu
-            notification = Notification(
-                user_id=doc.notebook.user_id,
-                title="Phân tích tài liệu thành công!",
-                body=f"Tài liệu {doc.file_name} đã được phân tích thành công! Bắt đầu tóm tắt ngay.",
-                type="success"
-            )
-            session.add(notification)
-
-            doc.status = "ready"
-            session.commit()
-            logger.info(f"Xử lý thành công tài liệu {doc_id}. Đã tạo {len(chunks_data)} chunks.")
-
-        except Exception as e:
-            logger.error(f"Lỗi xử lý tài liệu {doc_id}: {e}", exc_info=True)
-            try:
-                notification = Notification(
-                    user_id=doc.notebook.user_id,
-                    title="Lỗi phân tích tài liệu",
-                    body=f"Tài liệu {doc.file_name} gặp lỗi khi phân tích: {str(e)}",
-                    type="error"
-                )
-                session.add(notification)
-            except Exception as notify_err:
-                logger.error(f"Không thể tạo thông báo lỗi cho user: {notify_err}")
-            
-            doc.status = "error"
+    def execute(self, claim: Job, check=lambda: None):
+        with Session(self.engine) as session:
+            document = session.get(Document, claim.document_id)
+            if not document: raise PipelineError("ERR_SOURCE_MISSING")
+            key = document.storage_key
+            expected_checksum = document.checksum
+        if not key: raise PipelineError("ERR_SOURCE_MISSING")
+        path = source_path(key)
+        if not path.is_file(): raise PipelineError("ERR_SOURCE_MISSING")
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            while data := stream.read(1024 * 1024): digest.update(data)
+        if expected_checksum != digest.hexdigest(): raise PipelineError("ERR_SOURCE_CHANGED")
+        check()
+        canonical = self.processor_factory().extract(str(path))
+        capability = self.ai.capability("embedding")
+        chunks = canonical.chunks(lambda text: self.ai.split(text, "embedding", overlap=64))
+        if not chunks: raise PipelineError("ERR_EMPTY_DOCUMENT")
+        vectors = []
+        for start in range(0, len(chunks), 16):
+            check()
+            batch = self.ai.embed([c["content"] for c in chunks[start:start + 16]], expected_version=capability["version"])
+            if len(batch) != len(chunks[start:start + 16]) or any(len(v) != 384 or not all(math.isfinite(x) for x in v) for v in batch):
+                raise PipelineError("ERR_EMBEDDING_SHAPE")
+            vectors.extend(batch)
+            with Session(self.engine) as session: job_service.progress(session, claim, 0.1 + 0.8 * len(vectors) / len(chunks))
+        check()
+        with Session(self.engine) as session:
+            job = job_service.fenced(session, claim)
+            document = session.exec(select(Document).where(Document.document_id == claim.document_id).with_for_update()).first()
+            if not document or document.requested_version != claim.payload["version"] or document.checksum != expected_checksum:
+                raise PipelineError("ERR_SOURCE_CHANGED")
+            version = DocumentVersion(document_id=document.document_id, version=claim.payload["version"], canonical_text=canonical.text,
+                sections=canonical.sections, checksum=canonical.checksum, pipeline_version=PIPELINE_VERSION)
+            session.add(version)
+            for chunk, vector in zip(chunks, vectors):
+                session.add(DocumentChunk(document_id=document.document_id, version=version.version, embedding=vector,
+                    embedding_model=capability["version"], **chunk))
+            document.current_version, document.status, document.error_code = version.version, "ready", None
+            session.add(document)
+            session.add(Notification(user_id=job.user_id, title="Tài liệu đã sẵn sàng", body=f"Đã xử lý {document.file_name}.", type="success"))
+            job_service.succeed(session, job)
             session.commit()
