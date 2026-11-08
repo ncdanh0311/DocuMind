@@ -1,14 +1,15 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Notebook } from '@/types';
-import { apiService } from '@/lib/api';
+import { apiService, getErrorMessage } from '@/lib/api';
 import { useAuth } from './AuthContext';
 
 interface NotebookContextType {
   notebooks: Notebook[];
   loading: boolean;
   isLoading: boolean;
+  error: string | null;
   refreshNotebooks: () => Promise<void>;
   isCreateOpen: boolean;
   openCreateModal: () => void;
@@ -18,34 +19,42 @@ interface NotebookContextType {
 const NotebookContext = createContext<NotebookContextType | undefined>(undefined);
 
 export function NotebookProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const generation = useRef(0);
+  const invalidate = useCallback(() => { generation.current++; }, []);
 
   const refreshNotebooks = useCallback(async () => {
+    const request = ++generation.current;
     if (!isAuthenticated) {
       setNotebooks([]);
       return;
     }
     setLoading(true);
+    setError(null);
     try {
       const data = await apiService.getNotebooks();
-      setNotebooks(data);
+      if (request === generation.current) setNotebooks(data);
     } catch (err) {
-      console.error('Failed to load notebooks:', err);
+      if (request === generation.current) setError(getErrorMessage(err));
     } finally {
-      setLoading(false);
+      if (request === generation.current) setLoading(false);
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
+    setNotebooks([]); setIsCreateOpen(false);
     if (isAuthenticated) {
       refreshNotebooks();
     } else {
       setNotebooks([]);
+      setLoading(false); setError(null);
     }
-  }, [isAuthenticated, refreshNotebooks]);
+    return invalidate;
+  }, [isAuthenticated, user?.user_id, refreshNotebooks, invalidate]);
 
   const openCreateModal = () => setIsCreateOpen(true);
   const closeCreateModal = () => setIsCreateOpen(false);
@@ -56,6 +65,7 @@ export function NotebookProvider({ children }: { children: React.ReactNode }) {
         notebooks,
         loading,
         isLoading: loading,
+        error,
         refreshNotebooks,
         isCreateOpen,
         openCreateModal,

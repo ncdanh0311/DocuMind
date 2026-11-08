@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Notebook, DocumentItem, User, NotificationItem } from '@/types';
+import type { Notebook, DocumentItem, User, NotificationItem, TokenResponse, ResetTokenResponse, MessageResponse, QAModel, SummaryModel, ChatResponse, SummaryRecord, ModelCapability, SourceRecord, JobRecord } from '../types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
 
@@ -21,17 +21,22 @@ export const tokenManager = {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('refresh_token');
   },
-  setTokens(accessToken: string, refreshToken?: string, fullName?: string) {
+  setTokens(accessToken: string, refreshToken?: string, fullName?: string | null) {
     if (typeof window === 'undefined') return;
     localStorage.setItem('access_token', accessToken);
     if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
-    if (fullName) localStorage.setItem('full_name', fullName);
+    if (fullName !== undefined) {
+      if (fullName) localStorage.setItem('full_name', fullName);
+      else localStorage.removeItem('full_name');
+    }
+    window.dispatchEvent(new Event('auth-changed'));
   },
   clearAuth() {
     if (typeof window === 'undefined') return;
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('full_name');
+    window.dispatchEvent(new Event('auth-changed'));
   },
 };
 
@@ -44,65 +49,61 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Response Interceptor: Auto-refresh token on 401 (matching mobile _sendWithAuthRetry)
+// Share one refresh operation across concurrent requests; retry stale requests with
+// the already-rotated token instead of rotating a second time.
+let refreshPromise: Promise<string> | null = null;
+const publicAuthPaths = ['/auth/login', '/auth/register', '/auth/refresh-token', '/auth/forgot-password', '/auth/verify-otp', '/auth/reset-password'];
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      const refreshToken = tokenManager.getRefreshToken();
-      if (refreshToken) {
-        try {
-          const res = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
-            refresh_token: refreshToken,
-          });
-          if (res.data?.access_token) {
-            tokenManager.setTokens(res.data.access_token, res.data.refresh_token);
-            originalRequest.headers.Authorization = `Bearer ${res.data.access_token}`;
-            return apiClient(originalRequest);
-          }
-        } catch {
-          tokenManager.clearAuth();
-          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-            window.location.href = '/login';
-          }
-        }
-      }
+    const original = error.config;
+    if (!original || error.response?.status !== 401 || original._retry ||
+        publicAuthPaths.some((path) => original.url?.split('?')[0] === path)) {
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+    original._retry = true;
+    const current = tokenManager.getAccessToken();
+    const refresh = tokenManager.getRefreshToken();
+    if (!current || !refresh) return Promise.reject(error);
+    try {
+      if (original.headers.Authorization !== `Bearer ${current}`) {
+        original.headers.Authorization = `Bearer ${current}`;
+        return apiClient(original);
+      }
+      if (!refreshPromise) {
+        refreshPromise = axios.post<TokenResponse>(`${API_BASE_URL}/auth/refresh-token`,
+          { refresh_token: refresh }, { timeout: 15000 }).then((res) => {
+          // A logout or a new login must not be overwritten by a late refresh.
+          if (tokenManager.getRefreshToken() !== refresh) throw new Error('Session changed');
+          if (!res.data.access_token || !res.data.refresh_token) throw new Error('Invalid token response');
+          tokenManager.setTokens(res.data.access_token, res.data.refresh_token);
+          return res.data.access_token;
+        }).finally(() => { refreshPromise = null; });
+      }
+      const token = await refreshPromise;
+      original.headers.Authorization = `Bearer ${token}`;
+      return apiClient(original);
+    } catch (refreshError) {
+      // A network outage is not proof that the stored session is invalid.
+      if (axios.isAxiosError(refreshError) && [401, 403].includes(refreshError.response?.status ?? 0)
+          && tokenManager.getRefreshToken() === refresh) tokenManager.clearAuth();
+      return Promise.reject(refreshError);
+    }
   }
 );
 
-// Fallback category icon resolver matching mobile's _getCategoryIcon
-export function getCategoryIcon(title: string, iconPath?: string): string {
-  if (iconPath && iconPath.startsWith('/assets')) return iconPath;
-  const t = title.toLowerCase();
-  if (t.includes('toán') || t.includes('học') || t.includes('study') || t.includes('giải tích')) {
-    return '/assets/icons/categories/icon-category-study.png';
-  }
-  if (t.includes('dự án') || t.includes('project') || t.includes('app') || t.includes('web')) {
-    return '/assets/icons/categories/icon-category-project.png';
-  }
-  if (t.includes('nghiên cứu') || t.includes('research') || t.includes('deep learning') || t.includes('ai')) {
-    return '/assets/icons/categories/icon-category-research.png';
-  }
-  return '/assets/icons/categories/icon-category-personal.png';
-}
-
-// Fallback category type
-export function getCategoryType(title: string): 'study' | 'project' | 'research' | 'personal' {
-  const t = title.toLowerCase();
-  if (t.includes('toán') || t.includes('học') || t.includes('study')) return 'study';
-  if (t.includes('dự án') || t.includes('project')) return 'project';
-  if (t.includes('nghiên cứu') || t.includes('deep learning') || t.includes('ai')) return 'research';
-  return 'personal';
+// Category is persisted by the API; titles never determine classification.
+export function getCategoryIcon(category: string = 'personal', iconPath?: string | null): string {
+  if (iconPath?.startsWith('/assets/')) return iconPath;
+  if (iconPath?.startsWith('assets/')) return '/' + iconPath;
+  return `/assets/icons/categories/icon-category-${category}.png`;
 }
 
 interface RawNotebook {
   notebook_id: string;
   title: string;
+  category: Notebook['category'];
+  description: string;
   icon_path?: string;
   document_count?: number;
   count?: number;
@@ -126,7 +127,7 @@ interface RawDocument {
 export const apiService = {
   // 1. AUTH
   async login(email: string, password: string) {
-    const res = await apiClient.post('/auth/login', { email, password });
+    const res = await apiClient.post<TokenResponse>('/auth/login', { email, password });
     if (res.data?.access_token) {
       tokenManager.setTokens(res.data.access_token, res.data.refresh_token, res.data.full_name);
     }
@@ -134,7 +135,7 @@ export const apiService = {
   },
 
   async register(email: string, password: string, full_name?: string) {
-    const res = await apiClient.post('/auth/register', { email, password, full_name });
+    const res = await apiClient.post<TokenResponse>('/auth/register', { email, password, full_name });
     if (res.data?.access_token) {
       tokenManager.setTokens(res.data.access_token, res.data.refresh_token, res.data.full_name);
     }
@@ -151,17 +152,17 @@ export const apiService = {
   },
 
   async forgotPassword(email: string) {
-    const res = await apiClient.post('/auth/forgot-password', { email });
+    const res = await apiClient.post<MessageResponse>('/auth/forgot-password', { email });
     return res.data;
   },
 
   async verifyOtp(email: string, otp_code: string) {
-    const res = await apiClient.post('/auth/verify-otp', { email, otp_code });
+    const res = await apiClient.post<ResetTokenResponse>('/auth/verify-otp', { email, otp_code });
     return res.data;
   },
 
   async resetPassword(token: string, new_password: string) {
-    const res = await apiClient.post('/auth/reset-password', { token, new_password });
+    const res = await apiClient.post<TokenResponse & MessageResponse>('/auth/reset-password', { token, new_password });
     if (res.data?.access_token) {
       tokenManager.setTokens(res.data.access_token, res.data.refresh_token, res.data.full_name);
     }
@@ -169,7 +170,7 @@ export const apiService = {
   },
 
   async getProfile(): Promise<User> {
-    const res = await apiClient.get('/auth/me');
+    const res = await apiClient.get<User>('/auth/me');
     return res.data;
   },
 
@@ -181,7 +182,7 @@ export const apiService = {
     return res.data;
   },
 
-  async updateSecurity(data: { old_password?: string; new_password?: string }) {
+  async updateSecurity(data: { old_password: string; new_password: string }) {
     const res = await apiClient.put('/auth/security', data);
     return res.data;
   },
@@ -193,26 +194,28 @@ export const apiService = {
     return list.map((item) => ({
       ...item,
       id: item.notebook_id,
-      category: getCategoryType(item.title),
-      icon: item.icon_path || getCategoryIcon(item.title, item.icon_path),
+      category: item.category ?? 'personal',
+      icon: getCategoryIcon(item.category, item.icon_path),
       count: item.document_count || item.count || 0,
     }));
   },
 
   async getNotebook(notebookId: string): Promise<Notebook> {
-    const res = await apiClient.get(`/notebooks/${notebookId}`);
+    const res = await apiClient.get<Notebook>(`/notebooks/${notebookId}`);
     return {
       ...res.data,
       id: res.data.notebook_id,
-      category: getCategoryType(res.data.title),
-      icon: res.data.icon_path || getCategoryIcon(res.data.title, res.data.icon_path),
+      category: res.data.category ?? 'personal',
+      icon: getCategoryIcon(res.data.category, res.data.icon_path),
       count: res.data.document_count || res.data.count || 0,
     };
   },
 
-  async createNotebook(title: string, options: { is_private?: boolean; show_on_home?: boolean; icon_path?: string } = {}) {
+  async createNotebook(title: string, options: { category?: Notebook['category']; description?: string; is_private?: boolean; show_on_home?: boolean; icon_path?: string } = {}) {
     const res = await apiClient.post('/notebooks/', {
       title,
+      category: options.category ?? 'personal',
+      description: options.description ?? '',
       is_private: options.is_private ?? true,
       show_on_home: options.show_on_home ?? true,
       icon_path: options.icon_path,
@@ -220,7 +223,7 @@ export const apiService = {
     return res.data;
   },
 
-  async updateNotebook(notebookId: string, data: { title?: string; is_private?: boolean; show_on_home?: boolean; icon_path?: string }) {
+  async updateNotebook(notebookId: string, data: { title?: string; category?: Notebook['category']; description?: string; is_private?: boolean; show_on_home?: boolean; icon_path?: string }) {
     const res = await apiClient.put(`/notebooks/${notebookId}`, data);
     return res.data;
   },
@@ -273,6 +276,12 @@ export const apiService = {
     };
   },
 
+  async renameDocument(documentId: string, title: string): Promise<DocumentItem> {
+    return (await apiClient.patch<DocumentItem>(`/documents/${documentId}`, { title })).data;
+  },
+  async getAppConfig(): Promise<{ ai_enabled: boolean }> {
+    return (await apiClient.get('/app-config')).data;
+  },
   async deleteDocument(documentId: string) {
     const res = await apiClient.delete(`/documents/${documentId}`);
     return res.data;
@@ -295,24 +304,42 @@ export const apiService = {
   },
 
   // 4. AI SERVICE (RAG Chat & Summarization)
-  async askAI(notebookId: string, question: string, model = 'phobert_qa') {
-    const res = await apiClient.post(`/notebooks/${notebookId}/chat`, {
+  async askAI(notebookId: string, question: string, model: QAModel = 'phobert_qa') {
+    const res = await apiClient.post<ChatResponse>(`/notebooks/${notebookId}/chat`, {
       question,
       model,
     });
     return res.data; // { answer, citations: [...] }
   },
 
-  async summarizeNotebook(notebookId: string, model = 'vit5') {
-    const res = await apiClient.post(`/notebooks/${notebookId}/summarize`, {
+  async summarizeNotebook(notebookId: string, model: SummaryModel = 'vit5') {
+    const res = await apiClient.post<SummaryRecord>(`/notebooks/${notebookId}/summarize`, {
       model,
     });
     return res.data; // { summary: string }
   },
 
+  async getSummary(summaryId: string) {
+    return (await apiClient.get<SummaryRecord>(`/summaries/${summaryId}`)).data;
+  },
+  async getJob(jobId: string) {
+    return (await apiClient.get<JobRecord>(`/jobs/${jobId}`)).data;
+  },
+  async getCapabilities() {
+    return (await apiClient.get<{ models: ModelCapability[] }>('/capabilities')).data.models;
+  },
+  async getSource(citation: { document_id: string; version: number; start_offset: number; end_offset: number }) {
+    return (await apiClient.get<SourceRecord>(`/documents/${citation.document_id}/source`, {
+      params: { version: citation.version, start: citation.start_offset, end: citation.end_offset },
+    })).data;
+  },
+  async reprocessDocument(documentId: string) {
+    return (await apiClient.post(`/documents/${documentId}/reprocess`)).data;
+  },
+
   // 5. NOTIFICATIONS
   async getNotifications(): Promise<NotificationItem[]> {
-    const res = await apiClient.get('/notifications/');
+    const res = await apiClient.get<NotificationItem[]>('/notifications/');
     return Array.isArray(res.data) ? res.data : [];
   },
 
@@ -346,6 +373,16 @@ const ERROR_TRANSLATIONS: Record<string, string> = {
   ERR_ANSWER_NOT_FOUND: 'Không tìm thấy câu trả lời trong tài liệu.',
   ERR_INVALID_INPUT: 'Dữ liệu đầu vào không hợp lệ.',
   ERR_AI_SERVICE_UNAVAILABLE: 'Dịch vụ AI hiện đang bận hoặc đang khởi động. Vui lòng thử lại sau!',
+  ERR_SOURCE_CHANGED: 'Tài liệu đã thay đổi. Vui lòng tạo lại bản tóm tắt.',
+  ERR_DOCUMENTS_NOT_READY: 'Vui lòng đợi mọi tài liệu xử lý xong hoặc xử lý lại tài liệu gặp lỗi.',
+  ERR_JOB_FAILED: 'Xử lý tài liệu gặp lỗi. Bạn có thể thử lại.',
+  ERR_REPROCESS_REQUIRED: 'Tài liệu cần được xử lý lại để cập nhật vị trí nguồn.',
+  ERR_MODEL_NOT_CALIBRATED: 'Mô hình chưa hoàn tất đánh giá chất lượng.',
+  ERR_AI_SERVICE_ERROR: 'Dịch vụ AI gặp lỗi. Vui lòng thử lại sau.',
+  ERR_AI_DISABLED: 'Tính năng AI đang tạm hoãn.',
+  ERR_MODEL_UNAVAILABLE: 'Mô hình đã chọn chưa sẵn sàng. Vui lòng chọn mô hình khác hoặc thử lại sau.',
+  ERR_INTERNAL_SERVER: 'Máy chủ gặp lỗi. Vui lòng thử lại sau.',
+  ERR_FILE_WRITE_FAILED: 'Không thể lưu tài liệu. Vui lòng thử lại sau.',
   ERR_CONNECTION_FAILED: 'Kết nối thất bại. Vui lòng kiểm tra lại kết nối mạng!',
 };
 

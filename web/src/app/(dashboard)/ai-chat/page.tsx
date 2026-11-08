@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { apiService } from '@/lib/api';
+import { apiService, getErrorMessage } from '@/lib/api';
 import { useNotebooks } from '@/contexts/NotebookContext';
-import { ChatMessage } from '@/types';
+import { ChatMessage, QAModel, ModelCapability, ChatCitation, SourceRecord } from '@/types';
 import ReactMarkdown from 'react-markdown';
 import { 
   Send, 
@@ -27,12 +27,38 @@ function AIChatContent() {
 
   const { notebooks, openCreateModal } = useNotebooks();
   const [selectedNotebookId, setSelectedNotebookId] = useState<string>(initialNotebookId);
-  const [selectedModel, setSelectedModel] = useState<string>('phobert_qa');
+  const [selectedModel, setSelectedModel] = useState<QAModel>('phobert_qa');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [capabilities, setCapabilities] = useState<ModelCapability[]>([]);
+  const [sourceCitation, setSourceCitation] = useState<ChatCitation | null>(null);
+  const [source, setSource] = useState<SourceRecord | null>(null);
+  const [sourceError, setSourceError] = useState<string | null>(null);
+  const sourceRequest = useRef(0);
+  const chatRequest = useRef(0);
+  const modelReady = capabilities.some((entry) => entry.id === selectedModel && entry.ready)
+    && ['embedding', 'reranker'].every((id) => capabilities.some((entry) => entry.id === id && entry.ready));
+  useEffect(() => {
+    let alive = true;
+    apiService.getCapabilities().then((models) => { if (alive) setCapabilities(models); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  useEffect(() => {
+    chatRequest.current++; sourceRequest.current++;
+    setMessages([]); setLoading(false); setSourceCitation(null);
+  }, [selectedNotebookId]);
+  const openSource = async (citation: ChatCitation) => {
+    const request = ++sourceRequest.current;
+    setSourceCitation(citation); setSource(null); setSourceError(null);
+    try {
+      const value = await apiService.getSource(citation);
+      if (request === sourceRequest.current) setSource(value);
+    } catch (err) { if (request === sourceRequest.current) setSourceError(getErrorMessage(err)); }
+  };
+
 
   // Auto-select first notebook if not set
   useEffect(() => {
@@ -52,7 +78,8 @@ function AIChatContent() {
 
   const handleSend = async (textToSend?: string) => {
     const text = textToSend || inputText;
-    if (!text.trim() || !selectedNotebookId || loading) return;
+    if (!text.trim() || !selectedNotebookId || loading || !modelReady) return;
+    const request = ++chatRequest.current;
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -67,26 +94,27 @@ function AIChatContent() {
 
     try {
       const res = await apiService.askAI(selectedNotebookId, text.trim(), selectedModel);
+      if (request !== chatRequest.current) return;
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
-        text: res.answer || res.response || 'Đã xử lý thông tin từ tài liệu của bạn.',
+        text: res.answer,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         citations: res.citations || [],
         model: selectedModel,
       };
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err: unknown) {
-      console.error('Chat error:', err);
+      if (request !== chatRequest.current) return;
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'ai',
-        text: '⚠️ Không thể kết nối với dịch vụ AI hoặc sổ tay chưa có tài liệu nào sẵn sàng. Vui lòng đảm bảo bạn đã tải lên tài liệu trong sổ tay này.',
+        text: getErrorMessage(err),
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
-      setLoading(false);
+      if (request === chatRequest.current) setLoading(false);
     }
   };
 
@@ -145,6 +173,7 @@ function AIChatContent() {
           {/* Model Selector */}
           <div className="flex items-center gap-1.5 bg-[#F5F7F7] p-1 rounded-xl border border-[#EAEFEA]">
             <button
+              disabled={loading || !capabilities.some((entry) => entry.id === 'phobert_qa' && entry.ready)}
               onClick={() => setSelectedModel('phobert_qa')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 selectedModel === 'phobert_qa'
@@ -155,9 +184,10 @@ function AIChatContent() {
               PhoBERT QA
             </button>
             <button
-              onClick={() => setSelectedModel('xlm_roberta')}
+              disabled={loading || !capabilities.some((entry) => entry.id === 'xlmroberta_qa' && entry.ready)}
+              onClick={() => setSelectedModel('xlmroberta_qa')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                selectedModel === 'xlm_roberta'
+                selectedModel === 'xlmroberta_qa'
                   ? 'bg-white text-[#26A69A] shadow-2xs'
                   : 'text-[#8E9DAE] hover:text-[#2D3E50]'
               }`}
@@ -271,12 +301,13 @@ function AIChatContent() {
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {msg.citations.map((cite, cIdx) => (
-                          <span
+                          <button
+                            onClick={() => openSource(cite)}
                             key={cIdx}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#E6F7F1] border border-[#D2EFE6] text-[#26A69A] text-[11px] font-semibold"
                           >
-                            <span>Trang {cite.page || '1'}</span>
-                          </span>
+                            <span>{cite.source_title} · {cite.page_number ? `Trang ${cite.page_number}${cite.page_end && cite.page_end !== cite.page_number ? `–${cite.page_end}` : ''}` : cite.section_path || 'Nội dung'}</span>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -325,6 +356,15 @@ function AIChatContent() {
         <div ref={messagesEndRef} />
       </div>
 
+      {!modelReady && <p role="status" className="text-sm text-amber-700 p-3">{capabilities.some(entry => entry.error_code === 'ERR_AI_DISABLED') ? 'Tính năng AI đang tạm hoãn.' : 'Mô hình hoặc dịch vụ tìm kiếm chưa sẵn sàng.'}</p>}
+      {sourceCitation && <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-6">
+        <section role="dialog" aria-modal="true" aria-label="Nguồn trích dẫn" className="bg-white rounded-2xl p-6 max-w-2xl w-full">
+          <div className="flex justify-between gap-4"><h3 className="font-bold">{sourceCitation.source_title} · Phiên bản {sourceCitation.version}</h3>
+            <button onClick={() => { sourceRequest.current++; setSourceCitation(null); }}>Đóng</button></div>
+          {sourceError ? <p role="alert">{sourceError}</p> : source ? <blockquote className="whitespace-pre-wrap my-6 max-h-96 overflow-auto">{source.text}</blockquote> : <p role="status">Đang tải nguồn...</p>}
+          <p className="text-xs text-gray-500">{sourceCitation.page_number ? `Trang ${sourceCitation.page_number}` : sourceCitation.section_path || 'Nội dung tài liệu'}</p>
+        </section>
+      </div>}
       {/* Input Box */}
       <div className="mt-4">
         <form
@@ -349,7 +389,7 @@ function AIChatContent() {
 
           <button
             type="submit"
-            disabled={!inputText.trim() || loading || notebooks.length === 0}
+            disabled={!inputText.trim() || loading || notebooks.length === 0 || !modelReady}
             className="w-10 h-10 rounded-xl bg-[#26A69A] hover:bg-[#1E877B] text-white flex items-center justify-center shrink-0 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

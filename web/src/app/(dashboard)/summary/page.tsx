@@ -1,233 +1,116 @@
 'use client';
-
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Image from 'next/image';
-import axios from 'axios';
-import { apiService } from '@/lib/api';
-import { useNotebooks } from '@/contexts/NotebookContext';
 import ReactMarkdown from 'react-markdown';
-import { 
-  Sparkles, 
-  Loader2, 
-  Copy, 
-  Check, 
-  FileText
-} from 'lucide-react';
+import { isAxiosError } from 'axios';
+import { Loader2, Sparkles, Copy } from 'lucide-react';
+import { apiService, getErrorMessage } from '@/lib/api';
+import { useNotebooks } from '@/contexts/NotebookContext';
+import type { ModelCapability, SummaryModel, SummaryRecord } from '@/types';
+
+const active = (record: SummaryRecord | null) => !!record && !record.stale && ['queued', 'running'].includes(record.status);
 
 function SummaryContent() {
-  const searchParams = useSearchParams();
-  const initialNotebookId = searchParams.get('notebookId') || '';
-
-  const { notebooks, isLoading: notebooksLoading } = useNotebooks();
-  const [selectedNotebookId, setSelectedNotebookId] = useState<string>(initialNotebookId);
-  const [selectedModel, setSelectedModel] = useState<'vit5' | 'bartpho'>('vit5');
-  const [summary, setSummary] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const params = useSearchParams();
+  const { notebooks } = useNotebooks();
+  const [notebookId, setNotebookId] = useState(params.get('notebookId') || '');
+  const [model, setModel] = useState<SummaryModel>('vit5');
+  const [models, setModels] = useState<ModelCapability[]>([]);
+  const [record, setRecord] = useState<SummaryRecord | null>(null);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const aiPaused = models.length === 0 || models.some(entry => entry.error_code === 'ERR_AI_DISABLED');
+  const generation = useRef(0);
+  const invalidate = useCallback(() => { generation.current++; }, []);
+  const key = `documind:summary:${notebookId}:${model}`;
 
   useEffect(() => {
-    if (!selectedNotebookId && notebooks.length > 0) {
-      setSelectedNotebookId(notebooks[0].notebook_id || notebooks[0].id || '');
-    }
-  }, [notebooks, selectedNotebookId]);
-
-  const handleSummarize = async () => {
-    if (!selectedNotebookId || loading) return;
-
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiService.summarizeNotebook(selectedNotebookId, selectedModel);
-      setSummary(res.summary || 'Không tìm thấy nội dung tóm tắt.');
-    } catch (err: unknown) {
-      console.error('Summary error:', err);
-      let detailMsg = 'Không thể thực hiện tóm tắt. Vui lòng đảm bảo bạn đã tải lên tài liệu trong vở bài tập này và dịch vụ AI đang hoạt động.';
-      if (axios.isAxiosError(err) && err.response?.data?.detail) {
-        detailMsg = err.response.data.detail;
+    apiService.getCapabilities().then(setModels).catch((err) => setError(getErrorMessage(err)));
+  }, []);
+  useEffect(() => { if (!notebookId && notebooks.length) setNotebookId(notebooks[0].notebook_id); }, [notebooks, notebookId]);
+  useEffect(() => {
+    const version = ++generation.current;
+    setRecord(null); setError(null); setStarting(false);
+    const saved = localStorage.getItem(key);
+    if (saved) apiService.getSummary(saved).then((value) => {
+      if (generation.current === version) setRecord(value);
+    }).catch((err) => {
+      if (generation.current !== version) return;
+      if (isAxiosError(err) && err.response?.status === 404) localStorage.removeItem(key);
+      else setError(getErrorMessage(err));
+    });
+    return invalidate;
+  }, [key, invalidate]);
+  const summaryId = record?.summary_id;
+  const status = record?.status;
+  const stale = record?.stale;
+  useEffect(() => {
+    if (aiPaused || !summaryId || stale || !['queued', 'running'].includes(status || '')) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const value = await apiService.getSummary(summaryId);
+        if (cancelled) return;
+        setRecord(value); setError(null);
+        if (active(value)) timer = setTimeout(poll, 3000);
+      } catch (err) {
+        if (!cancelled) {
+          setError(getErrorMessage(err));
+          if (isAxiosError(err) && [401, 403, 404].includes(err.response?.status || 0)) setRecord(null);
+          else timer = setTimeout(poll, 3000);
+        }
       }
-      setError(detailMsg);
-    } finally {
-      setLoading(false);
-    }
+    };
+    timer = setTimeout(poll, 3000);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [summaryId, status, stale, key, aiPaused]);
+
+  const start = async () => {
+    const version = generation.current;
+    setStarting(true); setError(null);
+    try {
+      const value = await apiService.summarizeNotebook(notebookId, model);
+      if (generation.current !== version) return;
+      localStorage.setItem(key, value.summary_id);
+      setRecord(value);
+    } catch (err) { if (generation.current === version) setError(getErrorMessage(err)); }
+    finally { if (generation.current === version) setStarting(false); }
   };
-
-  const handleCopy = () => {
-    if (!summary) return;
-    navigator.clipboard.writeText(summary);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const selectedNotebook = notebooks.find(
-    (n) => n.notebook_id === selectedNotebookId || n.id === selectedNotebookId
-  );
-
-  return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-12">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2">
-          <h2 className="font-outfit text-3xl font-extrabold text-[#2D3E50]">
-            Tóm tắt tài liệu tự động
-          </h2>
-          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#E6F7F1] text-[#26A69A]">
-            Deep Learning
-          </span>
-        </div>
-        <p className="text-xs text-[#8E9DAE] font-medium mt-1">
-          Rút trích các ý chính và luận điểm quan trọng từ toàn bộ tài liệu bằng mô hình ViT5 và BARTpho
-        </p>
-      </div>
-
-      {/* Control Panel: Sổ tay & Model */}
-      <div className="bg-white border border-[#EAEFEA] rounded-3xl p-6 shadow-xs grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-        {/* Notebook Selector */}
-        <div className="md:col-span-6">
-          <label className="block text-xs font-bold text-[#2D3E50] uppercase tracking-wider mb-2">
-            Chọn vở bài tập nguồn
-          </label>
-          {notebooksLoading ? (
-            <div className="w-full bg-[#F5F7F7] text-xs text-[#8E9DAE] py-3.5 px-4 rounded-2xl flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-[#26A69A]" />
-              <span>Đang tải danh sách vở bài tập...</span>
-            </div>
-          ) : notebooks.length === 0 ? (
-            <div className="w-full bg-[#F5F7F7] text-xs text-[#8E9DAE] py-3.5 px-4 rounded-2xl">
-              Chưa có vở bài tập nào. Hãy tạo một vở mới trước!
-            </div>
-          ) : (
-            <select
-              value={selectedNotebookId}
-              onChange={(e) => setSelectedNotebookId(e.target.value)}
-              className="w-full bg-[#F5F7F7] hover:bg-[#EAEFEA] text-sm font-semibold text-[#2D3E50] py-3 px-4 rounded-2xl appearance-none outline-hidden border border-transparent focus:border-[#26A69A] transition-all cursor-pointer"
-            >
-              {notebooks.map((nb) => {
-                const id = nb.notebook_id || nb.id || '';
-                return (
-                  <option key={id} value={id}>
-                    {nb.title} ({nb.count ?? 0} tài liệu)
-                  </option>
-                );
-              })}
-            </select>
-          )}
-        </div>
-
-        {/* Model Selector */}
-        <div className="md:col-span-3">
-          <label className="block text-xs font-bold text-[#2D3E50] uppercase tracking-wider mb-2">
-            Mô hình tóm tắt
-          </label>
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value as 'vit5' | 'bartpho')}
-            className="w-full bg-[#F5F7F7] hover:bg-[#EAEFEA] text-sm font-semibold text-[#2D3E50] py-3 px-4 rounded-2xl appearance-none outline-hidden border border-transparent focus:border-[#26A69A] transition-all cursor-pointer"
-          >
-            <option value="vit5">ViT5 (Khuyên dùng - VietAI)</option>
-            <option value="bartpho">BARTpho (VinAI)</option>
-          </select>
-        </div>
-
-        {/* Action Button */}
-        <div className="md:col-span-3">
-          <button
-            onClick={handleSummarize}
-            disabled={loading || !selectedNotebookId || notebooks.length === 0}
-            className="w-full bg-[#26A69A] hover:bg-[#1E877B] text-white font-bold h-12 rounded-2xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 text-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Đang tóm tắt...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                <span>Bắt đầu tóm tắt</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="p-4 rounded-2xl bg-[#FFEBEE] border border-[#FFCDD2] text-[#C62828] text-xs font-medium">
-          {error}
-        </div>
-      )}
-
-      {/* Summary Output Area */}
-      {summary ? (
-        <div className="bg-white border border-[#EAEFEA] rounded-3xl p-8 shadow-xs animate-in fade-in duration-300">
-          <div className="flex items-center justify-between pb-4 mb-6 border-b border-[#F5F8F5]">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-[#E6F7F1] text-[#26A69A] flex items-center justify-center">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-outfit font-bold text-lg text-[#2D3E50]">
-                  Bản tóm tắt: {selectedNotebook?.title}
-                </h3>
-                <span className="text-xs text-[#8E9DAE]">
-                  Tạo bởi mô hình {selectedModel.toUpperCase()}
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={handleCopy}
-              className="px-4 py-2 rounded-xl bg-[#F5F7F7] hover:bg-[#E6F7F1] text-xs font-bold text-[#2D3E50] hover:text-[#26A69A] flex items-center gap-2 transition-all cursor-pointer"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4 text-[#26A69A]" />
-                  <span className="text-[#26A69A]">Đã sao chép</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  <span>Sao chép tóm tắt</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="prose max-w-none prose-p:my-2 prose-headings:text-[#2D3E50] prose-p:text-[#2D3E50] prose-li:text-[#2D3E50] leading-relaxed">
-            <ReactMarkdown>{summary}</ReactMarkdown>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-3xl border border-[#EAEFEA] p-12 text-center">
-          <div className="relative w-32 h-32 mx-auto mb-4 opacity-90">
-            <Image
-              src="/assets/mascot/mascot-owl-reading-on-books.png"
-              alt="Mascot On Books"
-              fill
-              className="object-contain"
-            />
-          </div>
-          <h4 className="font-outfit font-bold text-lg text-[#2D3E50]">
-            Sẵn sàng tóm tắt kiến thức
-          </h4>
-          <p className="text-xs text-[#8E9DAE] max-w-md mx-auto mt-1">
-            Chọn vở bài tập và bấm nút &quot;Bắt đầu tóm tắt&quot; để nhận bản tóm tắt súc tích, cô đọng nhất từ các tài liệu của bạn.
-          </p>
-        </div>
-      )}
+  const ready = models.find((entry) => entry.id === model)?.ready === true;
+  const waiting = !aiPaused && active(record);
+  return <div className="space-y-6 pb-12">
+    <div><h2 className="font-outfit text-3xl font-bold text-[#2D3E50]">Tóm tắt tài liệu</h2>
+      <p className="text-sm text-[#8E9DAE] mt-2">Đọc từng phần rồi tổng hợp toàn bộ tài liệu trong sổ tay.</p></div>
+    <div className="bg-white border border-[#EAEFEA] rounded-3xl p-6 grid md:grid-cols-3 gap-4">
+      <label className="text-sm font-semibold">Sổ tay
+        <select aria-label="Sổ tay" value={notebookId} disabled={starting} onChange={(event) => setNotebookId(event.target.value)} className="block w-full bg-[#F5F7F7] rounded-xl p-3 mt-2">
+          <option value="">Chọn sổ tay</option>{notebooks.map((item) => <option key={item.notebook_id} value={item.notebook_id}>{item.title}</option>)}
+        </select></label>
+      <label className="text-sm font-semibold">Mô hình
+        <select aria-label="Mô hình" value={model} disabled={starting} onChange={(event) => setModel(event.target.value as SummaryModel)} className="block w-full bg-[#F5F7F7] rounded-xl p-3 mt-2">
+          {(['vit5', 'bartpho'] as const).map((id) => <option key={id} value={id} disabled={!models.find((entry) => entry.id === id)?.ready}>{id === 'vit5' ? 'ViT5' : 'BARTpho'}{models.find((entry) => entry.id === id)?.ready ? '' : ' — Chưa sẵn sàng'}</option>)}
+        </select></label>
+      <button onClick={start} disabled={!notebookId || !ready || starting || waiting} className="mt-6 p-3 rounded-xl bg-[#26A69A] text-white font-bold disabled:opacity-40 flex items-center justify-center gap-2">
+        {starting || waiting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+        {starting ? 'Đang tạo yêu cầu...' : waiting ? 'Đang xử lý...' : 'Tạo bản tóm tắt'}
+      </button>
     </div>
-  );
+    {aiPaused && <p role="status" className="text-sm text-gray-600">Tính năng AI đang tạm hoãn.</p>}
+    {!ready && !aiPaused && <p className="text-sm text-[#8E9DAE]">Mô hình đã chọn chưa sẵn sàng. Bạn có thể chọn mô hình khác khi dịch vụ được cập nhật.</p>}
+    {error && <p role="alert" className="rounded-2xl p-4 bg-red-50 text-red-700">{error}</p>}
+    {record?.stale && <p role="alert" className="p-4 bg-amber-50 rounded-xl">Tài liệu đã thay đổi. Hãy tạo lại bản tóm tắt.</p>}
+    {record && ['failed', 'cancelled'].includes(record.status) && !record.stale && <p role="alert" className="p-4 bg-red-50 rounded-xl">Không thể hoàn tất bản tóm tắt. Bạn có thể thử tạo lại.</p>}
+    {waiting && <div role="status" className="bg-white rounded-3xl p-8 border border-[#EAEFEA]">
+      <p>{record?.status === 'queued' ? 'Đang chờ xử lý' : 'Đang đọc và tổng hợp tài liệu'}</p>
+      <p className="mt-2 text-sm text-[#8E9DAE]">Đã đọc {record?.processed_units || 0}/{record?.total_units || 0} phần. Bạn có thể rời trang và quay lại sau.</p>
+      <progress aria-label="Phần tài liệu đã đọc" className="w-full mt-4" max={record?.total_units || 1} value={record?.processed_units || 0} />
+    </div>}
+    {record?.status === 'succeeded' && !record.stale && record.summary && <article className="bg-white rounded-3xl p-8 border border-[#EAEFEA]">
+      <div className="flex justify-between mb-5"><h3 className="font-bold text-lg">Bản tóm tắt</h3><button aria-label="Sao chép tóm tắt" onClick={() => navigator.clipboard.writeText(record.summary || '')}><Copy className="w-4 h-4" /></button></div>
+      <ReactMarkdown>{record.summary}</ReactMarkdown>
+      <p className="mt-6 text-xs text-[#8E9DAE]">Đã xử lý {record.processed_units}/{record.total_units} phần đầu vào. Hãy đối chiếu thông tin quan trọng với tài liệu nguồn.</p>
+    </article>}
+  </div>;
 }
-
-export default function SummaryPage() {
-  return (
-    <Suspense fallback={
-      <div className="p-16 flex items-center justify-center bg-white rounded-3xl border border-[#EAEFEA]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#26A69A]" />
-      </div>
-    }>
-      <SummaryContent />
-    </Suspense>
-  );
-}
+export default function SummaryPage() { return <Suspense fallback={<p>Đang tải...</p>}><SummaryContent /></Suspense>; }

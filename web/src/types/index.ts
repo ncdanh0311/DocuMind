@@ -16,11 +16,13 @@ export interface Notebook {
   title: string;
   is_private?: boolean;
   show_on_home?: boolean;
-  icon_path?: string;
+  icon_path?: string | null;
   icon?: string; // UI alias
-  category?: NotebookCategory;
+  category: NotebookCategory;
+  description: string;
   color?: string;
   count?: number;
+  document_count?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -40,15 +42,43 @@ export interface DocumentItem {
   uploaded_at: string;
   page_count?: number;
   summary?: string;
+  current_version?: number;
+  error_code?: string | null;
+  job_id?: string | null;
 }
 
+export type QAModel = 'phobert_qa' | 'xlmroberta_qa';
+export type SummaryModel = 'vit5' | 'bartpho';
+
+export interface TokenResponse {
+  user_id: string;
+  access_token: string;
+  refresh_token: string;
+  token_type: 'bearer';
+  full_name?: string | null;
+  avatar_id?: string | null;
+}
+
+export interface ResetTokenResponse { reset_token: string; }
+export interface MessageResponse { message: string; }
 export interface ChatCitation {
-  content: string;
-  page_number?: number;
-  page?: number | string;
-  score?: number;
-  doc_name?: string;
-  document_title?: string;
+  id: number;
+  source_title: string;
+  page_number: number | null;
+  snippet: string;
+  document_id: string;
+  version: number;
+  start_offset: number;
+  end_offset: number;
+  page_end?: number | null;
+  section_path?: string | null;
+}
+export interface ChatResponse {
+  status: 'answered' | 'no_answer';
+  model_version: string | null;
+  answer: string;
+  sources: string[];
+  citations: ChatCitation[];
 }
 
 export interface ChatMessage {
@@ -75,7 +105,44 @@ export interface NotificationItem {
   id?: string;
   type?: string;
   title: string;
-  message: string;
+  body: string;
   is_read: boolean;
   created_at: string;
+}
+
+export interface ModelCapability {
+  id: QAModel | SummaryModel | 'embedding' | 'reranker';
+  task: string;
+  ready: boolean;
+  version: string | null;
+  error_code?: string | null;
+}
+export interface SummaryRecord {
+  summary_id: string;
+  job_id: string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+  summary: string | null;
+  model: SummaryModel;
+  model_version: string;
+  coverage: number;
+  processed_units: number;
+  total_units: number;
+  error_code: string | null;
+  stale: boolean;
+}
+export interface JobRecord {
+  job_id: string;
+  kind: 'ingest' | 'summarize';
+  status: string;
+  progress: number;
+  attempt: number;
+  error_code: string | null;
+}
+export interface SourceRecord {
+  document_id: string;
+  version: number;
+  start_offset: number;
+  end_offset: number;
+  text: string;
+  sections: Array<{ start: number; end: number; section_path: string }>;
 }

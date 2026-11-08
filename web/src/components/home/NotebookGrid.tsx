@@ -1,4 +1,5 @@
 'use client';
+import { CATEGORY_LABELS } from '@/lib/management';
 
 import React from 'react';
 import Image from 'next/image';
@@ -77,7 +78,7 @@ export default function NotebookGrid({ notebooks }: NotebookGridProps) {
                     {nb.count ?? 0} tài liệu
                   </span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ${getCategoryColor(nb.category)}`}>
-                    {nb.category || 'Môn học'}
+                    {CATEGORY_LABELS[nb.category] || 'Cá nhân'}
                   </span>
                 </div>
               </div>

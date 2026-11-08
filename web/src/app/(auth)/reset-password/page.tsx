@@ -3,12 +3,13 @@
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { apiService, getErrorMessage } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { KeyRound, Lock, Eye, EyeOff, ArrowLeft, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 function ResetPasswordForm() {
-  const router = useRouter();
+  const { resetPassword } = useAuth();
   const searchParams = useSearchParams();
   const initialEmail = searchParams.get('email') || '';
 
@@ -28,8 +29,8 @@ function ResetPasswordForm() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+    if (newPassword.length < 8 || new TextEncoder().encode(newPassword).length > 72) {
+      setError('Mật khẩu mới cần ít nhất 8 ký tự và tối đa 72 byte UTF-8.');
       return;
     }
 
@@ -43,14 +44,12 @@ function ResetPasswordForm() {
     try {
       // 1. Verify OTP to get reset token
       const verifyRes = await apiService.verifyOtp(email.trim(), otpCode.trim());
-      const resetToken = verifyRes.token || verifyRes.access_token || otpCode.trim();
+      const resetToken = verifyRes.reset_token;
 
       // 2. Reset Password with token
-      await apiService.resetPassword(resetToken, newPassword);
+      await resetPassword(resetToken, newPassword);
       setSuccess(true);
-      setTimeout(() => {
-        router.push('/');
-      }, 2000);
+
     } catch (err: unknown) {
       console.error('Reset password error:', err);
       setError(getErrorMessage(err, 'Mã OTP không hợp lệ hoặc đã hết hạn.'));
@@ -147,7 +146,7 @@ function ResetPasswordForm() {
               required
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Tối thiểu 6 ký tự"
+              placeholder="Tối thiểu 8 ký tự"
               className="w-full bg-transparent border-none outline-hidden px-3 text-sm text-[#2D3E50] placeholder-[#8E9DAE]"
             />
             <button
