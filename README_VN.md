@@ -1,3 +1,7 @@
+Giai đoạn 3, bước 1: quản lý sổ tay/tài liệu với AI tạm hoãn mặc định. Xem [hướng dẫn triển khai](docs/PHASE3_STEP1_IMPLEMENTATION_VI.md).
+
+> Giai đoạn 1 dùng baseline Alembic mới. Trước khi chạy backend, xem [hướng dẫn giai đoạn 1](docs/PHASE1_IMPLEMENTATION_VI.md) để đặt SECRET_KEY riêng và dùng database PostgreSQL/pgvector mới. Baseline này không nâng cấp database cũ.
+
 <div align="center">
 <h1>
   <img src="./assets/logo.png" alt="DocuMind Logo" width="250" /><br>
@@ -155,3 +159,5 @@ Chúng tôi cung cấp hai cách để thiết lập môi trường phát triể
 - 🚀 **[Triển khai](./docs/vi/DOCUMENT_PROCESSOR.md#deployment)** - Hướng dẫn triển khai hệ thống.
 
 ---
+
+Triển khai giai đoạn 2, chạy worker, import model offline và benchmark: [docs/PHASE2_IMPLEMENTATION_VI.md](docs/PHASE2_IMPLEMENTATION_VI.md).
