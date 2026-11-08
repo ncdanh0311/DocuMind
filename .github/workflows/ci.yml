@@ -34,8 +34,24 @@ jobs:
   # 1. BACKEND CI (Python / FastAPI / UV)
   # ==========================================
   backend-ci:
-    name: Backend CI (Syntax & Build Check)
+    name: Backend API, Contracts & Fresh Migrations
     runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: ci-only-0c4edc97d6ef483ca292d019f0da7b65
+      TEST_DATABASE_URL: postgresql://postgres:phase1-test@127.0.0.1:5432/documind_phase1_test
+      DATABASE_URL_OVERRIDE: postgresql://postgres:phase1-test@127.0.0.1:5432/documind_phase1_test
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: phase1-test
+          POSTGRES_DB: documind_phase1_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d documind_phase1_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
 
     steps:
       - name: Checkout repository
@@ -49,17 +65,19 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
-          version: "latest"
+          version: "0.13.7"
 
-      - name: Install Backend Dependencies
-        working-directory: ./backend
-        run: |
-          uv sync --frozen || uv pip install --system -r pyproject.toml || pip install -r pyproject.toml || true
+      - name: Install Backend and Test Dependencies from Lockfile
+        run: uv sync --frozen --only-group backend --only-group dev
 
-      - name: Syntax & Compilation Validation
-        working-directory: ./backend
-        run: |
-          python -m compileall app
+      - name: Syntax Validation
+        run: uv run --no-sync python -m compileall -q backend ai
+
+      - name: API, Security, Contracts and Migration Tests
+        run: uv run --no-sync pytest
+
+      - name: Check Alembic Metadata
+        run: uv run --no-sync alembic check
 
   # ==========================================
   # 2. WEB CI (Next.js / TypeScript / ESLint)
@@ -72,10 +90,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: './web/package-lock.json'
 
@@ -86,6 +104,10 @@ jobs:
       - name: Run ESLint
         working-directory: ./web
         run: npm run lint
+
+      - name: Web Contract and Auth Flow Tests
+        working-directory: ./web
+        run: npm test
 
       - name: Build Next.js Application
         working-directory: ./web
@@ -122,7 +144,7 @@ jobs:
 
       - name: Analyze Flutter code
         working-directory: ./mobile
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        run: flutter analyze --no-fatal-infos
 
       - name: Run Flutter Tests
         working-directory: ./mobile
