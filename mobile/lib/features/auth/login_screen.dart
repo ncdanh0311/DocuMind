@@ -60,6 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _emailController.text.trim(),
       _passwordController.text,
     );
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (result["success"]) {
