@@ -1,6 +1,6 @@
+from pathlib import Path
 import os
 import sys
-import yaml
 import json
 import time
 import argparse
@@ -11,17 +11,17 @@ from transformers import (
 )
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(ROOT_DIR)
+sys.path.insert(0, os.path.dirname(ROOT_DIR))
 
-from src.data.data_loader import DataLoader
-from src.data.process_sum import SumProcessor
-from src.models.build_sum import SumModelBuilder
-from src.metrics.metric_sum import SumMetrics
+from ai.src.data.data_loader import DataLoader
+from ai.src.data.process_sum import SumProcessor
+from ai.src.models.build_sum import SumModelBuilder
+from ai.src.metrics.metric_sum import SumMetrics
 
 
 def evaluate_summarization(config_path):
-    with open(config_path, "r") as f:
-        cfg = yaml.safe_load(f)
+    from ai.src.config import load_config
+    cfg = load_config(config_path)
 
     run_name = os.path.basename(config_path).replace(".yaml", "")
     best_model_path = os.path.join(cfg["training"]["output_dir"], "best")
@@ -34,9 +34,9 @@ def evaluate_summarization(config_path):
         )
 
     is_bartpho_word = "bartpho-word" in cfg["model"]["name"].lower()
-    model, tokenizer = SumModelBuilder.build(best_model_path)
+    model, tokenizer = SumModelBuilder.load_checkpoint(best_model_path, cfg["model"].get("base_path"))
 
-    dataset = DataLoader.load(cfg["data"]["train_path"].replace("/train", ""))
+    dataset = DataLoader.load(str(Path(cfg["data"]["train_path"]).parent))
 
     # Giới hạn test samples nếu có config
     max_test = cfg["data"].get("max_test_samples", None)

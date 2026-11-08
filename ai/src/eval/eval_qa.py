@@ -1,7 +1,7 @@
+from pathlib import Path
 
 import os
 import sys
-import yaml
 import json
 import time
 import argparse
@@ -12,17 +12,17 @@ from transformers import (
 )
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(ROOT_DIR)
+sys.path.insert(0, os.path.dirname(ROOT_DIR))
 
-from src.data.data_loader import DataLoader
-from src.data.process_qa import QAProcessor
-from src.models.build_qa import QAModelBuilder
-from src.metrics.metric_qa import QAMetrics
+from ai.src.data.data_loader import DataLoader
+from ai.src.data.process_qa import QAProcessor
+from ai.src.models.build_qa import QAModelBuilder
+from ai.src.metrics.metric_qa import QAMetrics
 
 
 def evaluate_qa(config_path: str):
-    with open(config_path, "r") as f:
-        cfg = yaml.safe_load(f)
+    from ai.src.config import load_config
+    cfg = load_config(config_path)
 
     run_name        = os.path.basename(config_path).replace(".yaml", "")
     best_model_path = os.path.join(cfg["training"]["output_dir"], "best_model")
@@ -38,7 +38,7 @@ def evaluate_qa(config_path: str):
 
     # ── Load & tokenize tập Test ─────────────────────────────────────────────
     dataset = DataLoader.load(
-        cfg["data"]["train_path"].replace("/train", "")
+        str(Path(cfg["data"]["train_path"]).parent)
     )
 
     max_test = cfg["data"].get("max_test_samples", None)
@@ -51,8 +51,8 @@ def evaluate_qa(config_path: str):
         doc_stride=cfg["model"]["doc_stride"],
     )
 
-    print(f"[INFO] Ma hoa {len(dataset['validation'])} mau Validation...")
-    validation_ds = dataset["validation"].map(
+    print(f"[INFO] Ma hoa {len(dataset['test'])} mau Test...")
+    test_ds = dataset["test"].map(
         processor.process,
         batched=True,
         num_proc=1,
@@ -70,20 +70,20 @@ def evaluate_qa(config_path: str):
     trainer = Trainer(
         model=model,
         args=eval_args,
-        eval_dataset=validation_ds,
+        eval_dataset=test_ds,
         processing_class=tokenizer,
         data_collator=DefaultDataCollator(),
-        compute_metrics=QAMetrics.compute,
+        compute_metrics=QAMetrics.for_dataset(test_ds, dataset["test"]),
     )
 
     # ── Inference ────────────────────────────────────────────────────────────
-    print("[INFO] Inference tren tap Validation...")
+    print("[INFO] Inference tren tap Test...")
     start_time = time.time()
     results    = trainer.evaluate(metric_key_prefix="test")
     elapsed    = time.time() - start_time
 
     results["total_inference_time_sec"] = round(elapsed, 2)
-    results["samples_per_second"]       = round(len(validation_ds) / elapsed, 2)
+    results["samples_per_second"]       = round(len(test_ds) / elapsed, 2)
 
     # ── Lưu báo cáo ─────────────────────────────────────────────────────────
     report_path = os.path.join(

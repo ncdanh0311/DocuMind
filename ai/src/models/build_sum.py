@@ -1,3 +1,4 @@
+from pathlib import Path
 import torch
 from transformers import (
     AutoModelForSeq2SeqLM,
@@ -9,7 +10,22 @@ from peft import LoraConfig, get_peft_model
 
 class SumModelBuilder:
     @staticmethod
-    def build(model_name, task_type="summarization", use_lora=True, cache_dir="./hf_cache"):
+    def load_checkpoint(path, base_path=None):
+        """Evaluate the saved adapter, without constructing another LoRA layer."""
+        from pathlib import Path
+        from peft import PeftModel
+        tokenizer = AutoTokenizer.from_pretrained(path, local_files_only=True, use_fast=False)
+        if (Path(path) / "adapter_config.json").is_file():
+            if not base_path or not Path(base_path).is_dir():
+                raise ValueError("Adapter evaluation requires an exact local model.base_path")
+            base = AutoModelForSeq2SeqLM.from_pretrained(base_path, local_files_only=True)
+            model = PeftModel.from_pretrained(base, path, local_files_only=True).merge_and_unload()
+        else:
+            model = AutoModelForSeq2SeqLM.from_pretrained(path, local_files_only=True)
+        return model, tokenizer
+
+    @staticmethod
+    def build(model_name, task_type="summarization", use_lora=True, cache_dir=str(Path(__file__).resolve().parents[2] / "hf_cache")):
         print(f"[INFO] Dang nap mo hinh: {model_name} (LoRA={use_lora})")
 
         # 1. Tokenizer: dùng AutoTokenizer cho cả ViT5 và BARTpho

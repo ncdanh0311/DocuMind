@@ -1,57 +1,24 @@
-import torch
-import torch.nn.functional as F
-from transformers import AutoTokenizer, AutoModel
-from typing import List
+from ai.runtime.models import runtime
 
 class EmbeddingService:
-    def __init__(self):
-        self.model_name = "intfloat/multilingual-e5-small"
-        
-        # Lựa chọn thiết bị chạy tối ưu: MPS (Apple Silicon) -> CUDA -> CPU
-        if torch.backends.mps.is_available():
-            self.device = torch.device("mps")
-        elif torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("cpu")
-            
-        print(f"Loading Embedding Model '{self.model_name}' on device: {self.device}")
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self.model = AutoModel.from_pretrained(self.model_name).to(self.device)
+    def embed_text(self, texts, is_query=False, expected_version=None):
+        import torch
+        import torch.nn.functional as F
+        if not texts: return []
+        if len(texts) > 16: raise ValueError("ERR_EMBEDDING_BATCH")
+        with runtime.lock:
+            manifest, tokenizer, model, device = runtime.load("embedding")
+            if expected_version and manifest.version != expected_version: raise ValueError("ERR_MODEL_VERSION_CHANGED")
+            prefix = "query: " if is_query else "passage: "
+            values = [prefix + text for text in texts]
+            if any(len(tokenizer.encode(text)) > manifest.max_input_tokens for text in values): raise ValueError("ERR_TOKEN_BUDGET")
+            inputs = tokenizer(values, padding=True, truncation=False, return_tensors="pt").to(device)
+            with torch.inference_mode():
+                outputs = model(**inputs).last_hidden_state
+                mask = inputs.attention_mask.unsqueeze(-1).bool()
+                pooled = outputs.masked_fill(~mask, 0).sum(1) / mask.sum(1).clamp(min=1)
+                vectors = F.normalize(pooled, p=2, dim=1)
+            if vectors.shape[1] != 384: raise ValueError("ERR_EMBEDDING_SHAPE")
+            return vectors.cpu().tolist()
 
-    def _average_pool(self, last_hidden_states: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
-        last_hidden = last_hidden_states.masked_fill(~attention_mask.unsqueeze(-1).bool(), 0.0)
-        return last_hidden.sum(dim=1) / attention_mask.sum(dim=1, keepdim=True)
-
-    def embed_text(self, texts: List[str], is_query: bool = False) -> List[List[float]]:
-        """
-        Sinh vector embedding cho danh sách các chuỗi văn bản.
-        """
-        if not texts:
-            return []
-
-        # Thêm tiền tố đặc thù của E5: "query: " hoặc "passage: "
-        prefix = "query: " if is_query else "passage: "
-        prefixed_texts = [f"{prefix}{t}" for t in texts]
-
-        # Tokenize văn bản và chuyển lên thiết bị tương ứng
-        inputs = self.tokenizer(
-            prefixed_texts, 
-            max_length=512, 
-            padding=True, 
-            truncation=True, 
-            return_tensors='pt'
-        ).to(self.device)
-        
-        # Sinh vector embedding
-        with torch.no_grad():
-            outputs = self.model(**inputs)
-            embeddings = self._average_pool(outputs.last_hidden_state, inputs['attention_mask'])
-            
-            # Chuẩn hóa L2 (L2 normalization) để tối ưu cho phép đo khoảng cách cosine
-            embeddings = F.normalize(embeddings, p=2, dim=1)
-            
-        return embeddings.cpu().tolist()
-
-# Singleton instance
 embedding_service = EmbeddingService()

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import yaml
 import os
 import sys
 from pathlib import Path
@@ -11,32 +10,17 @@ from transformers import (
     Seq2SeqTrainingArguments,
     EarlyStoppingCallback,
 )
-from evaluate import load as load_metric
 
 # Add src to path
-sys.path.append(str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.models.build_sum import SumModelBuilder
-from src.data.process_sum import SumProcessor
-
-rouge = load_metric("rouge")
-
-def compute_metrics(eval_preds):
-    preds, labels = eval_preds
-    labels[labels == -100] = 0
-    decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
-    decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
-
-    # Clean "_" cho BARTpho trước khi tính ROUGE
-    decoded_preds = [t.replace("_", " ") for t in decoded_preds]
-    decoded_labels = [t.replace("_", " ") for t in decoded_labels]
-
-    result = rouge.compute(predictions=decoded_preds, references=decoded_labels, use_stemmer=True)
-    return {k: round(v * 100, 4) for k, v in result.items()}
+from ai.src.models.build_sum import SumModelBuilder
+from ai.src.data.process_sum import SumProcessor
+from ai.src.metrics.metric_sum import SumMetrics
 
 def train_summarization(config_path: str):
-    with open(config_path, "r") as f:
-        cfg = yaml.safe_load(f)
+    from ai.src.config import load_config
+    cfg = load_config(config_path)
 
     # 1. Build model
     model, tok = SumModelBuilder.build(
@@ -44,7 +28,6 @@ def train_summarization(config_path: str):
         task_type="summarization",
         use_lora=True
     )
-    global tokenizer
     tokenizer = tok
 
     # 2. Load dataset và GIỚI HẠN SỐ LƯỢNG (Subsampling)
@@ -57,7 +40,7 @@ def train_summarization(config_path: str):
         if m_train < len(train_ds):
             print(f"[INFO] Cat bot du lieu Train: {len(train_ds)} -> {m_train}")
             train_ds = train_ds.shuffle(seed=42).select(range(m_train))
-    
+
     if "max_val_samples" in cfg["data"]:
         m_val = cfg["data"]["max_val_samples"]
         if m_val < len(val_ds):
@@ -101,13 +84,15 @@ def train_summarization(config_path: str):
         args=training_args,
         train_dataset=train_tokenized,
         eval_dataset=val_tokenized,
-        processing_class=None,
-        compute_metrics=compute_metrics,
+        processing_class=tokenizer,
+        data_collator=DataCollatorForSeq2Seq(tokenizer, model=model),
+        compute_metrics=SumMetrics(tokenizer).compute,
         callbacks=[EarlyStoppingCallback(early_stopping_patience=2)]
     )
 
     trainer.train()
     trainer.save_model(os.path.join(tcfg["output_dir"], "best"))
+    tokenizer.save_pretrained(os.path.join(tcfg["output_dir"], "best"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
