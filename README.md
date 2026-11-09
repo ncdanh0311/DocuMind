@@ -1,3 +1,7 @@
+Phase 3, step 1: notebook/document management with AI paused by default. See [implementation notes](docs/PHASE3_STEP1_IMPLEMENTATION_VI.md).
+
+> Phase 1 uses a fresh Alembic baseline. Before running the backend, follow [the Phase 1 setup guide](docs/PHASE1_IMPLEMENTATION_VI.md) to configure a unique SECRET_KEY and a new PostgreSQL/pgvector database. Existing databases are not migrated by this baseline.
+
 <div align="center">
 <h1>
   <img src="./assets/logo.png" alt="DocuMind Logo" width="250" /><br>
@@ -155,3 +159,5 @@ We provide two ways to set up the DocuMind development environment. Choose the o
 - 🚀 **[Deployment](./docs/en/DOCUMENT_PROCESSOR.md#deployment)** - Production deployment guides.
 
 ---
+
+Phase 2 implementation, worker setup, offline models and benchmark: [docs/PHASE2_IMPLEMENTATION_VI.md](docs/PHASE2_IMPLEMENTATION_VI.md).
