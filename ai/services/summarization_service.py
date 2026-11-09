@@ -2,9 +2,9 @@ from ai.runtime.models import runtime
 
 class SummarizationService:
     def summarize(self, text, model_type="vit5", expected_version=None, max_output_tokens=128):
-        import torch
         with runtime.lock:
             manifest, tokenizer, model, device = runtime.load(model_type)
+            import torch
             if expected_version and expected_version != manifest.version: raise ValueError("ERR_MODEL_VERSION_CHANGED")
             prepared = runtime.preprocess(manifest, text)
             inputs = tokenizer(prepared, return_tensors="pt", truncation=False)

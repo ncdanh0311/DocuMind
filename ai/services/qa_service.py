@@ -4,9 +4,9 @@ from ai.runtime.text import segmented_alignment
 
 class QAService:
     def answer(self, passages, question, model_type="phobert_qa", calibrated=True):
-        import torch
         with runtime.lock:
             manifest, tokenizer, model, device = runtime.load(model_type, calibrated)
+            import torch
             if manifest.preprocessing == "phobert":
                 from pyvi import ViTokenizer
                 segmented_question = ViTokenizer.tokenize(question)

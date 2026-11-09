@@ -2,12 +2,12 @@ from ai.runtime.models import runtime
 
 class EmbeddingService:
     def embed_text(self, texts, is_query=False, expected_version=None):
-        import torch
-        import torch.nn.functional as F
         if not texts: return []
         if len(texts) > 16: raise ValueError("ERR_EMBEDDING_BATCH")
         with runtime.lock:
             manifest, tokenizer, model, device = runtime.load("embedding")
+            import torch
+            import torch.nn.functional as F
             if expected_version and manifest.version != expected_version: raise ValueError("ERR_MODEL_VERSION_CHANGED")
             prefix = "query: " if is_query else "passage: "
             values = [prefix + text for text in texts]
