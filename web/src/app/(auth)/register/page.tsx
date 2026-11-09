@@ -29,8 +29,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Mật khẩu phải chứa ít nhất 6 ký tự.');
+    if (password.length < 8 || new TextEncoder().encode(password).length > 72) {
+      setError('Mật khẩu phải chứa ít nhất 8 ký tự, tối đa 72 byte UTF-8.');
       return;
     }
 

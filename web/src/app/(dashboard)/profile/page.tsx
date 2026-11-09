@@ -75,6 +75,7 @@ export default function ProfilePage() {
 
     try {
       await apiService.updateSecurity({ old_password: oldPassword, new_password: newPassword });
+      await logout();
       setSecuritySuccess(true);
       setOldPassword('');
       setNewPassword('');

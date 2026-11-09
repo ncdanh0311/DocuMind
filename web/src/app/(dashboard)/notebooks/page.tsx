@@ -5,29 +5,21 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { apiService } from '@/lib/api';
 import { useNotebooks } from '@/contexts/NotebookContext';
+import { selectNotebooks, type SortOrder } from '@/lib/management';
 import { Plus, Search, Trash2, BookOpen, Layers, ArrowRight } from 'lucide-react';
 
 export default function NotebooksPage() {
-  const { notebooks, loading, refreshNotebooks, openCreateModal } = useNotebooks();
+  const { notebooks, loading, error, refreshNotebooks, openCreateModal } = useNotebooks();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredNotebooks = useMemo(() => {
-    let result = notebooks;
-    if (selectedCategory !== 'all') {
-      result = result.filter((nb) => nb.category === selectedCategory);
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((nb) => nb.title.toLowerCase().includes(q));
-    }
-    return result;
-  }, [notebooks, selectedCategory, searchQuery]);
+  const [sort, setSort] = useState<SortOrder>('newest');
+  const filteredNotebooks = useMemo(() => selectNotebooks(notebooks, searchQuery, selectedCategory, sort), [notebooks, searchQuery, selectedCategory, sort]);
 
   const handleDelete = async (e: React.MouseEvent, id: string, title: string) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!confirm(`Bạn có chắc chắn muốn xóa vở bài tập "${title}" không?`)) return;
+    if (!confirm(`Xóa sổ tay "${title}" và toàn bộ tài liệu bên trong?`)) return;
 
     try {
       await apiService.deleteNotebook(id);
@@ -68,6 +60,12 @@ export default function NotebooksPage() {
         </button>
       </div>
 
+      <label className="block text-sm">Sắp xếp sổ tay
+        <select aria-label="Sắp xếp sổ tay" value={sort} onChange={event => setSort(event.target.value as SortOrder)} className="ml-3 rounded-xl border p-2">
+          <option value="newest">Mới nhất</option><option value="oldest">Cũ nhất</option><option value="name">Tên A–Z</option>
+        </select>
+      </label>
+      {error && <div role="alert" className="p-4 rounded-xl bg-red-50 text-red-700">{error}<button className="ml-3 underline" onClick={refreshNotebooks}>Thử lại</button></div>}
       {/* Filter and Search Toolbar */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white p-3 rounded-2xl border border-[#EAEFEA]">
         {/* Category Tabs */}

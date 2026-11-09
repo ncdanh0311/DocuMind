@@ -1,7 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/types';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import type { User } from '@/types';
 import { apiService, tokenManager } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
@@ -12,128 +12,83 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName?: string) => Promise<void>;
+  resetPassword: (resetToken: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const operation = useRef(0);
   const router = useRouter();
+  const invalidateOperation = useCallback(() => { operation.current++; }, []);
 
   useEffect(() => {
-    async function initAuth() {
-      const savedToken = tokenManager.getAccessToken();
-
-      if (savedToken) {
-        setToken(savedToken);
+    const syncCredentials = () => {
+      const current = tokenManager.getAccessToken();
+      setToken(current);
+      if (!current) { operation.current++; setUser(null); setIsLoading(false); }
+    };
+    window.addEventListener('auth-changed', syncCredentials);
+    window.addEventListener('storage', syncCredentials);
+    const currentOperation = ++operation.current;
+    async function init() {
+      if (tokenManager.getAccessToken()) {
         try {
           const profile = await apiService.getProfile();
-          setUser(profile);
-        } catch {
-          // Token is expired or invalid -> clear
-          tokenManager.clearAuth();
-          setToken(null);
-          setUser(null);
-        }
-      } else {
-        setToken(null);
-        setUser(null);
+          if (operation.current === currentOperation) {
+            setUser(profile);
+            setToken(tokenManager.getAccessToken());
+          }
+        } catch { /* Keep stored credentials during temporary connection failures. */ }
       }
-      setIsLoading(false);
+      if (operation.current === currentOperation) setIsLoading(false);
     }
-    initAuth();
-  }, []);
+    init();
+    return () => { invalidateOperation(); window.removeEventListener('auth-changed', syncCredentials); window.removeEventListener('storage', syncCredentials); };
+  }, [invalidateOperation]);
 
-  const login = async (email: string, password: string) => {
+  const establishSession = async (action: () => Promise<unknown>) => {
+    const currentOperation = ++operation.current;
     setIsLoading(true);
+    setUser(null);
     try {
-      const res = await apiService.login(email, password);
-      setToken(res.access_token);
-      // Fetch full user profile
-      try {
-        const profile = await apiService.getProfile();
+      await action();
+      const profile = await apiService.getProfile();
+      if (operation.current === currentOperation) {
         setUser(profile);
-      } catch {
-        setUser({
-          user_id: res.user_id || 'user-logged',
-          email,
-          full_name: res.full_name || email.split('@')[0],
-        });
+        setToken(tokenManager.getAccessToken());
+        router.replace('/');
       }
-      router.push('/');
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { if (operation.current === currentOperation) setIsLoading(false); }
   };
-
-  const register = async (email: string, password: string, fullName?: string) => {
-    setIsLoading(true);
-    try {
-      const res = await apiService.register(email, password, fullName);
-      setToken(res.access_token);
-      try {
-        const profile = await apiService.getProfile();
-        setUser(profile);
-      } catch {
-        setUser({
-          user_id: res.user_id || 'user-new',
-          email,
-          full_name: fullName || res.full_name || email.split('@')[0],
-        });
-      }
-      router.push('/');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  const login = (email: string, password: string) => establishSession(() => apiService.login(email, password));
+  const register = (email: string, password: string, fullName?: string) => establishSession(() => apiService.register(email, password, fullName));
+  const resetPassword = (resetToken: string, newPassword: string) => establishSession(() => apiService.resetPassword(resetToken, newPassword));
   const logout = async () => {
-    try {
-      await apiService.logout();
-    } catch {
-      // Continue logout even if server fails
-    }
-    tokenManager.clearAuth();
+    operation.current++;
+    await apiService.logout();
     setToken(null);
     setUser(null);
-    router.push('/login');
+    setIsLoading(false);
+    router.replace('/login');
   };
-
   const refreshUser = async () => {
-    try {
-      const profile = await apiService.getProfile();
-      setUser(profile);
-    } catch {
-      // Keep existing state
-    }
+    const profile = await apiService.getProfile();
+    setUser(profile);
+    setToken(tokenManager.getAccessToken());
   };
-
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: !!token && !!user,
-        isLoading,
-        login,
-        register,
-        logout,
-        refreshUser,
-      }}
-    >
+    <AuthContext.Provider value={{ user, token, isAuthenticated: !!token && !!user, isLoading, login, register, resetPassword, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
 }
-
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }

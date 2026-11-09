@@ -1,21 +1,10 @@
 import type { Metadata } from "next";
-import { Outfit, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin", "latin-ext"],
-  weight: ["500", "600", "700", "800"],
-  display: "swap",
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin", "vietnamese"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
+const outfit = localFont({ src: './fonts/outfit.ttf', variable: '--font-outfit', weight: '100 900', display: 'swap' });
+const inter = localFont({ src: './fonts/inter.ttf', variable: '--font-inter', weight: '100 900', display: 'swap' });
 
 export const metadata: Metadata = {
   title: "DocuMind - Trợ lý Sổ tay Cá nhân AI",

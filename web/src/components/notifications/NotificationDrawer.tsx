@@ -142,7 +142,7 @@ export default function NotificationDrawer({ isOpen, onClose, onNotificationsRea
                         <span className="w-2 h-2 rounded-full bg-[#26A69A] shrink-0" />
                       )}
                     </div>
-                    <p className="text-xs text-[#8E9DAE] mt-1 line-clamp-2">{item.message}</p>
+                    <p className="text-xs text-[#8E9DAE] mt-1 line-clamp-2">{item.body}</p>
                     <span className="text-[10px] text-[#B0BEC5] mt-2 block font-medium">
                       {formatTime(item.created_at)}
                     </span>

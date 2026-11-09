@@ -34,7 +34,7 @@ export default function DashboardHomePage() {
       <QuickActions />
 
       {/* Notebooks Grid */}
-      <NotebookGrid notebooks={notebooks} />
+      <NotebookGrid notebooks={notebooks.filter(item => item.show_on_home !== false)} />
 
       {/* Recent Notes List */}
       <RecentNotesList documents={recentDocs} />
