@@ -150,6 +150,30 @@ jobs:
         working-directory: ./mobile
         run: flutter test
 
+      - name: Cache Gradle Wrapper Distribution
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/wrapper/dists
+          key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('mobile/android/gradle/wrapper/gradle-wrapper.properties') }}
+
+      - name: Prepare Gradle with Bounded Retries
+        working-directory: ./mobile/android
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          chmod +x gradlew
+          for attempt in 1 2 3; do
+            if ./gradlew --version; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Gradle bootstrap failed; retrying ($attempt/3)."
+              sleep $((attempt * 10))
+            fi
+          done
+          echo "Gradle bootstrap failed after 3 attempts."
+          exit 1
+
       - name: Build Universal Release APK
         working-directory: ./mobile
         run: flutter build apk --release
