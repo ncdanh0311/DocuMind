@@ -5,7 +5,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:documind_mobile/core/app_strings.dart';
 
 abstract class BaseApiService {
-  final FlutterSecureStorage storage = const FlutterSecureStorage();
+  final FlutterSecureStorage storage;
+  final http.Client client;
+  BaseApiService({FlutterSecureStorage? secureStorage, http.Client? httpClient})
+      : storage = secureStorage ?? const FlutterSecureStorage(),
+        client = httpClient ?? http.Client();
 
   Future<Map<String, String>> getHeaders({bool isAuth = true}) async {
     final headers = {"Content-Type": "application/json"};
@@ -28,9 +32,8 @@ abstract class BaseApiService {
   }
 
   Map<String, dynamic> handleResponse(http.Response response) {
-    print("[BaseApiService] Response ${response.statusCode}: ${response.body}");
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      final data = jsonDecode(response.body);
+      final data = response.body.isEmpty ? null : jsonDecode(response.body);
       String? message;
       if (data is Map) {
         if (data.containsKey("message") && data["message"] != null) {
@@ -44,20 +47,21 @@ abstract class BaseApiService {
       return {"success": true, "data": data, "message": message};
     } else {
       String errorMessage = AppStrings.unknownError;
+      String? errorCode;
       try {
         final data = jsonDecode(response.body);
         final rawMsg = data["detail"] ?? data["message"] ?? errorMessage;
+        errorCode = rawMsg is String ? rawMsg : null;
         errorMessage = _translateMessage(rawMsg.toString());
       } catch (_) {
         errorMessage = "${AppStrings.serverError} (${response.statusCode})";
       }
-      return {"success": false, "message": errorMessage};
+      return {"success": false, "message": errorMessage, "code": errorCode, "status_code": response.statusCode};
     }
   }
 
   Map<String, dynamic> handleError(Object e) {
-    print("[BaseApiService] Connection Error: $e");
-    return {"success": false, "message": "${AppStrings.connectionError}: $e"};
+    return {"success": false, "message": AppStrings.connectionError, "code": "ERR_CONNECTION_FAILED"};
   }
 }
 

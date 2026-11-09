@@ -5,6 +5,7 @@ import 'package:documind_mobile/features/notebook/create_notebook_screen.dart';
 import 'package:documind_mobile/features/notebook/notebook_detail_screen.dart';
 import 'package:documind_mobile/core/api_service.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:documind_mobile/core/management.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class NotebookScreen extends StatefulWidget {
@@ -22,6 +23,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   String _selectedFilter = "all";
+  String _query = '';
+  String _sort = 'newest';
+  final _searchFocus = FocusNode();
 
   final List<String> _filters = ["all", "study", "project", "research", "personal"];
 
@@ -30,6 +34,9 @@ class _NotebookScreenState extends State<NotebookScreen> {
     super.initState();
     _fetchNotebooks();
   }
+
+  @override
+  void dispose() { _searchFocus.dispose(); super.dispose(); }
 
   Future<void> _fetchNotebooks() async {
     setState(() {
@@ -45,13 +52,14 @@ class _NotebookScreenState extends State<NotebookScreen> {
         setState(() {
           _notebooks = data.map((item) {
             return {
+              ...Map<String, dynamic>.from(item),
               "id": item["notebook_id"],
               "title": item["title"],
-              "count": 0,
-              "desc": "notebook.no_description".tr(),
+              "count": item["document_count"] ?? 0,
+              "desc": (item["description"] as String? ?? "").isEmpty ? "notebook.no_description".tr() : item["description"],
               "status": item["is_private"] == true ? "notebook.private".tr() : "notebook.public".tr(),
               "color": const Color(0xFFF1F8F7),
-              "icon": item["icon_path"] ?? _getCategoryIcon(item["title"]),
+              "icon": (item["icon_path"] as String?)?.replaceFirst(RegExp(r'^/'), '') ?? _getCategoryIcon(item["category"] ?? "personal"),
             };
           }).toList();
           _isLoading = false;
@@ -66,12 +74,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
   }
 
 
-  String _getCategoryIcon(String title) {
-    if (title.contains("Học")) return "assets/icons/categories/icon-category-study.png";
-    if (title.contains("Dự")) return "assets/icons/categories/icon-category-project.png";
-    if (title.contains("Cá")) return "assets/icons/categories/icon-category-personal.png";
-    return "assets/icons/categories/icon-category-research.png";
-  }
+  String _getCategoryIcon(String category) => 'assets/icons/categories/icon-category-$category.png';
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +84,10 @@ class _NotebookScreenState extends State<NotebookScreen> {
       body: Column(
         children: [
           const SizedBox(height: 12),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Row(children: [
+            Expanded(child: TextField(focusNode: _searchFocus, decoration: const InputDecoration(labelText: 'Tìm sổ tay', prefixIcon: Icon(Icons.search)), onChanged: (value) => setState(() => _query = value))),
+            const SizedBox(width: 12), DropdownButton<String>(value: _sort, items: const [DropdownMenuItem(value: 'newest', child: Text('Mới nhất')), DropdownMenuItem(value: 'oldest', child: Text('Cũ nhất')), DropdownMenuItem(value: 'name', child: Text('Tên A–Z'))], onChanged: (value) => setState(() => _sort = value!)),
+          ])),
           _buildFilterChips(),
           const SizedBox(height: 16),
           Expanded(
@@ -90,7 +97,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
                 ? _buildErrorState()
                 : _notebooks.isEmpty
                   ? _buildEmptyState()
-                  : RefreshIndicator(
+                  : _getFilteredNotebooks().isEmpty ? const Center(child: Text('Không có sổ tay phù hợp bộ lọc')) : RefreshIndicator(
                       onRefresh: _fetchNotebooks,
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -108,9 +115,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
   }
 
   List<Map<String, dynamic>> _getFilteredNotebooks() {
-    if (_selectedFilter == "all") return _notebooks;
-    final filterText = "notebook.filter_$_selectedFilter".tr();
-    return _notebooks.where((notebook) => (notebook["title"] as String).toLowerCase().contains(filterText.toLowerCase())).toList();
+    return selectNotebooks(_notebooks, query: _query, category: _selectedFilter, sort: _sort);
   }
 
   PreferredSizeWidget _buildAppBar() {
@@ -135,7 +140,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.search_rounded, color: AppColors.textDark, size: 26),
-          onPressed: () {},
+          onPressed: () => _searchFocus.requestFocus(),
         ),
         IconButton(
           icon: const Icon(Icons.add_rounded, color: AppColors.textDark, size: 28),
@@ -206,6 +211,7 @@ class _NotebookScreenState extends State<NotebookScreen> {
               notebookTitle: notebook['title'],
               iconPath: notebook['icon'],
               themeColor: notebook['color'] as Color,
+              onChanged: () { _fetchNotebooks(); widget.onNotebookCreated?.call(); },
             ),
           ),
         );

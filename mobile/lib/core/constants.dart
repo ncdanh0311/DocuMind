@@ -5,10 +5,12 @@ class ApiConstants {
   // Cấu hình kết nối Backend:
   // - Khi cắm cáp USB (đã chạy: adb reverse tcp:8000 tcp:8000): dùng "127.0.0.1"
   // - Khi test qua Wi-Fi (không cắm USB): đổi thành IP LAN máy tính (vd: "192.168.1.30")
+  static const String configuredBaseUrl = String.fromEnvironment('API_BASE_URL');
   static const String serverHost = "127.0.0.1"; // hoặc "192.168.1.30"
   static const int serverPort = 8000;
 
   static String get baseUrl {
+    if (configuredBaseUrl.isNotEmpty) return configuredBaseUrl;
     if (kIsWeb) {
       return "http://localhost:$serverPort/api/v1";
     }

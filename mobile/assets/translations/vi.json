@@ -227,16 +227,28 @@
     "ERR_OLD_PASSWORD_INCORRECT": "Mật khẩu hiện tại không chính xác.",
     "ERR_NO_DOCUMENTS": "Sổ tay này chưa có tài liệu nào được phân tích thành công. Bạn vui lòng tải tài liệu lên trước khi đặt câu hỏi nhé!",
     "ERR_ANSWER_NOT_FOUND": "Không tìm thấy câu trả lời trong văn bản.",
-    "ERR_INVALID_INPUT": "Văn bản hoặc câu hỏi không hợp lệ.",
+    "ERR_INVALID_INPUT": "Vui lòng kiểm tra dữ liệu nhập.",
     "ERR_AI_SERVICE_UNAVAILABLE": "Trợ lý AI hiện đang bận hoặc đang khởi động. Vui lòng thử lại sau ít phút!",
-    "ERR_CONNECTION_FAILED": "Kết nối thất bại. Vui lòng kiểm tra lại mạng Internet!"
+    "ERR_CONNECTION_FAILED": "Không thể kết nối máy chủ.",
+    "ERR_AI_SERVICE_ERROR": "Dịch vụ AI gặp lỗi. Vui lòng thử lại sau.",
+    "ERR_MODEL_UNAVAILABLE": "Mô hình chưa sẵn sàng.",
+    "ERR_INTERNAL_SERVER": "Máy chủ gặp lỗi. Vui lòng thử lại sau.",
+    "ERR_FILE_WRITE_FAILED": "Không thể lưu tài liệu. Vui lòng thử lại sau.",
+    "ERR_MODEL_NOT_CALIBRATED": "Mô hình chưa được hiệu chỉnh.",
+    "ERR_SOURCE_CHANGED": "Tài liệu đã thay đổi. Vui lòng tạo lại.",
+    "ERR_DOCUMENTS_NOT_READY": "Vui lòng chờ tất cả tài liệu xử lý xong.",
+    "ERR_JOB_FAILED": "Không thể hoàn tất xử lý. Vui lòng thử lại.",
+    "ERR_REPROCESS_REQUIRED": "Cần xử lý lại tài liệu.",
+    "ERR_SOURCE_MISSING": "Không tìm thấy file nguồn.",
+    "ERR_SOURCE_NOT_READY": "Nội dung nguồn chưa sẵn sàng.",
+    "ERR_DOCUMENT_NEEDS_OCR": "Tài liệu quét cần nhận dạng văn bản OCR.",
+    "ERR_AI_DISABLED": "Tính năng AI đang tạm hoãn."
   },
   "messages": {
     "MSG_OTP_SENT": "Mã xác thực đã được gửi vào email của bạn.",
     "MSG_PASSWORD_RESET_SUCCESS": "Mật khẩu của bạn đã được cập nhật thành công!",
     "MSG_LOGOUT_SUCCESS": "Đã đăng xuất thành công."
   },
-
   "summary": {
     "title": "Tóm tắt",
     "copy": "Sao chép",
@@ -269,7 +281,12 @@
     "summary_k2": "Mối tương quan giữa các phần lý thuyết và bài tập thực hành.",
     "summary_k3": "Phương án so sánh, đối chiếu các khía cạnh liên quan.",
     "error_title": "Đã xảy ra lỗi",
-    "retry": "Thử lại"
+    "retry": "Thử lại",
+    "choose_model": "Chọn mô hình tóm tắt",
+    "queued": "Đang chờ xử lý",
+    "reading_progress": "Đã đọc {}/{} phần",
+    "resume_hint": "Bạn có thể rời trang và quay lại sau.",
+    "generate_again": "Tạo lại bản tóm tắt"
   },
   "notifications_sheet": {
     "title": "Thông báo hệ thống",

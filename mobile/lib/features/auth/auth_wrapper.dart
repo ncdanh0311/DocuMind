@@ -4,14 +4,18 @@ import 'package:documind_mobile/features/home/home_screen.dart';
 import 'package:documind_mobile/features/onboarding/onboarding_screen.dart';
 
 class AuthWrapper extends StatefulWidget {
-  const AuthWrapper({super.key});
+  final ApiService? apiService;
+  final Widget home;
+  final Widget onboarding;
+  const AuthWrapper({super.key, this.apiService,
+    this.home = const HomeScreen(), this.onboarding = const OnboardingScreen()});
 
   @override
   State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
-  final ApiService _apiService = ApiService();
+  late final ApiService _apiService = widget.apiService ?? ApiService();
   bool _isLoading = true;
   bool _isLoggedIn = false;
 
@@ -22,10 +26,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkAuth() async {
-    final token = await _apiService.getToken();
+    final result = await _apiService.getProfile();
     if (mounted) {
       setState(() {
-        _isLoggedIn = token != null && token.isNotEmpty;
+        _isLoggedIn = result["success"] == true;
         _isLoading = false;
       });
     }
@@ -42,9 +46,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
 
     if (_isLoggedIn) {
-      return const HomeScreen();
+      return widget.home;
     }
 
-    return const OnboardingScreen();
+    return widget.onboarding;
   }
 }

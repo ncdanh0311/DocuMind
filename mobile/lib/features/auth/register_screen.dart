@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -62,7 +63,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    if (password.length < 8) {
+    if (password.runes.length < 8 || utf8.encode(password).length > 72) {
       NotificationService.show(
         context,
         AppStrings.passwordTooShort,
@@ -95,6 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _passwordController.text,
       _nameController.text.trim(),
     );
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (result["success"]) {

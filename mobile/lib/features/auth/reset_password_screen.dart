@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -56,7 +57,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       return;
     }
 
-    if (password.length < 8) {
+    if (password.runes.length < 8 || utf8.encode(password).length > 72) {
       NotificationService.show(
         context,
         AppStrings.passwordTooShort,
@@ -82,14 +83,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       setState(() => _isLoading = false);
       
       if (result["success"]) {
-        final data = result["data"];
-        
-        final storage = _apiService.storage;
-        await storage.write(key: 'access_token', value: data['access_token']);
-        if (data['full_name'] != null) {
-          await storage.write(key: 'full_name', value: data['full_name']);
-        }
-
         NotificationService.show(
           context,
           "auth.reset_success".tr(),

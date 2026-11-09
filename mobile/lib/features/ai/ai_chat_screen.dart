@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
@@ -28,11 +27,25 @@ class _AIChatScreenState extends State<AIChatScreen> {
   bool _isAILoading = false;
   final ApiService _apiService = ApiService();
   String _selectedModel = "phobert_qa";
+  final Set<String> _readyModels = {};
+  int _generation = 0;
+  bool _aiPaused = true;
+  bool get _modelReady => _readyModels.contains(_selectedModel) && _readyModels.contains('embedding') && _readyModels.contains('reranker');
+  Future<void> _loadCapabilities() async {
+    final result = await _apiService.getCapabilities();
+    if (!mounted) { return; }
+    if (result['success'] == true) { setState(() {
+      _aiPaused = (result['data']['models'] as List).any((item) => item['error_code'] == 'ERR_AI_DISABLED');
+      _readyModels.clear();
+      for (final item in result['data']['models']) { if (item['ready'] == true) _readyModels.add(item['id']); }
+    }); }
+  }
 
   @override
   void initState() {
     super.initState();
     _currentNotebookTitle = widget.notebookTitle;
+    _loadCapabilities();
   }
 
   @override
@@ -41,6 +54,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     if (widget.notebookId != oldWidget.notebookId || widget.notebookTitle != oldWidget.notebookTitle) {
       setState(() {
         _currentNotebookTitle = widget.notebookTitle;
+        _generation++; _isAILoading = false;
         _messages.clear();
       });
     }
@@ -66,7 +80,13 @@ class _AIChatScreenState extends State<AIChatScreen> {
   }
 
   void _sendMessage(String query) async {
-    if (query.trim().isEmpty) return;
+    if (query.trim().isEmpty || _isAILoading) return;
+    if (!_modelReady) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text((_aiPaused ? 'errors.ERR_AI_DISABLED' : 'errors.ERR_MODEL_UNAVAILABLE').tr())));
+      _loadCapabilities();
+      return;
+    }
+    final generation = ++_generation;
     _messageController.clear();
 
     final now = DateTime.now();
@@ -102,7 +122,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
       }
     }
 
-    if (!mounted) return;
+    if (!mounted || generation != _generation) return;
     setState(() {
       _isAILoading = false;
     });
@@ -122,28 +142,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
     _scrollToBottom();
 
-    final List<String> words = responseText.split(' ');
-    int currentWordIndex = 0;
-    
-    Timer.periodic(const Duration(milliseconds: 25), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      
-      if (currentWordIndex < words.length) {
-        setState(() {
-          _messages.last["text"] = words.take(currentWordIndex + 1).join(' ');
-        });
-        currentWordIndex++;
-        _scrollToBottom();
-      } else {
-        setState(() {
-          _messages.last["isStreaming"] = false;
-        });
-        timer.cancel();
-      }
-    });
+    setState(() { _messages.last['text'] = responseText; _messages.last['isStreaming'] = false; });
   }
 
 
@@ -160,6 +159,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 : _buildChatList(),
           ),
           if (_messages.isNotEmpty) _buildSuggestedActions(),
+          if (_aiPaused) Padding(padding: const EdgeInsets.all(12), child: Text('errors.ERR_AI_DISABLED'.tr())),
           _buildMessageInput(),
         ],
       ),
@@ -319,7 +319,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
               backgroundColor: Colors.white,
               side: const BorderSide(color: Color(0xFFE0F2F1)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              onPressed: () => _sendMessage(action["query"]!),
+              onPressed: _modelReady && !_isAILoading ? () => _sendMessage(action["query"]!) : null,
             ),
           );
         },
@@ -330,7 +330,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   Widget _buildModelTab(String modelCode, String label) {
     final isSelected = _selectedModel == modelCode;
     return GestureDetector(
-      onTap: () {
+      onTap: !_readyModels.contains(modelCode) || _isAILoading ? null : () {
         setState(() {
           _selectedModel = modelCode;
         });
@@ -354,7 +354,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
               const SizedBox(width: 4),
             ],
             Text(
-              label,
+              _readyModels.contains(modelCode) ? label : '$label · —',
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
@@ -428,7 +428,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
                   child: IconButton(
                     icon: const Icon(Icons.send_rounded, color: Colors.white, size: 24),
-                    onPressed: () => _sendMessage(_messageController.text),
+                    onPressed: _modelReady && !_isAILoading ? () => _sendMessage(_messageController.text) : null,
                   ),
                 ),
               ],

@@ -4,21 +4,37 @@ import 'package:documind_mobile/core/app_colors.dart';
 import 'package:documind_mobile/core/api_service.dart';
 
 class CreateNotebookScreen extends StatefulWidget {
-  const CreateNotebookScreen({super.key});
+  final Map<String, dynamic>? notebook;
+  final ApiService? apiService;
+  const CreateNotebookScreen({super.key, this.notebook, this.apiService});
 
   @override
   State<CreateNotebookScreen> createState() => _CreateNotebookScreenState();
 }
 
 class _CreateNotebookScreenState extends State<CreateNotebookScreen> {
-  String _selectedIcon = "assets/icons/categories/icon-category-study.png";
+  String _selectedIcon = "assets/icons/categories/icon-category-personal.png";
   bool _isPrivate = true;
   bool _showOnHome = true;
   bool _isLoading = false;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
-  final ApiService _apiService = ApiService();
+  late final ApiService _apiService;
+  String _category = "personal";
+
+  @override
+  void initState() {
+    super.initState();
+    _apiService = widget.apiService ?? ApiService();
+    final notebook = widget.notebook;
+    if (notebook != null) {
+      _titleController.text = notebook['title']; _descController.text = notebook['description'] ?? '';
+      _category = notebook['category'] ?? 'personal';
+      _selectedIcon = (notebook['icon_path'] as String? ?? 'assets/icons/categories/icon-category-$_category.png').replaceFirst(RegExp(r'^/'), '');
+      _isPrivate = notebook['is_private'] ?? true; _showOnHome = notebook['show_on_home'] ?? true;
+    }
+  }
 
   final List<String> _categoryIcons = [
     "assets/icons/categories/icon-category-study.png",
@@ -45,13 +61,12 @@ class _CreateNotebookScreenState extends State<CreateNotebookScreen> {
 
     setState(() => _isLoading = true);
     
-    final result = await _apiService.createNotebook(
-      title,
-      isPrivate: _isPrivate,
-      showOnHome: _showOnHome,
-      iconPath: _selectedIcon,
-    );
-    
+    final values = {'title': title, 'description': _descController.text.trim(), 'category': _category,
+      'is_private': _isPrivate, 'show_on_home': _showOnHome, 'icon_path': _selectedIcon};
+    final result = widget.notebook == null
+        ? await _apiService.createNotebook(title, isPrivate: _isPrivate, showOnHome: _showOnHome, iconPath: _selectedIcon, category: _category, description: _descController.text.trim())
+        : await _apiService.updateNotebook(widget.notebook!['notebook_id'], values);
+
     if (mounted) {
       setState(() => _isLoading = false);
       
@@ -105,7 +120,7 @@ class _CreateNotebookScreenState extends State<CreateNotebookScreen> {
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
-        "Sổ tay mới",
+        widget.notebook == null ? "Sổ tay mới" : "Chỉnh sửa sổ tay",
         style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textDark),
       ),
       centerTitle: true,
@@ -140,7 +155,7 @@ class _CreateNotebookScreenState extends State<CreateNotebookScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "Tạo một sổ tay mới",
+                    widget.notebook == null ? "Tạo một sổ tay mới" : "Chỉnh sửa thông tin",
                     style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF00695C)),
                   ),
                   const SizedBox(height: 6),
@@ -178,6 +193,7 @@ class _CreateNotebookScreenState extends State<CreateNotebookScreen> {
         const SizedBox(height: 8),
         TextField(
           controller: _titleController,
+          maxLength: 200,
           decoration: InputDecoration(
             hintText: "Ví dụ: Học tiếng Anh",
             hintStyle: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 14),
@@ -193,6 +209,7 @@ class _CreateNotebookScreenState extends State<CreateNotebookScreen> {
         const SizedBox(height: 8),
         TextField(
           controller: _descController,
+          maxLength: 1000,
           maxLines: 3,
           decoration: InputDecoration(
             hintText: "Ghi chú, tài liệu và mục tiêu học tập...",
@@ -220,7 +237,7 @@ class _CreateNotebookScreenState extends State<CreateNotebookScreen> {
           children: _categoryIcons.map((icon) {
             bool isSelected = _selectedIcon == icon;
             return GestureDetector(
-              onTap: () => setState(() => _selectedIcon = icon),
+              onTap: () => setState(() { _selectedIcon = icon; _category = icon.split('icon-category-').last.split('.').first; }),
               child: Container(
                 width: 75,
                 height: 75,
@@ -230,7 +247,7 @@ class _CreateNotebookScreenState extends State<CreateNotebookScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.shade100, width: isSelected ? 2 : 1),
                 ),
-                child: Image.asset(icon, fit: BoxFit.contain),
+                child: Column(children: [Expanded(child: Image.asset(icon, fit: BoxFit.contain)), Text({'study': 'Học tập', 'project': 'Dự án', 'research': 'Nghiên cứu', 'personal': 'Cá nhân'}[icon.split('icon-category-').last.split('.').first]!, style: const TextStyle(fontSize: 10))]),
               ),
             );
           }).toList(),
@@ -262,7 +279,7 @@ class _CreateNotebookScreenState extends State<CreateNotebookScreen> {
                 false, 
                 Icons.people_outline_rounded, 
                 "Chia sẻ", 
-                "Mọi người có thể xem"
+                "Không đánh dấu riêng tư"
               ),
             ),
           ],
@@ -344,7 +361,7 @@ class _CreateNotebookScreenState extends State<CreateNotebookScreen> {
         child: _isLoading 
           ? const CircularProgressIndicator(color: Colors.white)
           : Text(
-              "Tạo sổ tay",
+              widget.notebook == null ? "Tạo sổ tay" : "Lưu thay đổi",
               style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
             ),
       ),
