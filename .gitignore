@@ -2,6 +2,8 @@
 prompts/patterns/user/
 /notebooks/
 data/
+!ai/src/data/
+!ai/src/data/*.py
 .uploads/
 sqlite-db/
 surreal-data/
@@ -65,6 +67,7 @@ ipython_config.py
 # Environments
 .env
 .venv
+/.phase1/
 env/
 venv/
 ENV/
@@ -165,3 +168,6 @@ mobile/*.iml
 .python-version
 open-notebook/
 hf_cache/
+
+# Local, checksummed inference bundles; never commit weights
+ai/artifacts/

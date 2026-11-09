@@ -1,46 +1,20 @@
-import evaluate
+"""The same Unicode ROUGE definitions are used for training, test and benchmark."""
 import numpy as np
-import torch
+from ai.src.metrics.rouge import rouge_scores
 
 class SumMetrics:
-    def __init__(self, tokenizer):
-        self.tokenizer = tokenizer
-        self.rouge_scorer = evaluate.load("rouge")
+    def __init__(self, tokenizer): self.tokenizer = tokenizer
 
     def compute(self, eval_pred):
         predictions, labels = eval_pred
-        
-        # 1. Xu ly predictions (du doan tu mo hinh)
-        if isinstance(predictions, tuple):
-            predictions = predictions[0]
-            
-        # Chuyen ve CPU va ep kieu int32 de tranh loi Overflow tren Linux
-        if isinstance(predictions, torch.Tensor):
-            predictions = predictions.cpu().numpy()
-        predictions = np.array(predictions).astype(np.int32)
-            
-        # Giai ma chuoi token thanh van ban
-        decoded_preds = self.tokenizer.batch_decode(predictions, skip_special_tokens=True)
-        
-        # 2. Xu ly labels (dap an chuan)
-        # Thay the -100 bang pad_token de decode
-        labels = np.where(labels != -100, labels, self.tokenizer.pad_token_id)
-        if isinstance(labels, torch.Tensor):
-            labels = labels.cpu().numpy()
-        labels = labels.astype(np.int32)
-        
-        decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
-        
-        # 3. Hau xu ly cho tieng Viet (Xoa dau gach duoi de tinh diem chuan)
-        decoded_preds = [text.replace("_", " ") for text in decoded_preds]
-        decoded_labels = [text.replace("_", " ") for text in decoded_labels]
-        
-        # 4. Tinh toan ROUGE
-        result = self.rouge_scorer.compute(
-            predictions=decoded_preds, 
-            references=decoded_labels, 
-            use_stemmer=True
-        )
-        
-        # Lam tron ket qua
-        return {k: round(v, 4) for k, v in result.items()}
+        if isinstance(predictions, tuple): predictions = predictions[0]
+        def array(value):
+            if hasattr(value, "detach"): value = value.detach().cpu().numpy()
+            return np.asarray(value)
+        predictions, labels = array(predictions), array(labels)
+        predictions = np.where(predictions >= 0, predictions, self.tokenizer.pad_token_id)
+        labels = np.where(labels >= 0, labels, self.tokenizer.pad_token_id)
+        decoded = self.tokenizer.batch_decode(predictions, skip_special_tokens=True)
+        references = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
+        scores = [rouge_scores(p.replace("_", " "), r.replace("_", " ")) for p, r in zip(decoded, references)]
+        return {key: round(100 * sum(s[key] for s in scores) / len(scores), 4) for key in ("rouge1", "rouge2", "rougeL")} if scores else {}

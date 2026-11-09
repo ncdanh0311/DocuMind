@@ -1,0 +1,132 @@
+{
+  "notebooks": [
+    {
+      "notebook_id": "a",
+      "title": "Đề cương Toán",
+      "description": "Ghi chú nghiên cứu",
+      "category": "research",
+      "created_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "notebook_id": "b",
+      "title": "Bài học",
+      "description": "Dự án cá nhân",
+      "category": "personal",
+      "created_at": "2026-02-01T00:00:00Z"
+    },
+    {
+      "notebook_id": "c",
+      "title": "Đè cương",
+      "description": "",
+      "category": "study",
+      "created_at": "2026-02-01T00:00:00Z"
+    }
+  ],
+  "documents": [
+    {
+      "document_id": "a",
+      "notebook_id": "n",
+      "file_name": "Đề cương.PDF",
+      "status": "uploaded",
+      "uploaded_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "document_id": "b",
+      "notebook_id": "n",
+      "file_name": "Bài tập.txt",
+      "status": "ready",
+      "uploaded_at": "2026-02-01T00:00:00Z"
+    },
+    {
+      "document_id": "c",
+      "notebook_id": "n",
+      "file_name": "Tổng kết.docx",
+      "status": "error",
+      "uploaded_at": "2026-02-01T00:00:00Z"
+    }
+  ],
+  "notebook_cases": [
+    {
+      "query": "",
+      "category": "all",
+      "sort": "newest",
+      "expected": [
+        "b",
+        "c",
+        "a"
+      ]
+    },
+    {
+      "query": "NGHIEN CUU",
+      "category": "research",
+      "sort": "name",
+      "expected": [
+        "a"
+      ]
+    },
+    {
+      "query": "de cuong",
+      "category": "study",
+      "sort": "oldest",
+      "expected": [
+        "c"
+      ]
+    },
+    {
+      "query": "",
+      "category": "all",
+      "sort": "name",
+      "expected": [
+        "b",
+        "c",
+        "a"
+      ]
+    },
+    {
+      "query": "khong co",
+      "category": "all",
+      "sort": "newest",
+      "expected": []
+    }
+  ],
+  "document_cases": [
+    {
+      "query": "",
+      "extension": "all",
+      "status": "all",
+      "sort": "newest",
+      "expected": [
+        "b",
+        "c",
+        "a"
+      ]
+    },
+    {
+      "query": "DE CUONG",
+      "extension": "pdf",
+      "status": "uploaded",
+      "sort": "name",
+      "expected": [
+        "a"
+      ]
+    },
+    {
+      "query": "",
+      "extension": "txt",
+      "status": "error",
+      "sort": "newest",
+      "expected": []
+    },
+    {
+      "query": "",
+      "extension": "all",
+      "status": "all",
+      "sort": "name",
+      "expected": [
+        "b",
+        "a",
+        "c"
+      ]
+    }
+  ]
+}

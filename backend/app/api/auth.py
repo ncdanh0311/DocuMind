@@ -1,46 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-from backend.app.core.db import get_session
-from backend.app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token
-from backend.app.core.config import settings
-from backend.app.models.models import User
-from backend.app.schemas.schemas import (
-    UserCreate, UserLogin, Token, UserPublic, ForgotPassword, 
-    ResetPassword, VerifyOTP, RefreshTokenRequest, UserUpdate, SecurityUpdate
-)
-from backend.app.api.deps import get_current_user
-from jose import jwt, JWTError
+import hmac
+import logging
+import secrets
+import uuid
+from datetime import timedelta
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
-
-def get_utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-def is_expired(expiry: Optional[datetime]) -> bool:
-    if expiry is None:
-        return True
-    now = datetime.now(timezone.utc)
-    if expiry.tzinfo is None:
-        expiry = expiry.replace(tzinfo=timezone.utc)
-    return now > expiry
-
-router = APIRouter()
-
-conf = ConnectionConfig(
-    MAIL_USERNAME = settings.SMTP_USER,
-    MAIL_PASSWORD = settings.SMTP_PASSWORD,
-    MAIL_FROM = settings.EMAILS_FROM_EMAIL,
-    MAIL_PORT = settings.SMTP_PORT,
-    MAIL_SERVER = settings.SMTP_HOST,
-    MAIL_FROM_NAME = settings.PROJECT_NAME,
-    MAIL_STARTTLS = True,
-    MAIL_SSL_TLS = False,
-    USE_CREDENTIALS = True,
-    VALIDATE_CERTS = True
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session, select
+from backend.app.core.db import get_session
+from backend.app.core.config import settings
+from backend.app.core.security import (
+    create_token, credential_hash, decode_token, get_password_hash, is_expired, otp_hash, utc_now, verify_password,
 )
+from backend.app.models.models import AuthSession, PasswordResetChallenge, User
+from backend.app.schemas.schemas import (
+    UserCreate, UserLogin, Token, UserPublic, ForgotPassword, ResetPassword, VerifyOTP,
+    RefreshTokenRequest, UserUpdate, SecurityUpdate, ResetTokenResponse, ResetPasswordResponse, MessageResponse,
+)
+from backend.app.api.deps import get_current_user, get_current_session
+from backend.app.services.auth_service import consume_reset_rate_limit, issue_tokens, lock_user, revoke_user_credentials, same_hash
 
-import random
+logger = logging.getLogger(__name__)
+router = APIRouter()
 
 async def send_reset_otp_email(email: str, otp: str):
     html = f"""
@@ -70,195 +51,122 @@ async def send_reset_otp_email(email: str, otp: str):
         subtype=MessageType.html
     )
 
+    conf = ConnectionConfig(
+        MAIL_USERNAME=settings.SMTP_USER, MAIL_PASSWORD=settings.SMTP_PASSWORD,
+        MAIL_FROM=settings.EMAILS_FROM_EMAIL, MAIL_PORT=settings.SMTP_PORT,
+        MAIL_SERVER=settings.SMTP_HOST, MAIL_FROM_NAME=settings.PROJECT_NAME,
+        MAIL_STARTTLS=settings.SMTP_TLS, MAIL_SSL_TLS=settings.SMTP_SSL,
+        USE_CREDENTIALS=True, VALIDATE_CERTS=True,
+    )
     fm = FastMail(conf)
     await fm.send_message(message)
 
 @router.post("/register", response_model=Token)
 def register(user_in: UserCreate, session: Session = Depends(get_session)):
+    user = User(email=user_in.email, full_name=user_in.full_name, hashed_password=get_password_hash(user_in.password))
     try:
-        user = session.exec(select(User).where(User.email == user_in.email)).first()
-        if user:
-            raise HTTPException(
-                status_code=400,
-                detail="ERR_EMAIL_TAKEN"
-            )
-        
-        db_user = User(
-            email=user_in.email,
-            full_name=user_in.full_name,
-            hashed_password=get_password_hash(user_in.password)
-        )
-        session.add(db_user)
+        session.add(user)
+        session.flush()
+        result = issue_tokens(session, user)
         session.commit()
-        session.refresh(db_user)
-        
-        access_token = create_access_token(str(db_user.user_id))
-        refresh_token = create_refresh_token(str(db_user.user_id))
-        
-        db_user.refresh_token = refresh_token
-        db_user.refresh_token_expiry = get_utc_now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-        session.add(db_user)
-        session.commit()
-        
-        return {
-            "user_id": str(db_user.user_id),
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-            "full_name": db_user.full_name,
-            "avatar_id": db_user.avatar_id
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"REGISTER_FAILED: {type(e).__name__}: {str(e)}")
+        return result
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(400, "ERR_EMAIL_TAKEN") from None
 
 @router.post("/login", response_model=Token)
 def login(user_in: UserLogin, session: Session = Depends(get_session)):
-    try:
-        user = session.exec(select(User).where(User.email == user_in.email)).first()
-        if not user or not verify_password(user_in.password, user.hashed_password):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="ERR_INVALID_CREDENTIALS",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        access_token = create_access_token(subject=user.user_id)
-        refresh_token = create_refresh_token(subject=user.user_id)
-        
-        user.refresh_token = refresh_token
-        user.refresh_token_expiry = get_utc_now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-        session.add(user)
-        session.commit()
-        
-        return {
-            "user_id": str(user.user_id),
-            "access_token": access_token, 
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-            "full_name": user.full_name,
-            "avatar_id": user.avatar_id
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"LOGIN_FAILED: {type(e).__name__}: {str(e)}")
+    user = session.exec(select(User).where(User.email == user_in.email).with_for_update()).first()
+    if not user or not verify_password(user_in.password, user.hashed_password):
+        raise HTTPException(401, "ERR_INVALID_CREDENTIALS", headers={"WWW-Authenticate": "Bearer"})
+    result = issue_tokens(session, user)
+    session.commit()
+    return result
 
 @router.post("/refresh-token", response_model=Token)
 def refresh_token(data: RefreshTokenRequest, session: Session = Depends(get_session)):
-    try:
-        payload = jwt.decode(data.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id: str = payload.get("sub")
-        token_type: str = payload.get("type")
-        if user_id is None or token_type != "refresh":
-            raise HTTPException(status_code=401, detail="ERR_TOKEN_INVALID")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="ERR_TOKEN_EXPIRED")
-    
-    user = session.get(User, user_id)
-    if not user or user.refresh_token != data.refresh_token or is_expired(user.refresh_token_expiry):
-        raise HTTPException(status_code=401, detail="ERR_SESSION_EXPIRED")
-    
-    # Tạo cặp token mới
-    new_access = create_access_token(subject=user.user_id)
-    new_refresh = create_refresh_token(subject=user.user_id)
-    
-    user.refresh_token = new_refresh
-    user.refresh_token_expiry = get_utc_now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    session.add(user)
+    payload = decode_token(data.refresh_token, "refresh")
+    user = lock_user(session, uuid.UUID(payload["sub"]))
+    auth_session = session.exec(select(AuthSession).where(AuthSession.session_id == uuid.UUID(payload["sid"])).with_for_update()).first()
+    if (not auth_session or auth_session.user_id != user.user_id or auth_session.revoked_at is not None
+            or is_expired(auth_session.expires_at) or not same_hash(auth_session.refresh_hash, data.refresh_token)):
+        raise HTTPException(401, "ERR_SESSION_EXPIRED")
+    result = issue_tokens(session, user, auth_session)
     session.commit()
-    
-    return {
-        "user_id": str(user.user_id),
-        "access_token": new_access,
-        "refresh_token": new_refresh,
-        "token_type": "bearer",
-        "full_name": user.full_name,
-        "avatar_id": user.avatar_id
-    }
+    return result
 
-@router.post("/logout")
-def logout(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    current_user.refresh_token = None
-    current_user.refresh_token_expiry = None
-    session.add(current_user)
+@router.post("/logout", response_model=MessageResponse)
+def logout(auth_session: AuthSession = Depends(get_current_session), session: Session = Depends(get_session)):
+    lock_user(session, auth_session.user_id)
+    auth_session.revoked_at = utc_now()
+    session.add(auth_session)
     session.commit()
     return {"message": "MSG_LOGOUT_SUCCESS"}
 
-@router.post("/forgot-password")
-async def forgot_password(data: ForgotPassword, session: Session = Depends(get_session)):
-    user = session.exec(select(User).where(User.email == data.email)).first()
-    if not user:
-        raise HTTPException(
-            status_code=404, 
-            detail="ERR_EMAIL_NOT_FOUND"
-        )
-    
-    otp = f"{random.randint(100000, 999999)}"
-    user.otp_code = otp
-    user.otp_expiry = get_utc_now() + timedelta(minutes=5)
-    
-    session.add(user)
+@router.post("/forgot-password", response_model=MessageResponse)
+async def forgot_password(data: ForgotPassword, request: Request, session: Session = Depends(get_session)):
+    # Never trust a caller-supplied forwarding header for IP-based limits.
+    ip = request.client.host if request.client else "unknown"
+    allowed = consume_reset_rate_limit(session, data.email, ip)
+    user = session.exec(select(User).where(User.email == data.email).with_for_update()).first() if allowed else None
+    code = None
+    if user:
+        now = utc_now()
+        for previous in session.exec(select(PasswordResetChallenge).where(PasswordResetChallenge.user_id == user.user_id, PasswordResetChallenge.used_at.is_(None))).all():
+            previous.used_at = now
+            session.add(previous)
+        code = f"{secrets.randbelow(1000000):06d}"
+        challenge = PasswordResetChallenge(user_id=user.user_id, otp_hash="", otp_expires_at=now + timedelta(minutes=settings.OTP_EXPIRE_MINUTES))
+        challenge.otp_hash = otp_hash(challenge.challenge_id, code)
+        session.add(challenge)
     session.commit()
-    
-    await send_reset_otp_email(data.email, otp)
+    if code is not None:
+        try:
+            await send_reset_otp_email(data.email, code)
+        except Exception:
+            # Do not expose provider details or distinguish registered addresses.
+            logger.warning("Password reset delivery failed")
     return {"message": "MSG_OTP_SENT"}
 
-@router.post("/verify-otp")
+@router.post("/verify-otp", response_model=ResetTokenResponse)
 def verify_otp(data: VerifyOTP, session: Session = Depends(get_session)):
-    user = session.exec(select(User).where(User.email == data.email)).first()
-    if not user or user.otp_code != data.otp_code:
-        raise HTTPException(status_code=400, detail="ERR_OTP_INVALID")
-    
-    if is_expired(user.otp_expiry):
-        raise HTTPException(status_code=400, detail="ERR_OTP_EXPIRED")
-    
-    reset_token = create_access_token(
-        subject=str(user.user_id), expires_delta=timedelta(minutes=10)
-    )
-    user.otp_code = None
-    user.otp_expiry = None
-    session.add(user)
+    user = session.exec(select(User).where(User.email == data.email).with_for_update()).first()
+    challenge = None
+    if user:
+        challenge = session.exec(select(PasswordResetChallenge).where(
+            PasswordResetChallenge.user_id == user.user_id, PasswordResetChallenge.used_at.is_(None),
+            PasswordResetChallenge.otp_consumed_at.is_(None),
+        ).order_by(PasswordResetChallenge.created_at.desc()).with_for_update()).first()
+    if not challenge or challenge.attempts >= settings.OTP_MAX_ATTEMPTS or is_expired(challenge.otp_expires_at):
+        raise HTTPException(400, "ERR_OTP_INVALID")
+    if not hmac.compare_digest(challenge.otp_hash, otp_hash(challenge.challenge_id, data.otp_code)):
+        challenge.attempts += 1
+        session.add(challenge)
+        session.commit()
+        raise HTTPException(400, "ERR_OTP_INVALID")
+    token = create_token(user.user_id, "password_reset", challenge.challenge_id, timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES))
+    challenge.otp_consumed_at = utc_now()
+    challenge.reset_hash = credential_hash(token)
+    challenge.reset_expires_at = utc_now() + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
+    session.add(challenge)
     session.commit()
-    return {"reset_token": reset_token}
+    return {"reset_token": token}
 
-@router.post("/reset-password")
+@router.post("/reset-password", response_model=ResetPasswordResponse)
 def reset_password(data: ResetPassword, session: Session = Depends(get_session)):
-    try:
-        payload = jwt.decode(data.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(status_code=400, detail="ERR_TOKEN_INVALID")
-    except JWTError:
-        raise HTTPException(status_code=400, detail="ERR_TOKEN_EXPIRED")
-    
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="ERR_USER_NOT_FOUND")
-    
+    payload = decode_token(data.token, "password_reset")
+    user = lock_user(session, uuid.UUID(payload["sub"]))
+    challenge = session.exec(select(PasswordResetChallenge).where(PasswordResetChallenge.challenge_id == uuid.UUID(payload["sid"])).with_for_update()).first()
+    if (not challenge or challenge.user_id != user.user_id or challenge.used_at is not None
+            or challenge.otp_consumed_at is None or is_expired(challenge.reset_expires_at)
+            or not same_hash(challenge.reset_hash, data.token)):
+        raise HTTPException(401, "ERR_TOKEN_INVALID")
     user.hashed_password = get_password_hash(data.new_password)
-    access_token = create_access_token(subject=str(user.user_id))
-    refresh_token = create_refresh_token(subject=str(user.user_id))
-    
-    user.refresh_token = refresh_token
-    user.refresh_token_expiry = get_utc_now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     session.add(user)
+    revoke_user_credentials(session, user)
+    result = issue_tokens(session, user)
     session.commit()
-    session.refresh(user)
-
-    return {
-        "user_id": str(user.user_id),
-        "message": "MSG_PASSWORD_RESET_SUCCESS",
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "full_name": user.full_name,
-        "avatar_id": user.avatar_id
-    }
+    return {**result.model_dump(), "message": "MSG_PASSWORD_RESET_SUCCESS"}
 
 @router.get("/me", response_model=UserPublic)
 def read_user_me(current_user: User = Depends(get_current_user)):
@@ -266,23 +174,27 @@ def read_user_me(current_user: User = Depends(get_current_user)):
 
 @router.put("/me", response_model=UserPublic)
 def update_user_me(data: UserUpdate, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    if data.full_name is not None:
-        current_user.full_name = data.full_name
-    if data.avatar_id is not None:
-        current_user.avatar_id = data.avatar_id
+    for key, value in data.model_dump(exclude_unset=True).items():
+        if value is not None:
+            setattr(current_user, key, value)
     session.add(current_user)
     session.commit()
     session.refresh(current_user)
     return current_user
 
 @router.put("/security", response_model=UserPublic)
-def update_security(data: SecurityUpdate, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    if data.old_password and data.new_password:
-        if not verify_password(data.old_password, current_user.hashed_password):
-            raise HTTPException(status_code=400, detail="ERR_OLD_PASSWORD_INCORRECT")
-        current_user.hashed_password = get_password_hash(data.new_password)
-        
-    session.add(current_user)
+def update_security(data: SecurityUpdate, current_user: User = Depends(get_current_user),
+                    auth_session: AuthSession = Depends(get_current_session), session: Session = Depends(get_session)):
+    user = lock_user(session, current_user.user_id)
+    # Recheck after obtaining the user lock: another password change may have revoked this request's session.
+    session.refresh(auth_session)
+    if auth_session.revoked_at is not None:
+        raise HTTPException(401, "ERR_SESSION_EXPIRED")
+    if not verify_password(data.old_password, user.hashed_password):
+        raise HTTPException(400, "ERR_OLD_PASSWORD_INCORRECT")
+    user.hashed_password = get_password_hash(data.new_password)
+    session.add(user)
+    revoke_user_credentials(session, user)
     session.commit()
-    session.refresh(current_user)
-    return current_user
+    session.refresh(user)
+    return user

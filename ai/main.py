@@ -1,110 +1,64 @@
-import sys
-import os
+"""Offline AI serving: importing this app never loads a model or accesses Hugging Face."""
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List
-
-# Đảm bảo import được các module từ thư mục root
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+from pydantic import BaseModel, Field
+from typing import Literal
+from ai.runtime.registry import registry
+from ai.runtime.models import runtime
 from ai.services.embedding_service import embedding_service
 from ai.services.qa_service import qa_service
 from ai.services.summarization_service import summarization_service
 from ai.services.reranker_service import reranker_service
 
-app = FastAPI(
-    title="DocuMind AI Service",
-    description="Microservice cho các mô hình Embedding và QA",
-    version="1.0.0"
-)
+app = FastAPI(title="DocuMind AI Service", version="2.0.0")
+QAModel = Literal["phobert_qa", "xlmroberta_qa"]
+SummaryModel = Literal["vit5", "bartpho"]
 
-# Models cho API Request/Response
 class EmbedRequest(BaseModel):
-    texts: List[str]
+    texts: list[str] = Field(min_length=1, max_length=16)
     is_query: bool = False
-
-class EmbedResponse(BaseModel):
-    embeddings: List[List[float]]
-
+    expected_version: str | None = None
+class Passage(BaseModel):
+    chunk_id: str
+    content: str = Field(min_length=1, max_length=50000)
 class QARequest(BaseModel):
-    context: str
-    question: str
-    model_type: str = "phobert_qa"
-
-class QAResponse(BaseModel):
-    answer: str
-
+    passages: list[Passage] = Field(min_length=1, max_length=3)
+    question: str = Field(min_length=1, max_length=4000)
+    model_type: QAModel = "phobert_qa"
 class SummarizeRequest(BaseModel):
-    text: str
-    model_type: str = "vit5"
-
-class SummarizeResponse(BaseModel):
-    summary: str
-
+    text: str = Field(min_length=1, max_length=1000000)
+    model_type: SummaryModel = "vit5"
+    expected_version: str | None = None
+    max_output_tokens: int = Field(default=128, ge=1, le=256)
+class SplitRequest(BaseModel):
+    text: str = Field(max_length=1000000)
+    model: Literal["embedding", "vit5", "bartpho"]
+    overlap: int = Field(default=0, ge=0, le=64)
 class RerankRequest(BaseModel):
-    question: str
-    passages: List[str]
-    top_k: int = 3
+    question: str = Field(min_length=1, max_length=4000)
+    passages: list[str] = Field(min_length=1, max_length=20)
+    top_k: int = Field(default=3, ge=1, le=3)
 
-class RerankResult(BaseModel):
-    index: int
-    text: str
-    score: float
-
-class RerankResponse(BaseModel):
-    results: List[RerankResult]
+def infer(operation):
+    try: return operation()
+    except FileNotFoundError as exc: raise HTTPException(503, str(exc) if str(exc).startswith("ERR_") else "ERR_MODEL_UNAVAILABLE") from None
+    except ValueError as exc: raise HTTPException(422, str(exc) if str(exc).startswith("ERR_") else "ERR_AI_INPUT") from None
+    except Exception: raise HTTPException(500, "ERR_AI_INFERENCE") from None
 
 @app.get("/health")
-async def health():
-    qa_phobert_loaded = qa_service.models["phobert_qa"] is not None
-    qa_xlmroberta_loaded = qa_service.models["xlmroberta_qa"] is not None
-    vit5_loaded = summarization_service.models["vit5"] is not None
-    bartpho_loaded = summarization_service.models["bartpho"] is not None
-    reranker_loaded = reranker_service.model is not None
-    return {
-        "status": "healthy",
-        "embedding_model": embedding_service.model_name,
-        "qa_phobert_loaded": qa_phobert_loaded,
-        "qa_xlmroberta_loaded": qa_xlmroberta_loaded,
-        "vit5_summarization_loaded": vit5_loaded,
-        "bartpho_summarization_loaded": bartpho_loaded,
-        "reranker_model": reranker_service.model_name,
-        "reranker_model_loaded": reranker_loaded
-    }
-
-@app.post("/embed", response_model=EmbedResponse)
-async def embed(request: EmbedRequest):
-    try:
-        embeddings = embedding_service.embed_text(request.texts, is_query=request.is_query)
-        return EmbedResponse(embeddings=embeddings)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi khi tạo embedding: {str(e)}")
-
-@app.post("/qa", response_model=QAResponse)
-async def qa(request: QARequest):
-    try:
-        answer = qa_service.answer_question(request.context, request.question, request.model_type)
-        return QAResponse(answer=answer)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi khi chạy QA inference: {str(e)}")
-
-@app.post("/summarize", response_model=SummarizeResponse)
-async def summarize(request: SummarizeRequest):
-    try:
-        summary = summarization_service.summarize(request.text, request.model_type)
-        return SummarizeResponse(summary=summary)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi khi chạy summarization inference: {str(e)}")
-
-@app.post("/rerank", response_model=RerankResponse)
-async def rerank(request: RerankRequest):
-    try:
-        results = reranker_service.rerank(request.question, request.passages, request.top_k)
-        return RerankResponse(results=results)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi khi chạy rerank inference: {str(e)}")
+def health(): return {"status": "online"}
+@app.get("/capabilities")
+def capabilities(): return registry.capabilities()
+@app.post("/embed")
+def embed(request: EmbedRequest): return infer(lambda: {"embeddings": embedding_service.embed_text(request.texts, request.is_query, request.expected_version)})
+@app.post("/split")
+def split(request: SplitRequest): return infer(lambda: {"spans": runtime.split(request.text, request.model, request.overlap)})
+@app.post("/qa")
+def qa(request: QARequest): return infer(lambda: qa_service.answer([p.model_dump() for p in request.passages], request.question, request.model_type))
+@app.post("/summarize")
+def summarize(request: SummarizeRequest): return infer(lambda: summarization_service.summarize(request.text, request.model_type, request.expected_version, request.max_output_tokens))
+@app.post("/rerank")
+def rerank(request: RerankRequest): return infer(lambda: {"results": reranker_service.rerank(request.question, request.passages, request.top_k)})
 
 if __name__ == "__main__":
     import uvicorn
-    # Chạy trên cổng 8001 để tránh xung đột với backend (port 8000)
-    uvicorn.run("ai.main:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("ai.main:app", host="127.0.0.1", port=8001)

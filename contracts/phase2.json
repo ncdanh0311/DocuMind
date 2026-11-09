@@ -1,0 +1,89 @@
+{
+  "token": {
+    "user_id": "11111111-1111-4111-8111-111111111111",
+    "access_token": "fixture-access",
+    "refresh_token": "fixture-refresh",
+    "token_type": "bearer",
+    "full_name": "Alice",
+    "avatar_id": "mascot-owl-avatar-circle.png"
+  },
+  "reset": {
+    "reset_token": "fixture-reset"
+  },
+  "user": {
+    "user_id": "11111111-1111-4111-8111-111111111111",
+    "email": "alice@example.com",
+    "full_name": "Alice",
+    "avatar_id": "mascot-owl-avatar-circle.png"
+  },
+  "notebook": {
+    "notebook_id": "22222222-2222-4222-8222-222222222222",
+    "user_id": "11111111-1111-4111-8111-111111111111",
+    "title": "Study",
+    "is_private": true,
+    "show_on_home": true,
+    "icon_path": null,
+    "created_at": "2026-11-04T00:00:00Z",
+    "document_count": 2
+  },
+  "notification": {
+    "notification_id": "33333333-3333-4333-8333-333333333333",
+    "user_id": "11111111-1111-4111-8111-111111111111",
+    "title": "Ready",
+    "body": "Document processed",
+    "is_read": false,
+    "type": "success",
+    "created_at": "2026-11-04T00:00:00Z"
+  },
+  "chat": {
+    "answer": "An answer [1].",
+    "sources": [
+      "Study (Page 3)"
+    ],
+    "citations": [
+      {
+        "id": 1,
+        "source_title": "Study.pdf",
+        "page_number": 3,
+        "snippet": "An answer.",
+        "document_id": "44444444-4444-4444-8444-444444444444",
+        "version": 1,
+        "start_offset": 0,
+        "end_offset": 10,
+        "page_end": 3,
+        "section_path": "Introduction"
+      }
+    ],
+    "status": "answered",
+    "model_version": "fixture-model-v1"
+  },
+  "summary": {
+    "summary_id": "55555555-5555-4555-8555-555555555555",
+    "job_id": "66666666-6666-4666-8666-666666666666",
+    "status": "succeeded",
+    "summary": "A summary.",
+    "model": "vit5",
+    "model_version": "fixture-model-v1",
+    "coverage": 1.0,
+    "processed_units": 2,
+    "total_units": 2,
+    "error_code": null,
+    "stale": false
+  },
+  "job": {
+    "job_id": "66666666-6666-4666-8666-666666666666",
+    "kind": "summarize",
+    "status": "succeeded",
+    "progress": 1.0,
+    "attempt": 1,
+    "error_code": null
+  },
+  "source": {
+    "document_id": "44444444-4444-4444-8444-444444444444",
+    "version": 1,
+    "start_offset": 0,
+    "end_offset": 10,
+    "text": "An answer.",
+    "sections": []
+  }
+}

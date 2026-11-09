@@ -12,7 +12,8 @@ dependencies = [
     "fastapi-mail>=1.6.4",
     "langchain-text-splitters>=1.1.2",
     "openai>=2.34.0",
-    "passlib[bcrypt]>=1.7.4",
+    "bcrypt>=5.0.0",
+    "httpx>=0.28.1",
     "peft>=0.19.1",
     "pgvector>=0.4.2",
     "protobuf>=7.34.1",
@@ -24,8 +25,25 @@ dependencies = [
     "python-jose[cryptography]>=3.5.0",
     "python-multipart>=0.0.27",
     "sentencepiece>=0.2.1",
+    "pyvi>=0.1.1",
     "sqlmodel>=0.0.38",
     "tiktoken>=0.12.0",
     "torch>=2.11.0",
     "uvicorn>=0.46.0",
 ]
+
+[dependency-groups]
+backend = [
+    "alembic>=1.18.4", "bcrypt>=5.0.0", "email-validator>=2.3.0",
+    "fastapi>=0.136.1", "fastapi-mail>=1.6.4", "httpx>=0.28.1",
+    "pgvector>=0.4.2", "psycopg2-binary>=2.9.12", "pydantic-settings>=2.14.0",
+    "python-jose[cryptography]>=3.5.0", "python-multipart>=0.0.27",
+    "sqlmodel>=0.0.38", "uvicorn>=0.46.0",
+]
+dev = ["pytest>=9.2.0"]
+research = ["datasets>=4.0.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/api", "tests/pipeline", "tests/management"]
+pythonpath = ["."]
+addopts = "-ra"
