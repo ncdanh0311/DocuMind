@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { UploadCloud, Sparkles } from 'lucide-react';
 
-export default function HomeBanner() {
+export default function HomeBanner({ aiEnabled = false }: { aiEnabled?: boolean }) {
   return (
     <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-[#E6F7F1] via-[#F2FAF7] to-[#EAF5FC] border border-[#D2EFE6] p-7 md:p-9 shadow-xs mb-8">
       {/* Decorative background clouds & botanical leaves */}
@@ -31,15 +31,15 @@ export default function HomeBanner() {
         <div className="max-w-xl space-y-3.5 text-center md:text-left">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 border border-[#26A69A]/20 text-[#26A69A] text-xs font-semibold shadow-2xs">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Trợ lý Deep Learning tiếng Việt</span>
+            <span>{aiEnabled ? 'Trợ lý Deep Learning tiếng Việt' : 'Sổ tay và công cụ học tập cá nhân'}</span>
           </div>
 
           <h2 className="font-outfit text-2xl md:text-3xl font-extrabold text-[#2D3E50] leading-tight">
-            Nâng tầm nghiên cứu với <span className="text-[#26A69A]">DocuMind AI</span>
+            Học tập cùng <span className="text-[#26A69A]">DocuMind</span>
           </h2>
 
           <p className="text-sm text-[#8E9DAE] font-medium leading-relaxed">
-            Tải lên tài liệu PDF, DOCX để trích xuất cấu trúc thông minh với IBM Docling, tóm tắt tự động cùng BARTpho & ViT5 và hỏi đáp RAG đa tài liệu.
+            {aiEnabled ? 'Đọc, tóm tắt và hỏi đáp trên tài liệu của bạn.' : 'Lưu PDF, DOCX, TXT, đọc nội dung và tạo thẻ để ôn tập. Tính năng AI đang tạm hoãn.'}
           </p>
 
           <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-3">
@@ -51,10 +51,10 @@ export default function HomeBanner() {
               <span>Khám phá Sổ tay & Tài liệu</span>
             </Link>
             <Link
-              href="/ai-chat"
+              href={aiEnabled ? '/ai-chat' : '/flashcards'}
               className="bg-white hover:bg-[#F5F8F5] text-[#2D3E50] border border-[#D2EFE6] text-sm font-semibold px-5 py-2.5 rounded-xl transition-all cursor-pointer"
             >
-              <span>Trải nghiệm AI Chat</span>
+              <span>{aiEnabled ? 'Trải nghiệm AI Chat' : 'Ôn tập với thẻ học'}</span>
             </Link>
           </div>
         </div>

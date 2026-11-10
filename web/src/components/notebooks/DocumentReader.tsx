@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getErrorMessage } from '@/lib/api';
-import { learningApi, selectedSource, type SourceLink } from '@/lib/learning-api';
+import { learningApi, readDocumentOnce, selectedSource, type SourceLink } from '@/lib/learning-api';
 import type { SourceRecord } from '@/types';
 
 export default function DocumentReader({ id, name, version, onClose, onSelectSource }: {
@@ -15,8 +15,7 @@ export default function DocumentReader({ id, name, version, onClose, onSelectSou
   const load = useCallback(async () => {
     const request = ++generation.current; setBusy(true); setError(''); setSelection(null); setSource(null);
     try {
-      if (!version) await learningApi.extract(id);
-      const result = await learningApi.source(id, version);
+      const result = version ? await learningApi.source(id, version) : await readDocumentOnce(id, learningApi);
       if (generation.current === request) { setSource(result); setSection(0); }
     } catch (err) { if (generation.current === request) setError(getErrorMessage(err)); }
     finally { if (generation.current === request) setBusy(false); }
@@ -25,7 +24,7 @@ export default function DocumentReader({ id, name, version, onClose, onSelectSou
   useEffect(() => { if (dialog.current && !dialog.current.open) dialog.current.showModal(); void load(); return invalidate; }, [load, invalidate]);
   const current = source?.sections[section];
   const visibleText = source && current ? Array.from(source.text).slice(current.start, current.end).join('') : source?.text || '';
-  return <dialog ref={dialog} onCancel={onClose} aria-labelledby="reader-title" className="w-[95vw] max-w-4xl rounded-2xl p-5 backdrop:bg-black/40">
+  return <dialog ref={dialog} onCancel={onClose} aria-labelledby="reader-title" className="fixed inset-0 m-auto h-fit max-h-[90vh] overflow-y-auto w-[95vw] max-w-4xl rounded-2xl p-5 backdrop:bg-black/40">
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="reader-title" className="font-bold text-xl">{name}</h2>
       <button onClick={onClose} className="rounded-lg border px-3 py-2">Đóng</button></div>
     <p className="text-sm text-gray-600 my-2">Văn bản trích từ tài liệu. Không dùng AI hoặc OCR.</p>

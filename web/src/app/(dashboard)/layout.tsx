@@ -2,7 +2,8 @@
 
 import React, { useEffect } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,8 +13,9 @@ import { Loader2 } from 'lucide-react';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
-  const { isCreateOpen, closeCreateModal, refreshNotebooks } = useNotebooks();
+  const { isCreateOpen, openCreateModal, closeCreateModal, refreshNotebooks } = useNotebooks();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -52,7 +54,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
-        <main className="flex-1 p-8 max-w-7xl w-full mx-auto">
+        <nav aria-label="Điều hướng điện thoại" className="lg:hidden flex gap-2 p-3 border-b bg-white max-w-full overflow-x-auto whitespace-nowrap">
+          {[['/', 'Trang chủ'], ['/notebooks', 'Sổ tay'], ['/flashcards', 'Thẻ học'], ['/recent', 'Tài liệu'], ['/profile', 'Cá nhân']].map(([href, label]) =>
+            <Link key={href} href={href} aria-current={pathname === href ? 'page' : undefined} className={`rounded-xl px-3 py-2 text-sm shrink-0 ${pathname === href ? 'bg-[#E6F7F1] text-[#167362] font-bold' : 'border'}`}>{label}</Link>)}
+          <button className="rounded-xl px-3 py-2 text-sm border shrink-0" onClick={openCreateModal}>Tạo sổ tay</button>
+        </nav>
+        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto [overflow-wrap:anywhere]">
           {children}
         </main>
       </div>

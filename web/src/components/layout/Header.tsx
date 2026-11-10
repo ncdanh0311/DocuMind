@@ -64,21 +64,21 @@ export default function Header({ onSearch }: HeaderProps) {
 
   return (
     <>
-      <header className="h-20 bg-white/80 backdrop-blur-md border-b border-[#EAEFEA] px-8 flex items-center justify-between sticky top-0 z-20 transition-all">
+      <header className="h-20 bg-white/80 backdrop-blur-md border-b border-[#EAEFEA] px-4 md:px-8 flex items-center justify-between gap-3 sticky top-0 z-20 transition-all">
         {/* Greeting Title */}
-        <div>
-          <h2 className="font-outfit text-2xl font-bold text-[#2D3E50] tracking-tight">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-outfit text-base sm:text-lg lg:text-2xl truncate font-bold text-[#2D3E50] tracking-tight" title={`Xin chào, ${displayName}`}>
             Xin chào, <span className="text-[#26A69A]">{displayName}!</span> 👋
           </h2>
-          <p className="text-xs text-[#8E9DAE] font-medium mt-0.5">
+          <p className="hidden sm:block truncate text-xs text-[#8E9DAE] font-medium mt-0.5">
             Hôm nay bạn muốn nghiên cứu tài liệu gì nào?
           </p>
         </div>
 
         {/* Center / Right: Search Bar & Actions */}
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-2 sm:gap-5 shrink-0">
           {/* Pill Search Bar */}
-          <div className="relative w-80 lg:w-96 flex items-center bg-[#F5F7F7] border border-transparent hover:border-[#D2EFE6] focus-within:border-[#26A69A] focus-within:bg-white rounded-full px-4 h-12 transition-all shadow-2xs">
+          {onSearch ? <div className="relative hidden xl:flex w-64 items-center bg-[#F5F7F7] border border-transparent hover:border-[#D2EFE6] focus-within:border-[#26A69A] focus-within:bg-white rounded-full px-4 h-12 transition-all shadow-2xs">
             <Search className="w-4 h-4 text-[#8E9DAE] shrink-0" />
             <input
               type="text"
@@ -97,7 +97,7 @@ export default function Header({ onSearch }: HeaderProps) {
             ) : (
               <SlidersHorizontal className="w-4 h-4 text-[#8E9DAE] shrink-0 opacity-70" />
             )}
-          </div>
+          </div> : <Link href="/notebooks" aria-label="Tìm sổ tay và tài liệu" className="w-10 h-10 flex items-center justify-center rounded-full border"><Search className="w-4 h-4" /></Link>}
 
           {/* Notification Bell */}
           <button
@@ -117,6 +117,7 @@ export default function Header({ onSearch }: HeaderProps) {
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              aria-label="Tài khoản của bạn"
               className="flex items-center gap-3 pl-2 border-l border-[#EAEFEA] hover:opacity-85 transition-opacity cursor-pointer"
             >
               <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#26A69A]/30 bg-[#E6F7F1]">

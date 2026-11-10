@@ -2,8 +2,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import DocumentReader from '@/components/notebooks/DocumentReader';
 import NotebookHistory from '@/components/notebooks/NotebookHistory';
-import { learningApi, selectedSource } from '@/lib/learning-api';
+import { learningApi, selectedSource, readDocumentOnce } from '@/lib/learning-api';
+import { tokenManager } from '@/lib/api';
 import fixtures from '../../contracts/learning.json';
+import { StrictMode } from 'react';
 
 vi.mock('@/lib/learning-api', async importOriginal => {
   const original = await importOriginal<typeof import('@/lib/learning-api')>();
@@ -17,6 +19,26 @@ beforeEach(() => {
 });
 
 describe('Đọc và lịch sử khi AI tắt', () => {
+  it('yêu cầu đọc của phiên đăng nhập cũ không được dùng chung cho tài khoản mới', async () => {
+    const session = vi.spyOn(tokenManager, 'getAccessToken').mockReturnValue('test-session-a');
+    const source = { document_id: 'shared-id', version: 1, text: 'A', start_offset: 0, end_offset: 1, sections: [] };
+    const apiA = { ...learningApi, extract: vi.fn().mockResolvedValue({}), source: vi.fn().mockResolvedValue(source) };
+    const apiB = { ...learningApi, extract: vi.fn().mockResolvedValue({}), source: vi.fn().mockResolvedValue({ ...source, text: 'B' }) };
+    try {
+      const old = readDocumentOnce('shared-id', apiA);
+      session.mockReturnValue('test-session-b');
+      const current = readDocumentOnce('shared-id', apiB);
+      expect(current).not.toBe(old);
+      expect((await current).text).toBe('B');
+      expect((await old).text).toBe('A');
+    } finally { session.mockRestore(); }
+  });
+  it('hai effect cùng mở một tài liệu chỉ gửi một lượt trích xuất', async () => {
+    vi.mocked(learningApi.source).mockResolvedValue({ document_id: 'strict-doc', version: 1, text: 'Nguồn', start_offset: 0, end_offset: 5, sections: [{ start: 0, end: 5, section_path: 'Mục' }] });
+    render(<StrictMode><DocumentReader id="strict-doc" name="Nguồn.txt" onClose={vi.fn()} /></StrictMode>);
+    expect(await screen.findByRole('textbox', { name: 'Nội dung tài liệu' })).toHaveValue('Nguồn');
+    expect(learningApi.extract).toHaveBeenCalledTimes(1);
+  });
   it('chuyển vị trí emoji từ UTF-16 sang code point dùng cho nguồn', () => {
     for (const item of fixtures.selection_examples) expect(selectedSource(item.text, item.start_utf16, item.end_utf16, item.base)).toEqual(item.expected);
   });

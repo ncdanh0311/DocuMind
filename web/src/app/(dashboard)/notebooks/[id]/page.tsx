@@ -462,7 +462,7 @@ export default function NotebookDetailPage() {
                 </div>
                 <div>
                   <h3 className="font-outfit font-bold text-lg text-[#2D3E50]">Tạo ghi chú văn bản</h3>
-                  <p className="text-xs text-[#8E9DAE]">Nội dung sẽ được trích xuất và xử lý bằng AI</p>
+                  <p className="text-xs text-[#8E9DAE]">{aiEnabled ? 'Nội dung sẽ được trích xuất và xử lý bằng AI' : 'Lưu ghi chú để đọc và tạo thẻ học. AI đang tạm hoãn.'}</p>
                 </div>
               </div>
               <button

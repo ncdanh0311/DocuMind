@@ -1,6 +1,12 @@
 import type { DocumentItem, Notebook } from '@/types';
 
 export type SortOrder = 'newest' | 'oldest' | 'name';
+export function documentStatusLabel(status: string, aiEnabled: boolean): string {
+  if (status === 'error') return 'Lỗi xử lý';
+  if (status === 'ready') return 'Sẵn sàng';
+  if (status === 'processing') return aiEnabled ? 'Đang xử lý' : 'Xử lý đang tạm hoãn';
+  return aiEnabled ? 'Đang chờ xử lý' : 'Đã lưu';
+}
 export const CATEGORY_LABELS = { study: 'Học tập', project: 'Dự án', research: 'Nghiên cứu', personal: 'Cá nhân' };
 export function searchKey(value: string): string {
   return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').trim().replace(/\s+/g, ' ');

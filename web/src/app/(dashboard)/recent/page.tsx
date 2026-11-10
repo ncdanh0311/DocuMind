@@ -5,6 +5,9 @@ import Link from 'next/link';
 import axios from 'axios';
 import { apiService } from '@/lib/api';
 import { DocumentItem } from '@/types';
+import { useAppConfig } from '@/lib/useAppConfig';
+import { documentStatusLabel } from '@/lib/management';
+import DocumentReader from '@/components/notebooks/DocumentReader';
 import { 
   FileText, 
   Search, 
@@ -17,9 +20,11 @@ import {
 } from 'lucide-react';
 
 export default function RecentDocumentsPage() {
+  const { aiEnabled } = useAppConfig();
+  const [reading, setReading] = useState<DocumentItem | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'ready' | 'processing'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'ready' | 'processing' | 'uploaded'>('all');
   const [loading, setLoading] = useState(true);
 
   const fetchDocuments = async () => {
@@ -85,7 +90,7 @@ export default function RecentDocumentsPage() {
           Tài liệu nghiên cứu gần đây
         </h2>
         <p className="text-xs text-[#8E9DAE] font-medium mt-1">
-          Theo dõi toàn bộ file PDF, DOCX bạn đã tải lên và trạng thái xử lý của AI
+          Mở lại tài liệu đã lưu và theo dõi trạng thái đọc, xử lý.
         </p>
       </div>
 
@@ -114,14 +119,14 @@ export default function RecentDocumentsPage() {
             Sẵn sàng
           </button>
           <button
-            onClick={() => setStatusFilter('processing')}
+            onClick={() => setStatusFilter(aiEnabled ? 'processing' : 'uploaded')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              statusFilter === 'processing'
+              statusFilter === (aiEnabled ? 'processing' : 'uploaded')
                 ? 'bg-[#26A69A] text-white shadow-xs'
                 : 'text-[#8E9DAE] hover:text-[#2D3E50] hover:bg-[#F5F8F5]'
             }`}
           >
-            Đang phân tích
+            {aiEnabled ? 'Đang xử lý' : 'Đã lưu'}
           </button>
         </div>
 
@@ -160,7 +165,7 @@ export default function RecentDocumentsPage() {
             const docId = doc.document_id || doc.id || '';
             const badge = getBadge(doc.file_type);
             const isReady = doc.status === 'ready';
-            const isProcessing = doc.status === 'processing' || doc.status === 'uploaded';
+            const isProcessing = aiEnabled && (doc.status === 'processing' || doc.status === 'uploaded');
 
             return (
               <div
@@ -198,9 +203,9 @@ export default function RecentDocumentsPage() {
                   ) : isProcessing ? (
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF8E1] text-[#F57F17] text-xs font-semibold animate-pulse">
                       <Clock className="w-3.5 h-3.5" />
-                      <span>Đang phân tích</span>
+                      <span>{documentStatusLabel(doc.status, aiEnabled)}</span>
                     </div>
-                  ) : (
+                  ) : doc.status !== 'error' ? <span className="text-sm text-gray-600">{documentStatusLabel(doc.status, aiEnabled)}</span> : (
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFEBEE] text-[#C62828] text-xs font-semibold">
                       <AlertCircle className="w-3.5 h-3.5" />
                       <span>Lỗi</span>
@@ -208,6 +213,8 @@ export default function RecentDocumentsPage() {
                   )}
 
                   <div className="flex items-center gap-1">
+                    <button className="p-2 border rounded-xl" onClick={() => setReading(doc)}>Đọc tài liệu</button>
+                    {aiEnabled && <>
                     <Link
                       href={`/ai-chat?notebookId=${doc.notebook_id}&docId=${docId}`}
                       className="p-2 rounded-xl text-[#8E9DAE] hover:text-[#26A69A] hover:bg-[#E6F7F1] transition-colors"
@@ -215,6 +222,7 @@ export default function RecentDocumentsPage() {
                     >
                       <MessageSquare className="w-4 h-4" />
                     </Link>
+                    </>}
                     <button
                       onClick={() => handleDelete(docId, doc.file_name || doc.title || '')}
                       className="p-2 rounded-xl text-gray-400 hover:text-[#E53935] hover:bg-[#FFEBEE] transition-colors cursor-pointer"
@@ -229,6 +237,7 @@ export default function RecentDocumentsPage() {
           })}
         </div>
       )}
+      {reading && <DocumentReader id={reading.document_id} name={reading.file_name} onClose={() => setReading(null)} />}
     </div>
   );
 }

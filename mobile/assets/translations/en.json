@@ -235,7 +235,7 @@
     "ERR_INTERNAL_SERVER": "The server encountered an error. Please try again.",
     "ERR_FILE_WRITE_FAILED": "Could not save the document. Please try again.",
     "ERR_MODEL_NOT_CALIBRATED": "Model requires calibration.",
-    "ERR_SOURCE_CHANGED": "Sources changed. Please generate again.",
+    "ERR_SOURCE_CHANGED": "The source document or version has changed. Reload to continue.",
     "ERR_DOCUMENTS_NOT_READY": "Wait until all documents are ready.",
     "ERR_JOB_FAILED": "Processing failed. Please retry.",
     "ERR_REPROCESS_REQUIRED": "Document requires reprocessing.",

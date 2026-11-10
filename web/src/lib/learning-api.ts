@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient, tokenManager } from './api';
 import type { SourceRecord } from '@/types';
 
 export interface Page<T> { items: T[]; next_cursor: string | null; }
@@ -67,4 +67,16 @@ export function selectedSource(text: string, startUtf16: number, endUtf16: numbe
   return { start_offset: base + Array.from(text.slice(0, startUtf16)).length,
            end_offset: base + Array.from(text.slice(0, endUtf16)).length,
            snippet: text.slice(startUtf16, endUtf16) };
+}
+
+const readingRequests = new Map<string, Promise<SourceRecord>>();
+export function readDocumentOnce(id: string, api = learningApi): Promise<SourceRecord> {
+  const key = `${tokenManager.getAccessToken() || 'anonymous'}:${id}`;
+  const existing = readingRequests.get(key);
+  if (existing) return existing;
+  const pending = (async () => { await api.extract(id); return api.source(id); })().finally(() => {
+    if (readingRequests.get(key) === pending) readingRequests.delete(key);
+  });
+  readingRequests.set(key, pending);
+  return pending;
 }

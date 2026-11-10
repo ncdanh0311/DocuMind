@@ -15,7 +15,7 @@ export default function CardEditor({ notebookId, card, initialSource, documents,
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   useEffect(() => { alive.current = true; if (dialog.current && !dialog.current.open) dialog.current.showModal(); return () => { alive.current = false; }; }, []);
   return <>
-    <dialog ref={dialog} aria-labelledby="card-editor-title" className="w-[95vw] max-w-2xl rounded-2xl p-6 backdrop:bg-black/40" onCancel={event => { if (busy) event.preventDefault(); else onClose(); }}>
+    <dialog ref={dialog} aria-labelledby="card-editor-title" className="fixed inset-0 m-auto h-fit max-h-[90vh] overflow-y-auto w-[95vw] max-w-2xl rounded-2xl p-6 backdrop:bg-black/40" onCancel={event => { if (busy) event.preventDefault(); else onClose(); }}>
       <form className="space-y-4" onSubmit={async event => {
         event.preventDefault(); if (busy) return; setBusy(true); setError('');
         const input: CardInput = { question: question.trim(), answer: answer.trim() };

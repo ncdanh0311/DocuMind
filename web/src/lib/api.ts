@@ -401,7 +401,7 @@ const ERROR_TRANSLATIONS: Record<string, string> = {
   ERR_ANSWER_NOT_FOUND: 'Không tìm thấy câu trả lời trong tài liệu.',
   ERR_INVALID_INPUT: 'Dữ liệu đầu vào không hợp lệ.',
   ERR_AI_SERVICE_UNAVAILABLE: 'Dịch vụ AI hiện đang bận hoặc đang khởi động. Vui lòng thử lại sau!',
-  ERR_SOURCE_CHANGED: 'Tài liệu đã thay đổi. Vui lòng tạo lại bản tóm tắt.',
+  ERR_SOURCE_CHANGED: 'Tài liệu hoặc phiên bản nguồn đã thay đổi. Hãy tải lại để tiếp tục.',
   ERR_DOCUMENTS_NOT_READY: 'Vui lòng đợi mọi tài liệu xử lý xong hoặc xử lý lại tài liệu gặp lỗi.',
   ERR_JOB_FAILED: 'Xử lý tài liệu gặp lỗi. Bạn có thể thử lại.',
   ERR_REPROCESS_REQUIRED: 'Tài liệu cần được xử lý lại để cập nhật vị trí nguồn.',

@@ -27,7 +27,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  String _displayName = "Linh";
+  String _displayName = "bạn";
+  bool _aiEnabled = false;
   bool _isLoadingContent = true;
   final ApiService _apiService = ApiService();
   List<Map<String, dynamic>> _notebooks = [];
@@ -38,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = "";
   Timer? _searchDebounce;
   bool _isSearchLoading = false;
-  bool _hasUnreadNotifications = true;
+  bool _hasUnreadNotifications = false;
 
   @override
   void initState() {
@@ -66,8 +67,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final result = await _apiService.getNotebooks();
     final notesRes = await _apiService.getRecentDocuments();
+    final configRes = await _apiService.getAppConfig();
 
     if (mounted) {
+      _aiEnabled = configRes['success'] == true && configRes['data']['ai_enabled'] == true;
       if (result["success"]) {
         final List<dynamic> data = result["data"];
         data.sort(
@@ -448,6 +451,10 @@ class _HomeScreenState extends State<HomeScreen> {
           child: GestureDetector(
             onTap: () {
               final key = item["key"] as String;
+              if (!_aiEnabled && (key == 'action_ai_chat' || key == 'action_summary')) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tính năng AI đang tạm hoãn. Bạn vẫn có thể đọc tài liệu và ôn thẻ.')));
+                return;
+              }
               NotebookSelectionModal.show(
                 context,
                 notebooks: _notebooks,
@@ -701,7 +708,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           borderRadius: BorderRadius.circular(100),
                         ),
                         child: Text(
-                          isAnalyzed ? "notebook.status_ready".tr() : "notebook.status_processing".tr(),
+                          isAnalyzed ? "notebook.status_ready".tr() : !_aiEnabled ? (note['status'] == 'error' ? 'Lỗi xử lý' : note['status'] == 'processing' ? 'Xử lý đang tạm hoãn' : 'Đã lưu') : "notebook.status_processing".tr(),
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
