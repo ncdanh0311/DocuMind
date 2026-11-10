@@ -4,6 +4,7 @@ import uuid
 import pytest
 from sqlmodel import Session, select
 from backend.app.models.models import Document, DocumentVersion, QAHistory, Summary
+from backend.app.models.models import Job
 from backend.app.core.config import settings
 from backend.app.services import text_extraction
 
@@ -107,3 +108,19 @@ def test_history_pagination_and_deleted_source_without_ai(resources):
     assert client.get(path).status_code == 404
     assert client.get(f"{API}/qa-history/{qa_id}").status_code == 404
     assert client.get(f"{API}/summary-history/{summary_id}").status_code == 404
+
+
+def test_paused_ai_job_does_not_prevent_manual_reading(resources):
+    client, engine, _, alice, _ = resources
+    notebook, identifier = upload(client, "source.txt", b"Readable without AI")
+    with Session(engine) as session:
+        document = session.get(Document, uuid.UUID(identifier)); document.requested_version = 1
+        session.add(document)
+        session.add(Job(user_id=alice.user_id, notebook_id=uuid.UUID(notebook), document_id=document.document_id,
+                        kind="ingest", dedupe_key="paused-ingest", payload={"version": 1}))
+        session.commit()
+    result = client.post(f"{API}/documents/{identifier}/extract-text")
+    assert result.status_code == 200 and result.json()["current_version"] == 2
+    with Session(engine) as session:
+        assert session.exec(select(Job)).one().status == "cancelled"
+        assert session.get(Document, uuid.UUID(identifier)).status == "uploaded"

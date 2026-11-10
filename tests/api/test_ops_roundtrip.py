@@ -18,6 +18,12 @@ def test_backup_restore_preserves_database_and_original_files(client, db_engine,
     response = client.post(f"/api/v1/notebooks/{notebook['notebook_id']}/documents/text", headers=headers(account),
                            json={"title": "Nguồn", "content": "Nội dung khôi phục 🐈"})
     assert response.status_code == 201, response.text
+    card = client.post(f"/api/v1/notebooks/{notebook['notebook_id']}/flashcards", headers=headers(account),
+                       json={"question": "Backup thẻ?", "answer": "Giữ cả tiến độ"}).json()
+    import uuid as uuid_module
+    graded = client.post(f"/api/v1/flashcards/{card['card_id']}/reviews", headers=headers(account),
+        json={"request_id": str(uuid_module.uuid4()), "grade": "remembered", "expected_revision": 0, "card_revision": 1})
+    assert graded.status_code == 200, graded.text
     backup_dir = tmp_path / "archive"
     assert backup(db_engine, backup_dir)["objects"] == 1
     manifest = verify_backup(backup_dir)
@@ -37,6 +43,10 @@ def test_backup_restore_preserves_database_and_original_files(client, db_engine,
             document = session.exec(select(Document)).one()
             from backend.app.services.storage import source_path
             assert source_path(document.storage_key).read_text(encoding="utf-8") == "Nội dung khôi phục 🐈"
+            from backend.app.models.models import Flashcard, ReviewState, ReviewEvent
+            assert session.exec(select(Flashcard)).one().question == "Backup thẻ?"
+            assert session.exec(select(ReviewState)).one().revision == 1
+            assert session.exec(select(ReviewEvent)).one().grade == "remembered"
         with pytest.raises(ValueError, match="empty target database"): restore(target, backup_dir)
     finally:
         if target: target.dispose()

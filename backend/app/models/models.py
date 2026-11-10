@@ -234,3 +234,40 @@ class StorageCleanupTask(SQLModel, table=True):
     storage_key: str
     created_at: datetime = utc_field()
     attempts: int = Field(default=0)
+    size_bytes: int = Field(default=0, sa_type=sa.BigInteger)
+
+
+class Flashcard(SQLModel, table=True):
+    __tablename__ = "flashcards"
+    card_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    notebook_id: uuid.UUID = Field(foreign_key="notebooks.notebook_id", ondelete="CASCADE", index=True)
+    question: str = Field(sa_type=sa.Text)
+    answer: str = Field(sa_type=sa.Text)
+    search_text: str = Field(sa_type=sa.Text)
+    source_document_id: Optional[uuid.UUID] = Field(default=None, foreign_key="documents.document_id", ondelete="SET NULL", index=True)
+    source_snapshot: Optional[dict] = Field(default=None, sa_column=Column(sa.JSON, nullable=True))
+    revision: int = Field(default=1)
+    created_at: datetime = utc_field()
+    updated_at: datetime = utc_field()
+
+
+class ReviewState(SQLModel, table=True):
+    __tablename__ = "review_states"
+    card_id: uuid.UUID = Field(foreign_key="flashcards.card_id", ondelete="CASCADE", primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="users.user_id", ondelete="CASCADE", index=True)
+    stage: int = Field(default=0)
+    revision: int = Field(default=0)
+    due_at: datetime = Field(default_factory=get_utc_now, sa_type=sa.DateTime(timezone=True), index=True)
+    last_review_at: Optional[datetime] = Field(default=None, sa_type=sa.DateTime(timezone=True))
+
+
+class ReviewEvent(SQLModel, table=True):
+    __tablename__ = "review_events"
+    request_id: uuid.UUID = Field(primary_key=True)
+    card_id: uuid.UUID = Field(foreign_key="flashcards.card_id", ondelete="CASCADE", index=True)
+    user_id: uuid.UUID = Field(foreign_key="users.user_id", ondelete="CASCADE", index=True)
+    grade: str
+    expected_revision: int
+    card_revision: int
+    reviewed_at: datetime = utc_field()
+    response_snapshot: dict = Field(sa_column=Column(sa.JSON, nullable=False))

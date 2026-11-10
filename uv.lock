@@ -931,6 +931,7 @@ backend = [
     { name = "python-jose", extra = ["cryptography"] },
     { name = "python-multipart" },
     { name = "sqlmodel" },
+    { name = "tzdata" },
     { name = "uvicorn" },
 ]
 dev = [
@@ -986,6 +987,7 @@ backend = [
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.5.0" },
     { name = "python-multipart", specifier = ">=0.0.27" },
     { name = "sqlmodel", specifier = ">=0.0.38" },
+    { name = "tzdata", specifier = ">=2025.2" },
     { name = "uvicorn", specifier = ">=0.46.0" },
 ]
 dev = [{ name = "pytest", specifier = ">=9.2.0" }]

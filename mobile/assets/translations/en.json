@@ -259,7 +259,15 @@
     "ERR_DOCUMENT_BUSY": "Unable to complete this action. Please retry or check the document and storage limits.",
     "ERR_JOB_QUOTA": "Unable to complete this action. Please retry or check the document and storage limits.",
     "ERR_REVIEW_CONFLICT": "Unable to complete this action. Please retry or check the document and storage limits.",
-    "ERR_CARD_CONFLICT": "Unable to complete this action. Please retry or check the document and storage limits."
+    "ERR_CARD_CONFLICT": "Unable to complete this action. Please retry or check the document and storage limits.",
+    "ERR_CARD_NOT_FOUND": "Unable to complete this action. Please reload or retry.",
+    "ERR_CARD_NOT_DUE": "Unable to complete this action. Please reload or retry.",
+    "ERR_REQUEST_ID_REUSED": "Unable to complete this action. Please reload or retry.",
+    "ERR_INVALID_SOURCE_RANGE": "Unable to complete this action. Please reload or retry.",
+    "ERR_HISTORY_NOT_READY": "Unable to complete this action. Please reload or retry.",
+    "ERR_HISTORY_NOT_FOUND": "Unable to complete this action. Please reload or retry.",
+    "ERR_SUMMARY_NOT_FOUND": "Unable to complete this action. Please reload or retry.",
+    "ERR_INVALID_CURSOR": "Unable to complete this action. Please reload or retry."
   },
   "messages": {
     "MSG_OTP_SENT": "Verification code has been sent to your email.",

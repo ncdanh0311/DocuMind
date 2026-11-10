@@ -10,6 +10,9 @@ import CreateNotebookModal from '@/components/notebooks/CreateNotebookModal';
 import DocumentReader from '@/components/notebooks/DocumentReader';
 import NotebookHistory from '@/components/notebooks/NotebookHistory';
 import StorageUsageView from '@/components/notebooks/StorageUsageView';
+import CardEditor from '@/components/notebooks/CardEditor';
+import NotebookTextSearch from '@/components/notebooks/NotebookTextSearch';
+import type { SourceLink } from '@/lib/learning-api';
 import { useAppConfig } from '@/lib/useAppConfig';
 import { CATEGORY_LABELS, selectDocuments, type SortOrder } from '@/lib/management';
 import { Notebook, DocumentItem } from '@/types';
@@ -37,6 +40,7 @@ export default function NotebookDetailPage() {
 
   const [notebook, setNotebook] = useState<Notebook | null>(null);
   const [reading, setReading] = useState<DocumentItem | null>(null);
+  const [cardSource, setCardSource] = useState<SourceLink | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -89,6 +93,7 @@ export default function NotebookDetailPage() {
   useEffect(() => {
     context.current = notebookId;
     setNotebook(null); setDocuments([]); setQuery(''); setExtension('all'); setStatus('all');
+    setReading(null); setCardSource(null);
     setRenaming(null); setRenamingBusy(false); setEditingNotebook(false); setUploading(false); setNoteLoading(false);
     loadData(true);
     return invalidate;
@@ -180,7 +185,7 @@ export default function NotebookDetailPage() {
 
   // Handle Delete Notebook
   const handleDeleteNotebook = async () => {
-    if (!confirm('Xóa sổ tay và toàn bộ tài liệu bên trong? Thao tác này không thể hoàn tác.')) return;
+    if (!confirm('Xóa sổ tay và toàn bộ tài liệu, thẻ học, lịch sử ôn bên trong? Thao tác này không thể hoàn tác.')) return;
     try {
       await apiService.deleteNotebook(notebookId);
       await refreshNotebooks();
@@ -274,7 +279,9 @@ export default function NotebookDetailPage() {
       <StorageUsageView refreshKey={documents.map(item => item.document_id).join(',')} />
       <Link href={`/flashcards?notebookId=${notebookId}`} className="inline-block border rounded-xl p-3">Thẻ học và ôn tập</Link>
       <NotebookHistory notebookId={notebookId} />
-      {reading && <DocumentReader id={reading.document_id} name={reading.file_name} onClose={() => { setReading(null); void loadData(false); }} />}
+      <NotebookTextSearch key={notebookId} notebookId={notebookId} onSelectSource={setCardSource} />
+      {reading && <DocumentReader id={reading.document_id} name={reading.file_name} onClose={() => { setReading(null); void loadData(false); }} onSelectSource={value => { setReading(null); setCardSource(value); }} />}
+      {cardSource && <CardEditor key={notebookId} notebookId={notebookId} initialSource={cardSource} documents={documents} onClose={() => setCardSource(null)} onSaved={() => setCardSource(null)} />}
       {error && (
         <div className="p-4 rounded-2xl bg-[#FFEBEE] border border-[#FFCDD2] text-[#C62828] text-sm flex items-start gap-3">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />

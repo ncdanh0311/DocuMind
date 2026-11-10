@@ -47,7 +47,7 @@ def delete_notebook(notebook: Notebook = Depends(get_owned_notebook), session: S
     lock_notebook(session, notebook.notebook_id)
     job_service.cancel(session, notebook.notebook_id)
     for document in session.exec(select(Document).where(Document.notebook_id == notebook.notebook_id)).all():
-        if document.storage_key: queue_cleanup(session, document.storage_backend, document.storage_key)
+        if document.storage_key: queue_cleanup(session, document.storage_backend, document.storage_key, document.file_size_bytes or 0)
     session.delete(notebook)
     session.commit()
     cleanup_pending(session)

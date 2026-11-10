@@ -24,7 +24,8 @@ def usage(session: Session, user_id=None):
     if user_id:
         docs = docs.where(Notebook.user_id == user_id)
         reservations = reservations.where(UploadReservation.user_id == user_id)
-    return int(session.exec(docs).one()) + int(session.exec(reservations).one())
+    pending_delete = 0 if user_id else int(session.exec(select(func.coalesce(func.sum(StorageCleanupTask.size_bytes), 0))).one())
+    return int(session.exec(docs).one()) + int(session.exec(reservations).one()) + pending_delete
 
 
 def reserve(session: Session, user_id: uuid.UUID, key: str, backend: str, size: int):
@@ -41,10 +42,12 @@ def reserve(session: Session, user_id: uuid.UUID, key: str, backend: str, size: 
     return row.reservation_id
 
 
-def queue_cleanup(session: Session, backend: str, key: str):
+def queue_cleanup(session: Session, backend: str, key: str, size: int = 0):
     found = session.exec(select(StorageCleanupTask).where(StorageCleanupTask.storage_backend == backend,
                                                          StorageCleanupTask.storage_key == key)).first()
-    if not found: session.add(StorageCleanupTask(storage_backend=backend, storage_key=key))
+    if not found: session.add(StorageCleanupTask(storage_backend=backend, storage_key=key, size_bytes=size))
+    elif size > found.size_bytes:
+        found.size_bytes = size; session.add(found)
 
 
 def cleanup_pending(session: Session, limit=100):

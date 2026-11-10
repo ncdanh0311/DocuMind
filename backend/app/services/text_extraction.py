@@ -36,6 +36,9 @@ def parse(key, backend, suffix):
             if "error" in result: raise HTTPException(422, result["error"])
             return result, digest.hexdigest()
     except HTTPException: raise
+    except ValueError as exc:
+        if str(exc) == "ERR_FILE_TOO_LARGE": raise HTTPException(413, "ERR_FILE_TOO_LARGE") from None
+        raise HTTPException(503, "ERR_STORAGE_UNAVAILABLE") from None
     except FileNotFoundError: raise HTTPException(404, "ERR_SOURCE_MISSING") from None
     except Exception: raise HTTPException(503, "ERR_STORAGE_UNAVAILABLE") from None
     finally: _slot.release()
@@ -68,7 +71,10 @@ def extract_document(session: Session, document: Document):
     if not current: raise HTTPException(404, "ERR_DOCUMENT_NOT_FOUND")
     if current.checksum != expected or actual != expected: raise HTTPException(409, "ERR_SOURCE_CHANGED")
     if session.exec(select(Job).where(Job.document_id == identifier, Job.status.in_(["queued", "running"]))).first():
-        raise HTTPException(409, "ERR_DOCUMENT_BUSY")
+        if settings.AI_ENABLED: raise HTTPException(409, "ERR_DOCUMENT_BUSY")
+        from backend.app.services.job_service import job_service
+        job_service.cancel(session, notebook_id, identifier)
+        current.status, current.error_code = "uploaded", None
     if current.current_version:
         cached = session.exec(select(DocumentVersion).where(DocumentVersion.document_id == identifier,
                                                             DocumentVersion.version == current.current_version)).first()

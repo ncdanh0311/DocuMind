@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from backend.app.core.config import settings
 from backend.app.core.db import engine
-from backend.app.api import auth, documents, notebooks, notifications, jobs, reading
+from backend.app.api import auth, documents, notebooks, notifications, jobs, reading, study
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +97,7 @@ app.include_router(notifications.router, prefix=f"{settings.API_V1_STR}/notifica
 
 app.include_router(jobs.router, prefix=settings.API_V1_STR, tags=["jobs"])
 app.include_router(reading.router, prefix=settings.API_V1_STR, tags=["reading"])
+app.include_router(study.router, prefix=settings.API_V1_STR, tags=["study"])
 
 if __name__ == "__main__":
     import uvicorn

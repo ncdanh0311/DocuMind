@@ -117,7 +117,7 @@ def sweep(engine, apply=False):
             UploadReservation.created_at < datetime.now(timezone.utc) - timedelta(hours=1))).all()
         if apply:
             for row in stale:
-                queue_cleanup(session, row.storage_backend, row.storage_key); session.delete(row)
+                queue_cleanup(session, row.storage_backend, row.storage_key, row.size_bytes); session.delete(row)
             session.commit()
             return {"released_reservations": len(stale), **cleanup_pending(session)}
         return {"stale_reservations": len(stale), "pending_deletions": len(session.exec(select(StorageCleanupTask)).all())}

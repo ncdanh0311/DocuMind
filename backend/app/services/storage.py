@@ -109,7 +109,12 @@ def materialize(key: str, backend: str, suffix: str = ""):
         path = Path(directory) / ("source" + suffix)
         body = get_storage(backend).open(key)
         try:
-            with path.open("wb") as target: shutil.copyfileobj(body, target, length=1024 * 1024)
+            with path.open("wb") as target:
+                size = 0
+                while block := body.read(1024 * 1024):
+                    size += len(block)
+                    if size > settings.MAX_UPLOAD_BYTES: raise ValueError("ERR_FILE_TOO_LARGE")
+                    target.write(block)
         finally:
             body.close()
         yield path

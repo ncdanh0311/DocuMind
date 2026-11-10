@@ -7,6 +7,7 @@ import 'package:documind_mobile/features/notebook/notebook_screen.dart';
 import 'package:documind_mobile/features/notebook/notebook_detail_screen.dart';
 import 'package:documind_mobile/features/ai/ai_chat_screen.dart';
 import 'package:documind_mobile/features/ai/summary_screen.dart';
+import 'package:documind_mobile/features/learning/flashcards_screen.dart';
 import 'package:documind_mobile/features/profile/profile_screen.dart';
 import 'package:documind_mobile/core/api_service.dart';
 import 'package:documind_mobile/shared/widgets/atoms/skeleton.dart';
@@ -470,9 +471,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => SummaryScreen(
+                        builder: (context) => FlashcardsScreen(
                           notebookId: id,
-                          title: "Flashcards: $title",
+                          title: title,
                         ),
                       ),
                     );

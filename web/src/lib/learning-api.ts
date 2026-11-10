@@ -14,8 +14,35 @@ export interface HistoryDetail {
   citations?: SourceLink[]; sources?: SourceLink[];
 }
 export interface StorageUsage { used_bytes: number; limit_bytes: number; max_file_bytes: number; }
+export interface ReviewState { card_id: string; stage: number; revision: number; due_at: string; last_review_at: string | null; }
+export interface Flashcard {
+  card_id: string; notebook_id: string; question: string; answer: string; source: SourceLink | null;
+  revision: number; created_at: string; updated_at: string; review: ReviewState;
+}
+export interface StudyStats { total_cards: number; due_cards: number; reviewed_today: number; streak_days: number; timezone: string; server_now: string; }
+export interface CardInput { question: string; answer: string; source?: SourceLink | null; }
+export interface TextSearchResult { document_id: string; file_name: string; version: number; snippet: string; }
 
 export const learningApi = {
+  async search(id: string, q: string, cursor?: string): Promise<Page<TextSearchResult>> {
+    return (await apiClient.get(`/notebooks/${id}/search`, { params: { q, cursor } })).data;
+  },
+  async cards(id: string, q = '', cursor?: string): Promise<Page<Flashcard>> {
+    return (await apiClient.get(`/notebooks/${id}/flashcards`, { params: { q, cursor } })).data;
+  },
+  async createCard(id: string, input: CardInput): Promise<Flashcard> {
+    return (await apiClient.post(`/notebooks/${id}/flashcards`, input)).data;
+  },
+  async editCard(card: Flashcard, input: CardInput): Promise<Flashcard> {
+    return (await apiClient.patch(`/flashcards/${card.card_id}`, { ...input, expected_revision: card.revision })).data;
+  },
+  async deleteCard(id: string) { await apiClient.delete(`/flashcards/${id}`); },
+  async due(id: string): Promise<Page<Flashcard>> { return (await apiClient.get('/flashcards/due', { params: { notebook_id: id } })).data; },
+  async review(card: Flashcard, grade: 'again' | 'remembered', requestId: string): Promise<ReviewState> {
+    return (await apiClient.post(`/flashcards/${card.card_id}/reviews`, { request_id: requestId, grade,
+      expected_revision: card.review.revision, card_revision: card.revision })).data;
+  },
+  async stats(id: string): Promise<StudyStats> { return (await apiClient.get('/study/stats', { params: { notebook_id: id } })).data; },
   async extract(id: string) { return (await apiClient.post(`/documents/${id}/extract-text`)).data; },
   async source(id: string, version?: number): Promise<SourceRecord> {
     return (await apiClient.get(`/documents/${id}/source`, { params: { version } })).data;

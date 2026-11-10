@@ -73,6 +73,12 @@ def test_cloud_upload_survives_new_storage_instance_and_failed_delete(resources,
     with Session(engine) as session:
         assert session.exec(select(StorageCleanupTask)).one().attempts == 1
         assert not session.exec(select(Document)).all()
+        from backend.app.services.storage_quota import usage
+        assert usage(session) == len(b"Persistent")
+    monkeypatch.setattr(settings, "MAX_TOTAL_STORAGE_BYTES", len(b"Persistent"))
+    blocked = client.post(f"{API}/notebooks/{identifier}/documents/text", json={"title": "Another", "content": "data"})
+    assert blocked.status_code == 413
+    with Session(engine) as session:
         state["delete_fails"] = False
         from backend.app.services.storage_quota import cleanup_pending
         assert cleanup_pending(session) == {"deleted": 1, "failed": 0}
