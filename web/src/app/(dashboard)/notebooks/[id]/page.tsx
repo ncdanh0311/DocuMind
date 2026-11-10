@@ -7,6 +7,9 @@ import Link from 'next/link';
 import { apiService, getErrorMessage } from '@/lib/api';
 import { useNotebooks } from '@/contexts/NotebookContext';
 import CreateNotebookModal from '@/components/notebooks/CreateNotebookModal';
+import DocumentReader from '@/components/notebooks/DocumentReader';
+import NotebookHistory from '@/components/notebooks/NotebookHistory';
+import StorageUsageView from '@/components/notebooks/StorageUsageView';
 import { useAppConfig } from '@/lib/useAppConfig';
 import { CATEGORY_LABELS, selectDocuments, type SortOrder } from '@/lib/management';
 import { Notebook, DocumentItem } from '@/types';
@@ -33,6 +36,7 @@ export default function NotebookDetailPage() {
   const { refreshNotebooks } = useNotebooks();
 
   const [notebook, setNotebook] = useState<Notebook | null>(null);
+  const [reading, setReading] = useState<DocumentItem | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -267,6 +271,10 @@ export default function NotebookDetailPage() {
       </div>
 
       {!aiEnabled && <p role="status" className="text-sm text-gray-600">Tính năng AI đang tạm hoãn. Bạn vẫn có thể quản lý sổ tay và lưu tài liệu.</p>}
+      <StorageUsageView refreshKey={documents.map(item => item.document_id).join(',')} />
+      <Link href={`/flashcards?notebookId=${notebookId}`} className="inline-block border rounded-xl p-3">Thẻ học và ôn tập</Link>
+      <NotebookHistory notebookId={notebookId} />
+      {reading && <DocumentReader id={reading.document_id} name={reading.file_name} onClose={() => { setReading(null); void loadData(false); }} />}
       {error && (
         <div className="p-4 rounded-2xl bg-[#FFEBEE] border border-[#FFCDD2] text-[#C62828] text-sm flex items-start gap-3">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -397,6 +405,7 @@ export default function NotebookDetailPage() {
                   </div>
 
                   <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0">
+                    <button className="text-sm p-2 border rounded-lg" onClick={() => setReading(doc)}>Đọc tài liệu</button>
                     {doc.status === 'error' && aiEnabled ? <button className="text-xs text-red-600 p-2" onClick={async () => {
                       try { await apiService.reprocessDocument(docId); await loadData(); }
                       catch { setError('Không thể xử lý lại tài liệu.'); }

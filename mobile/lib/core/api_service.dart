@@ -568,4 +568,31 @@ class ApiService extends BaseApiService {
       return handleError(e);
     }
   }
+
+  Future<Map<String, dynamic>> learningRequest(String method, String path, {Map<String, dynamic>? data}) async {
+    try {
+      final uri = Uri.parse('${ApiConstants.baseUrl}$path');
+      final response = await _sendWithAuthRetry(() async {
+        final headers = await getHeaders();
+        switch (method) {
+          case 'POST': return client.post(uri, headers: headers, body: jsonEncode(data ?? {}));
+          case 'PATCH': return client.patch(uri, headers: headers, body: jsonEncode(data ?? {}));
+          case 'DELETE': return client.delete(uri, headers: headers);
+          default: return client.get(uri, headers: headers);
+        }
+      });
+      return handleResponse(response);
+    } catch (error) { return handleError(error); }
+  }
+
+  Future<Map<String, dynamic>> downloadData(String path) async {
+    try {
+      final response = await _sendWithAuthRetry(() async => client.get(
+        Uri.parse('${ApiConstants.baseUrl}$path'), headers: await getHeaders()));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true, 'bytes': response.bodyBytes};
+      }
+      return handleResponse(response);
+    } catch (error) { return handleError(error); }
+  }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:documind_mobile/features/learning/history_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:documind_mobile/core/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -199,7 +200,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.history_rounded, color: AppColors.textDark, size: 24),
-          onPressed: () {},
+          tooltip: 'Lịch sử đã lưu',
+          onPressed: widget.notebookId == null ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => HistoryScreen(notebookId: widget.notebookId!))),
         ),
         IconButton(
           icon: const Icon(Icons.more_horiz_rounded, color: AppColors.textDark, size: 24),

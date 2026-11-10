@@ -92,7 +92,7 @@ class Document(SQLModel, table=True):
     # Relationships
     notebook: Notebook = Relationship(back_populates="documents")
     chunks: List["DocumentChunk"] = Relationship(back_populates="document", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    summaries: List["Summary"] = Relationship(back_populates="document", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    summaries: List["Summary"] = Relationship(back_populates="document", sa_relationship_kwargs={"passive_deletes": "all"})
 
 class DocumentVersion(SQLModel, table=True):
     __tablename__ = "document_versions"
@@ -132,7 +132,7 @@ class Summary(SQLModel, table=True):
     __tablename__ = "summaries"
     summary_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     notebook_id: uuid.UUID = Field(foreign_key="notebooks.notebook_id", ondelete="CASCADE", index=True)
-    document_id: Optional[uuid.UUID] = Field(default=None, foreign_key="documents.document_id", ondelete="CASCADE", index=True)
+    document_id: Optional[uuid.UUID] = Field(default=None, foreign_key="documents.document_id", ondelete="SET NULL", index=True)
     content: Optional[str] = None
     model_name: str
     model_version: str

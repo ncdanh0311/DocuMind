@@ -10,6 +10,8 @@ import 'package:shimmer/shimmer.dart';
 import 'package:documind_mobile/core/management.dart';
 import 'create_notebook_screen.dart';
 import 'rename_document_dialog.dart';
+import 'package:documind_mobile/features/learning/document_reader_screen.dart';
+import 'package:documind_mobile/features/learning/history_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class NotebookDetailScreen extends StatefulWidget {
@@ -42,6 +44,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   Timer? _statusTimer;
   bool _aiEnabled = false;
   Map<String, dynamic>? _notebook;
+  Map<String, dynamic>? _storageUsage;
   late String _title;
   String _query = '', _extension = 'all', _status = 'all', _sort = 'newest';
   int _generation = 0;
@@ -150,6 +153,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
           if (showLoading) _isLoading = false;
         });
         _checkProcessingStatus();
+        _loadStorageUsage();
       } else {
         setState(() {
           _errorMessage = result["message"];
@@ -211,6 +215,14 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
           SnackBar(content: Text("Lỗi: $e"), backgroundColor: Colors.red),
         );
       }
+    }
+  }
+
+  Future<void> _loadStorageUsage() async {
+    final id = widget.notebookId;
+    final result = await _apiService.learningRequest('GET', '/storage/usage');
+    if (mounted && widget.notebookId == id && result['success'] == true) {
+      setState(() => _storageUsage = Map<String, dynamic>.from(result['data']));
     }
   }
 
@@ -476,12 +488,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   }
 
   Future<void> _showChunksDialog(String documentId, String fileName) async {
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DocumentContentBottomSheet(documentId: documentId, fileName: fileName),
-    );
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => DocumentReaderScreen(documentId: documentId, title: fileName)));
     if (mounted) {
       _fetchDocuments(showLoading: false);
     }
@@ -497,6 +504,10 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
           if (!_aiEnabled) const Padding(padding: EdgeInsets.all(12), child: Text('Tính năng AI đang tạm hoãn. Tài liệu mới chỉ được lưu.')),
           if ((_notebook?['description'] as String? ?? '').isNotEmpty) Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Text(_notebook!['description'], maxLines: 3, overflow: TextOverflow.ellipsis)),
           _buildActionGrid(),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (_storageUsage != null) Text('Dung lượng: ${((_storageUsage!['used_bytes'] as num) / 1048576).toStringAsFixed(1)} / ${((_storageUsage!['limit_bytes'] as num) / 1048576).toStringAsFixed(0)} MiB'),
+            TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => HistoryScreen(notebookId: widget.notebookId))), icon: const Icon(Icons.history), label: const Text('Lịch sử đã lưu')),
+          ])),
           if (_isUploading)
             LinearProgressIndicator(backgroundColor: Colors.grey.shade200, color: AppColors.primary),
           const SizedBox(height: 10),
@@ -684,7 +695,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
         final isPdf = fileName.toString().toLowerCase().endsWith('.pdf');
 
         return GestureDetector(
-          onTap: (doc['current_version'] ?? 0) > 0 ? () => _showChunksDialog(doc['document_id'].toString(), fileName) : null,
+          onTap: () => _showChunksDialog(doc['document_id'].toString(), fileName),
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),

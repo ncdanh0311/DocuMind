@@ -159,6 +159,8 @@ def delete_document(document_id: uuid.UUID, session: Session = Depends(get_sessi
     job_service.cancel(session, document.notebook_id, document_id)
     invalidate_summary_jobs(session, document.notebook_id)
     key = document.storage_key or f"{document.notebook_id}/{document.document_id}{Path(document.file_name).suffix.lower()}"
+    from backend.app.services.history import preserve_document_history
+    preserve_document_history(session, document)
     queue_cleanup(session, document.storage_backend, key)
     session.delete(document); session.commit()
     cleanup_pending(session)
