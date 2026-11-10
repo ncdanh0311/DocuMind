@@ -73,6 +73,12 @@ jobs:
       - name: Syntax Validation
         run: uv run --no-sync python -m compileall -q backend ai
 
+      - name: Install Matching PostgreSQL Client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-16
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+
       - name: API, Security, Contracts and Migration Tests
         run: uv run --no-sync pytest
 

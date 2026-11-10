@@ -14,6 +14,8 @@ AI tiếp tục tắt. Backend cloud dùng Render, web dùng Vercel; PostgreSQL 
 
 Cài dependency backend gọn: `uv sync --frozen --only-group backend --only-group dev`. PostgreSQL client `pg_dump`/`pg_restore` phải có trong PATH khi dùng backup; phiên bản client phải tương thích server.
 
+Công cụ backup/restore yêu cầu client cùng major với server để tránh lệnh cấu hình của client mới không được server cũ hỗ trợ. Linux tự chọn `/usr/lib/postgresql/<major>/bin` nếu có; trên Windows đặt `DOCUMIND_PG_BIN=C:/Program Files/PostgreSQL/<major>/bin`. CI cài client 16 tương ứng PostgreSQL 16 của bộ kiểm thử.
+
 `python -m backend.ops preflight` kiểm tra revision, extension vector và truy cập bucket/ACL. Có thể cấu hình thêm `NEON_API_KEY`, `NEON_PROJECT_ID`, `NEON_BRANCH_ID` để xác minh trạng thái Storage bằng control-plane API. Không in credential trong báo cáo. Thiếu quyền hoặc region không hỗ trợ là điều kiện chưa nghiệm thu cloud, không tự chuyển provider.
 
 ## Nâng cấp dữ liệu

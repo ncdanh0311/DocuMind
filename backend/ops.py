@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -124,11 +125,23 @@ def sweep(engine, apply=False):
 
 def pg_command(program, url, *args):
     parsed = make_url(url)
+    probe = create_engine(url, hide_parameters=True)
+    try:
+        with probe.connect() as connection:
+            major = int(connection.execute(text("SHOW server_version_num")).scalar_one()) // 10000
+    finally: probe.dispose()
+    configured = os.environ.get("DOCUMIND_PG_BIN")
+    candidate = Path(configured) / program if configured else Path(f"/usr/lib/postgresql/{major}/bin/{program}")
+    executable = str(candidate) if candidate.is_file() else program
+    version = subprocess.run([executable, "--version"], capture_output=True, text=True, timeout=10)
+    match = re.search(r"\b(\d+)\.\d", version.stdout)
+    if version.returncode or not match or int(match.group(1)) != major:
+        raise ValueError(f"PostgreSQL client must match server major {major}; set DOCUMIND_PG_BIN")
     env = os.environ.copy()
     env.update(PGHOST=parsed.host or "localhost", PGPORT=str(parsed.port or 5432),
                PGUSER=parsed.username or "postgres", PGPASSWORD=parsed.password or "", PGDATABASE=parsed.database or "")
     if parsed.query.get("sslmode"): env["PGSSLMODE"] = parsed.query["sslmode"]
-    result = subprocess.run([program, *args], env=env, capture_output=True, timeout=600)
+    result = subprocess.run([executable, *args], env=env, capture_output=True, timeout=600)
     if result.returncode: raise RuntimeError(program + " failed; check server/client version and credentials (details withheld)")
 
 
