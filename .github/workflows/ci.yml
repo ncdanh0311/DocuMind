@@ -35,7 +35,7 @@ jobs:
   # ==========================================
   backend-ci:
     name: Backend API, Contracts & Fresh Migrations
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       SECRET_KEY: ci-only-0c4edc97d6ef483ca292d019f0da7b65
       TEST_DATABASE_URL: postgresql://postgres:phase1-test@127.0.0.1:5432/documind_phase1_test

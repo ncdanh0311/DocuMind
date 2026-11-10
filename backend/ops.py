@@ -131,7 +131,8 @@ def pg_command(program, url, *args):
             major = int(connection.execute(text("SHOW server_version_num")).scalar_one()) // 10000
     finally: probe.dispose()
     configured = os.environ.get("DOCUMIND_PG_BIN")
-    candidate = Path(configured) / program if configured else Path(f"/usr/lib/postgresql/{major}/bin/{program}")
+    binary = program + ".exe" if os.name == "nt" else program
+    candidate = Path(configured) / binary if configured else Path(f"/usr/lib/postgresql/{major}/bin/{program}")
     executable = str(candidate) if candidate.is_file() else program
     version = subprocess.run([executable, "--version"], capture_output=True, text=True, timeout=10)
     match = re.search(r"\b(\d+)\.\d", version.stdout)
