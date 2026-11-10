@@ -1,10 +1,11 @@
 """Ingestion preparation and atomic publication, guarded by a live job lease."""
 import hashlib
 import math
+from pathlib import Path
 from sqlmodel import Session, select
 from backend.app.models.models import Document, DocumentChunk, DocumentVersion, Job, Notification
 from backend.app.services.job_service import PipelineError, job_service
-from backend.app.services.storage import source_path
+from backend.app.services.storage import materialize
 from backend.processor.canonical import PIPELINE_VERSION
 from backend.processor.document_processor import DocumentProcessor
 
@@ -18,15 +19,17 @@ class DocumentService:
             if not document: raise PipelineError("ERR_SOURCE_MISSING")
             key = document.storage_key
             expected_checksum = document.checksum
+            storage_backend = document.storage_backend
+            suffix = Path(document.file_name).suffix
         if not key: raise PipelineError("ERR_SOURCE_MISSING")
-        path = source_path(key)
-        if not path.is_file(): raise PipelineError("ERR_SOURCE_MISSING")
-        digest = hashlib.sha256()
-        with path.open("rb") as stream:
-            while data := stream.read(1024 * 1024): digest.update(data)
-        if expected_checksum != digest.hexdigest(): raise PipelineError("ERR_SOURCE_CHANGED")
-        check()
-        canonical = self.processor_factory().extract(str(path))
+        with materialize(key, storage_backend, suffix) as path:
+            if not path.is_file(): raise PipelineError("ERR_SOURCE_MISSING")
+            digest = hashlib.sha256()
+            with path.open("rb") as stream:
+                while data := stream.read(1024 * 1024): digest.update(data)
+            if expected_checksum != digest.hexdigest(): raise PipelineError("ERR_SOURCE_CHANGED")
+            check()
+            canonical = self.processor_factory().extract(str(path))
         capability = self.ai.capability("embedding")
         chunks = canonical.chunks(lambda text: self.ai.split(text, "embedding", overlap=64))
         if not chunks: raise PipelineError("ERR_EMPTY_DOCUMENT")
@@ -51,6 +54,7 @@ class DocumentService:
                 session.add(DocumentChunk(document_id=document.document_id, version=version.version, embedding=vector,
                     embedding_model=capability["version"], **chunk))
             document.current_version, document.status, document.error_code = version.version, "ready", None
+            document.text_status, document.text_error_code = "ready", None
             session.add(document)
             session.add(Notification(user_id=job.user_id, title="Tài liệu đã sẵn sàng", body=f"Đã xử lý {document.file_name}.", type="success"))
             job_service.succeed(session, job)

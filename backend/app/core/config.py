@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     
     # Custom direct URL
     DATABASE_URL_OVERRIDE: Optional[str] = None
+    DATABASE_DIRECT_URL: Optional[str] = None
     
     # Email Configuration
     EMAILS_FROM_EMAIL: str = "inhtan810@gmail.com"
@@ -37,10 +38,24 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_TLS: bool = True
     SMTP_SSL: bool = False
+    EMAIL_PROVIDER: str = "smtp"
+    BREVO_API_KEY: str = ""
     
     UPLOAD_DIR: str = ".uploads"
     AI_ENABLED: bool = False
     MAX_UPLOAD_BYTES: int = 25 * 1024 * 1024
+    MAX_USER_STORAGE_BYTES: int = 512 * 1024 * 1024
+    MAX_TOTAL_STORAGE_BYTES: int = 2 * 1024 * 1024 * 1024
+    MAX_ACTIVE_JOBS_PER_USER: int = 2
+    STORAGE_BACKEND: str = "local"
+    STORAGE_BUCKET: str = "documind-documents"
+    AWS_ENDPOINT_URL_S3: str = ""
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_REGION: str = ""
+    EXTRACT_TIMEOUT_SECONDS: int = 15
+    EXTRACT_MAX_PAGES: int = 200
+    EXTRACT_MAX_CHARACTERS: int = 1000000
     JOB_LEASE_SECONDS: int = 120
     JOB_HEARTBEAT_SECONDS: int = 30
     JOB_MAX_SECONDS: int = 1800
@@ -57,6 +72,20 @@ class Settings(BaseSettings):
                 url = url.replace("postgres://", "postgresql://", 1)
             return url
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+    @field_validator("STORAGE_BACKEND")
+    @classmethod
+    def validate_storage(cls, value: str) -> str:
+        if value not in ("local", "neon_s3"):
+            raise ValueError("Unsupported storage backend")
+        return value
+
+    @field_validator("EMAIL_PROVIDER")
+    @classmethod
+    def validate_email_provider(cls, value: str) -> str:
+        if value not in ("smtp", "brevo"):
+            raise ValueError("Unsupported email provider")
+        return value
 
     @field_validator("SECRET_KEY")
     @classmethod

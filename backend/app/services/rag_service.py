@@ -49,7 +49,8 @@ class RAGService:
                 .execution_options(populate_existing=True)).first()
             if not current or current.status != "ready" or current.current_version != selected_chunk.version:
                 raise HTTPException(409, "ERR_SOURCE_CHANGED")
-        history = QAHistory(notebook_id=notebook_id, question=question, answer=answer, model_name=model, model_version=capability["version"])
+        history = QAHistory(notebook_id=notebook_id, question=question, answer=answer, model_name=model,
+                            model_version=capability["version"], citation_snapshot=[c.model_dump(mode="json") for c in citations])
         session.add(history); session.flush()
         if matched:
             rank = next(r for r in ranking if chunks[r["index"]].docuchunk_id == matched.docuchunk_id)

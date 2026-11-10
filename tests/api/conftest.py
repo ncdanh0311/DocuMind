@@ -6,6 +6,9 @@ from sqlalchemy.engine import make_url
 # Never import application settings using a developer's real database/secret.
 os.environ["SECRET_KEY"] = "phase1-test-0c4edc97d6ef483ca292d019f0da7b65"
 os.environ["DATABASE_URL_OVERRIDE"] = os.environ.get("TEST_DATABASE_URL", "postgresql://postgres:phase1-test@127.0.0.1:55432/documind_phase1_test")
+os.environ["DATABASE_DIRECT_URL"] = os.environ["DATABASE_URL_OVERRIDE"]
+os.environ["STORAGE_BACKEND"] = "local"
+os.environ["EMAIL_PROVIDER"] = "smtp"
 
 from alembic import command
 from alembic.config import Config

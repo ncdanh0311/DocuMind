@@ -31,6 +31,7 @@ def resources(monkeypatch, tmp_path):
     app.dependency_overrides[get_current_user] = lambda: identity["user"]
     monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
     monkeypatch.setattr(settings, "AI_ENABLED", False)
+    monkeypatch.setattr(settings, "STORAGE_BACKEND", "local")
     def forbidden(*args, **kwargs): raise AssertionError("AI must not be called in storage-only mode")
     monkeypatch.setattr(ai_client, "request", forbidden)
     with TestClient(app) as client:

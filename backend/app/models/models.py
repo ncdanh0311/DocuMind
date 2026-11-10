@@ -82,6 +82,10 @@ class Document(SQLModel, table=True):
     current_version: int = Field(default=0)
     requested_version: int = Field(default=0)
     storage_key: Optional[str] = None
+    storage_backend: str = Field(default="local")
+    file_size_bytes: Optional[int] = Field(default=None, sa_type=sa.BigInteger)
+    text_status: str = Field(default="not_started")
+    text_error_code: Optional[str] = None
     checksum: Optional[str] = None
     error_code: Optional[str] = None
     
@@ -173,6 +177,7 @@ class QAHistory(SQLModel, table=True):
     answer: str
     model_name: str
     model_version: Optional[str] = None
+    citation_snapshot: list[dict] = Field(default_factory=list, sa_column=Column(sa.JSON, nullable=False))
     created_at: datetime = utc_field()
     
     # Relationships
@@ -204,3 +209,28 @@ class Notification(SQLModel, table=True):
 
     # Relationships
     user: User = Relationship(back_populates="notifications")
+
+
+class StorageLedger(SQLModel, table=True):
+    __tablename__ = "storage_ledger"
+    ledger_id: int = Field(default=1, primary_key=True)
+
+
+class UploadReservation(SQLModel, table=True):
+    __tablename__ = "upload_reservations"
+    reservation_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="users.user_id", ondelete="CASCADE", index=True)
+    storage_key: str = Field(unique=True)
+    storage_backend: str
+    size_bytes: int = Field(sa_type=sa.BigInteger)
+    created_at: datetime = utc_field()
+
+
+class StorageCleanupTask(SQLModel, table=True):
+    __tablename__ = "storage_cleanup_tasks"
+    __table_args__ = (sa.UniqueConstraint("storage_backend", "storage_key", name="uq_cleanup_object"),)
+    task_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    storage_backend: str
+    storage_key: str
+    created_at: datetime = utc_field()
+    attempts: int = Field(default=0)
