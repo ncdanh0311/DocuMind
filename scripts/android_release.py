@@ -77,13 +77,33 @@ def prepare(android_dir, temporary_dir):
     return {"application_id": APPLICATION_ID, "version": VERSION, "build_number": build_number, "api_url": api_url}
 
 
-def verify(apk, apksigner, aapt, output):
+def verify_certificate(apk, apksigner, expected):
     signed = subprocess.run([str(apksigner), "verify", "--verbose", "--print-certs", str(apk)],
                             capture_output=True, text=True, timeout=60)
-    match = re.search(r"Signer #1 certificate SHA-256 digest:\s*([a-fA-F0-9]+)", signed.stdout)
+    if signed.returncode:
+        # This SDK command only reads the APK. Keep diagnostics separate from a
+        # valid signature made by a different key, without printing private paths.
+        error = getattr(signed, "stderr", "") or ""
+        if "UnsupportedClassVersionError" in error:
+            raise ValueError("apksigner cannot run with the configured Java runtime")
+        raise ValueError(f"apksigner verification failed (exit {signed.returncode})")
+    # SDK 37 prefixes labels with the signature scheme ('V2 Signer:'); v3.1
+    # signers may include an SDK range. Older tools use 'Signer #1'. Verify
+    # every reported application signer; a source stamp is a separate identity.
+    fingerprints = re.findall(
+        r"^(?:V[1-4](?:\.\d+)? )?Signer(?: #\d+| \([^\r\n]+\))?:? certificate SHA-256 digest:[ \t]*([a-fA-F0-9]{64})[ \t\r]*$",
+        signed.stdout, re.MULTILINE,
+    )
+    if not fingerprints:
+        raise ValueError("apksigner did not report an application signing certificate")
+    if any(fingerprint.lower() != expected for fingerprint in fingerprints):
+        actual = ", ".join(sorted({fingerprint.lower() for fingerprint in fingerprints}))
+        raise ValueError(f"APK signature does not match the persistent release certificate (actual SHA-256: {actual})")
+
+
+def verify(apk, apksigner, aapt, output):
     expected = required("ANDROID_SIGNING_CERT_SHA256").replace(":", "").lower()
-    if signed.returncode or not match or match[1].lower() != expected:
-        raise ValueError("APK signature does not match the persistent release certificate")
+    verify_certificate(apk, apksigner, expected)
     package = subprocess.run([str(aapt), "dump", "badging", str(apk)], capture_output=True, text=True, timeout=60)
     if package.returncode:
         raise ValueError("Cannot inspect APK package")

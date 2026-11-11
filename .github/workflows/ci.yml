@@ -177,6 +177,31 @@ jobs:
         working-directory: ./mobile
         run: flutter build apk --debug
 
+      - name: Check Android SDK Signature Verification Tool
+        run: |
+          export SDK_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          python3 - <<'PY'
+          import os, re, subprocess
+          from pathlib import Path
+          from scripts.android_release import verify_certificate
+          # Ask Gradle for its actual debug signing configuration instead of
+          # assuming the Android user-home directory on the runner.
+          report = subprocess.run(
+              ["./gradlew", "-q", ":app:signingReport"], cwd="mobile/android",
+              capture_output=True, text=True, timeout=120,
+          )
+          variant = re.search(r"(?ms)^Variant: debug\s*\n(.*?)(?=^Variant:|\Z)", report.stdout)
+          certificate = re.search(r"(?m)^SHA-256: ([A-Fa-f0-9:]+)\s*$", variant[1]) if variant else None
+          if report.returncode or not certificate:
+              raise SystemExit("Cannot inspect Gradle debug signing configuration")
+          verify_certificate(
+              Path("mobile/build/app/outputs/flutter-apk/app-debug.apk"),
+              Path(os.environ["SDK_TOOLS"]) / "apksigner",
+              certificate[1].replace(":", "").lower(),
+          )
+          print("Android SDK verifier and certificate parser validated against the built test APK")
+          PY
+
       - name: Prepare APK Artifacts
         run: |
           mkdir -p release-artifacts

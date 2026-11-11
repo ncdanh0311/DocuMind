@@ -65,6 +65,36 @@ def test_verify_and_publish_require_the_same_binary_source_and_certificate(monke
         release.verify(apk, Path("apksigner"), Path("aapt"), tmp_path)
 
 
+@pytest.mark.parametrize("label", ["Signer #1", "Signer (minSdkVersion=33, maxSdkVersion=2147483647)",
+    "Signer (minSdkVersion=28, maxSdkVersion=32)", "V2 Signer:", "V3 Signer:", "V3.1 Signer:",
+    "V3 Signer (minSdkVersion=28, maxSdkVersion=32):", "V3.2 Signer #1:"])
+def test_certificate_verification_accepts_sdk_signer_labels(monkeypatch, label):
+    certificate = "ab" * 32
+    monkeypatch.setattr(release.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(
+        returncode=0, stdout=f"{label} certificate SHA-256 digest: {certificate.upper()}\r\n"))
+    release.verify_certificate(Path("test.apk"), Path("apksigner"), certificate)
+
+
+@pytest.mark.parametrize("stdout,returncode,stderr,error", [
+    ("Signer #1 certificate SHA-256 digest: " + "ab" * 32, 1, "DOES NOT VERIFY", "verification failed"),
+    ("", 1, "UnsupportedClassVersionError: internal-private-path", "Java runtime"),
+    ("Source Stamp Signer certificate SHA-256 digest: " + "ab" * 32, 0, "", "did not report"),
+    ("Signer #1 certificate SHA-256 digest: " + "ab" * 32 + "\nSigner #2 certificate SHA-256 digest: " + "cd" * 32,
+     0, "", "signature does not match"),
+    ("V2 Signer: certificate SHA-256 digest: " + "ab" * 32 + "\nV3 Signer: certificate SHA-256 digest: " + "cd" * 32,
+     0, "", "signature does not match"),
+    ("Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: " + "ab" * 32
+     + "\nSigner (minSdkVersion=28, maxSdkVersion=32) certificate SHA-256 digest: " + "cd" * 32,
+     0, "", "signature does not match"),
+])
+def test_certificate_verification_rejects_tool_errors_and_unexpected_signers(monkeypatch, stdout, returncode, stderr, error):
+    monkeypatch.setattr(release.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(
+        returncode=returncode, stdout=stdout, stderr=stderr))
+    with pytest.raises(ValueError, match=error) as result:
+        release.verify_certificate(Path("test.apk"), Path("apksigner"), "ab" * 32)
+    assert "internal-private-path" not in str(result.value)
+
+
 def test_publish_refuses_feature_runs_and_skipped_signed_builds(monkeypatch):
     monkeypatch.setenv("SOURCE_RUN_ID", "123")
     monkeypatch.setenv("ACCEPTED_COMMIT", "c" * 40)
