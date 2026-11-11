@@ -16,7 +16,7 @@ import tempfile
 import urllib.request
 import uuid
 
-from sqlalchemy import MetaData, Table, inspect, select as sa_select, text
+from sqlalchemy import Column, MetaData, Table, inspect, select as sa_select, text
 from sqlalchemy.engine import make_url
 from sqlmodel import Session, select, create_engine
 from backend.app.core.config import settings
@@ -169,11 +169,17 @@ def database_inventory(connection):
 def backup_documents(connection):
     if "documents" not in inspect(connection).get_table_names():
         return []
-    table = Table("documents", MetaData(), autoload_with=connection)
+    table = document_table(connection)
     required = {"document_id", "notebook_id", "file_name"}
     if not required.issubset(table.c.keys()):
         raise ValueError("Unsupported legacy document metadata; backup refused")
     return list(connection.execute(sa_select(table)).mappings())
+
+
+def document_table(connection):
+    # Backup/restore only needs column values and types, never indexes or FK graphs.
+    return Table("documents", MetaData(), *(Column(column["name"], column["type"])
+        for column in inspect(connection).get_columns("documents")))
 
 
 def backup(engine, output: Path):
@@ -276,7 +282,7 @@ def restore(engine, directory: Path):
         for name, expected in manifest.get("row_counts", {}).items():
             if inventory["row_counts"].get(name) != expected:
                 raise ValueError("Restored row count mismatch")
-        table = Table("documents", MetaData(), autoload_with=connection) if "documents" in inventory["schema"] else None
+        table = document_table(connection) if "documents" in inventory["schema"] else None
         for entry in manifest["objects"]:
             if table is None: raise ValueError("Restored document table missing")
             # Bind through the reflected UUID column; old schemas may use native UUID or text.
@@ -305,11 +311,15 @@ def import_legacy(source, target, apply=False):
         for table in SQLModel.metadata.sorted_tables:
             if table.name == "storage_ledger": continue
             if destination.execute(sa_select(table).limit(1)).first(): raise ValueError("Legacy import requires empty target tables")
+        # Reflect once in bulk. Recursively reflecting each table adds hundreds of
+        # catalog round trips over a cloud connection and can lose an idle transaction.
+        legacy_schema = MetaData()
+        legacy_schema.reflect(bind=origin, only=sorted(existing.intersection(SQLModel.metadata.tables)), resolve_fks=False)
         document_notebooks = {}
         for table in SQLModel.metadata.sorted_tables:
             if table.name not in existing or table.name in ("auth_sessions", "password_reset_challenges", "auth_rate_limits", "jobs", "upload_reservations", "storage_cleanup_tasks", "storage_ledger"):
                 continue
-            legacy = Table(table.name, MetaData(), autoload_with=origin)
+            legacy = legacy_schema.tables[table.name]
             count = 0
             for raw in origin.execute(sa_select(legacy)).mappings():
                 values = {key: value for key, value in raw.items() if key in table.c}
