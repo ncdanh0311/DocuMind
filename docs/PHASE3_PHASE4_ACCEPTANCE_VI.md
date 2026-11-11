@@ -42,7 +42,17 @@ Nhánh `feature/cloud-beta-release` bổ sung APK có application ID riêng, HTT
 
 - Kiểm thử local: 86 bài Python đạt, 35 bài PostgreSQL để CI chạy trên database riêng; Flutter 26 bài đạt và analyzer sạch. Actionlint kiểm định workflow đạt.
 - Đã đăng nhập và xác định Neon project `sparkling-band-34724718`, branch `br-falling-hat-aegv7f1c`, PostgreSQL 18, region Ohio, gói Free. Đã tạo bucket `documind-documents` private; chưa upload object để nghiệm thu truy cập thực tế.
-- Đã xác định Render service `srv-db163c60tbcc739n4r4g`, URL `https://documind-backend-dqkg.onrender.com`, code đang chạy `435a1c9`. Dashboard hiện chỉ có hai biến DATABASE_URL_OVERRIDE và SECRET_KEY; chưa thay đổi các giá trị này.
+- Đã xác định Render service `srv-db163c60tbcc739n4r4g`, URL `https://documind-backend-dqkg.onrender.com`, code đang chạy `435a1c9`. Cấu hình kết nối backend chưa được đổi sang database mới; SECRET_KEY giữ nguyên.
 - Đã tạo khóa ký beta cố định, lưu riêng ngoài repo tại `D:/DocuMindSecrets/android-beta` với ACL chỉ chủ máy/SYSTEM. Đã mã hóa và cấu hình bốn GitHub Secrets, hai repository variables cho API URL và fingerprint certificate. Không có secret trong commit/artifact.
-- Chưa migration database thật, chưa deploy code mới, chưa nghiệm thu email/Android vật lý hoặc công bố prerelease. Không coi việc tạo bucket hay build CI là nghiệm thu cloud hoàn tất.
-- Quyền sao chép credential Render ra local bị automatic approval review từ chối; không thử cách khác để né hạn chế. Backup/migration cần giải quyết quyền truy cập này trước. SECRET_KEY hiện tại không cần lấy ra để chạy operator.
+- Chủ project đã cho phép lấy thông tin kết nối database/storage và lưu riêng tại `D:/DocuMindSecrets/cloud`, ACL chỉ chủ máy/SYSTEM. Không sao chép SECRET_KEY. Thông tin bí mật không nằm trong repository hoặc báo cáo.
+
+## Kết quả chuyển dữ liệu thực tế — 2026-11-11
+
+- Database nguồn là schema trước baseline: 2 tài khoản, 1 sổ tay, 1 tài liệu; chưa dùng Alembic. Đã backup đủ database và PDF, xác minh manifest/checksum rồi phục hồi sang database riêng trên Neon. Đối chiếu toàn bộ bản ghi, schema, số lượng và file đều khớp.
+- File PDF được tìm lại trên Desktop theo đúng tên và tiêu đề, gồm 40 trang, 1.377.592 byte. Schema cũ không có checksum lịch sử nên không khẳng định đối chiếu byte với bản upload cũ trên ổ đĩa Render; provenance ghi rõ nguồn phục hồi. File Desktop được giữ nguyên; các bản sao và file trên Neon khớp SHA-256.
+- Database đích mới đã nâng đúng chuỗi Alembic đến `phase4_study`, có extension vector. Nhập đủ 2 tài khoản/1 sổ tay/1 tài liệu, kiểm chứng UUID và password hash được giữ nguyên. Không reset/stamp hoặc ghi vào database nguồn; token/OTP phiên đăng nhập cũ không nhập lại.
+- PDF đã chuyển sang bucket `documind-documents`, đọc lại checksum trước khi đổi metadata. Upload/download object thử có credential đạt, download ẩn danh bị từ chối; object thử đã dọn.
+- Đã tạo thêm backup sau chuyển đổi và phục hồi thành công vào database/thư mục trống riêng. Các bản backup ở `D:/DocuMindBackups/cloud-beta-20261111/before-migration` và `after-migration`.
+- Đã giảm reflection lặp/đệ quy trong công cụ operator để tránh quá nhiều truy vấn catalog trên kết nối Neon. Kiểm thử local 86 đạt; kiểm thử PostgreSQL/migration/restore tiếp tục qua CI của PR.
+
+Backend Render đang Suspend trong cửa sổ chuyển đổi; Auto-Deploy = Off và Blueprint Auto Sync = No. Chưa đổi cấu hình/deploy code mới, chưa merge main, chưa nghiệm thu OTP Brevo hoặc Android vật lý và chưa công bố prerelease. Chủ project yêu cầu tiếp tục bằng CLI/API, không dùng Computer Use; bước triển khai cần kết nối quản trị Render/Vercel qua API.
