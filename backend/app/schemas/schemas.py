@@ -219,6 +219,9 @@ class DocumentResponse(BaseModel):
     current_version: int = 0
     error_code: Optional[str] = None
     job_id: Optional[uuid.UUID] = None
+    file_size_bytes: Optional[int] = None
+    text_status: str = "not_started"
+    text_error_code: Optional[str] = None
 
 class DocumentRenameRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")

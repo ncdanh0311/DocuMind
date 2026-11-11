@@ -2,6 +2,7 @@ import hmac
 import logging
 import secrets
 import uuid
+import httpx
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
@@ -44,6 +45,17 @@ async def send_reset_otp_email(email: str, otp: str):
     </html>
     """
     
+    if settings.EMAIL_PROVIDER == "brevo":
+        if not settings.BREVO_API_KEY:
+            raise RuntimeError("ERR_EMAIL_NOT_CONFIGURED")
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.post("https://api.brevo.com/v3/smtp/email",
+                headers={"api-key": settings.BREVO_API_KEY}, json={
+                    "sender": {"name": settings.PROJECT_NAME, "email": settings.EMAILS_FROM_EMAIL},
+                    "to": [{"email": email}], "subject": "Mã xác thực khôi phục mật khẩu DocuMind",
+                    "htmlContent": html})
+            response.raise_for_status()
+        return
     message = MessageSchema(
         subject="Mã xác thực khôi phục mật khẩu DocuMind",
         recipients=[email],

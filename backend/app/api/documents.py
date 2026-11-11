@@ -1,8 +1,11 @@
 from pathlib import Path
 import hashlib
+import tempfile
 import uuid
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
+from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 from backend.app.api.deps import get_current_user, get_owned_document, get_owned_notebook
 from backend.app.core.config import settings
@@ -10,7 +13,9 @@ from backend.app.core.db import get_session
 from backend.app.models.models import Document, DocumentChunk, DocumentVersion, Job, Notebook, User
 from backend.app.schemas.schemas import DocumentChunkResponse, DocumentResponse, SourceResponse, DocumentRenameRequest
 from backend.app.services.job_service import job_service
-from backend.app.services.storage import source_path
+from backend.app.services.storage import get_storage
+from backend.app.services.storage_quota import reserve, lock_ledger, queue_cleanup, cleanup_pending, usage, check_job_quota
+from backend.app.models.models import UploadReservation
 from backend.app.services.summary_service import lock_notebook
 from backend.app.services.features import require_ai
 
@@ -36,6 +41,7 @@ def enqueue_ingest(document: Document, notebook: Notebook, session: Session) -> 
         session.add(document)
         return None
     document.requested_version += 1
+    check_job_quota(session, notebook.user_id)
     document.status, document.error_code = "uploaded", None
     invalidate_summary_jobs(session, notebook.notebook_id)
     job = Job(user_id=notebook.user_id, notebook_id=notebook.notebook_id, document_id=document.document_id,
@@ -43,39 +49,56 @@ def enqueue_ingest(document: Document, notebook: Notebook, session: Session) -> 
     session.add(document); session.add(job)
     return job
 
+
+def save_upload(notebook_id, name, path, size, checksum, session, current_user):
+    document = Document(notebook_id=notebook_id, file_name=name, file_size_bytes=size,
+                        storage_backend=settings.STORAGE_BACKEND, checksum=checksum)
+    key = f"{notebook_id}/{document.document_id}{Path(name).suffix.lower()}"
+    document.storage_key = key
+    reservation_id = reserve(session, current_user.user_id, key, document.storage_backend, size)
+    try:
+        get_storage(document.storage_backend).put_file(key, path)
+        lock_ledger(session)
+        notebook = lock_notebook(session, notebook_id)
+        if notebook.user_id != current_user.user_id: raise HTTPException(404, "ERR_NOTEBOOK_NOT_FOUND")
+        session.add(document); session.flush()
+        enqueue_ingest(document, notebook, session)
+        session.delete(session.get(UploadReservation, reservation_id))
+        session.commit(); session.refresh(document)
+        return document_response(document, session)
+    except Exception as exc:
+        session.rollback()
+        # Persist cleanup before releasing quota. A dead process leaves a reservation for the ops sweep.
+        queue_cleanup(session, document.storage_backend, key, size)
+        reservation = session.get(UploadReservation, reservation_id)
+        if reservation: session.delete(reservation)
+        session.commit()
+        cleanup_pending(session)
+        if isinstance(exc, HTTPException): raise
+        raise HTTPException(503, "ERR_STORAGE_UNAVAILABLE") from None
+
 @router.post("/notebooks/{notebook_id}/documents/upload", response_model=DocumentResponse, status_code=201)
 async def upload_document(notebook_id: uuid.UUID, file: UploadFile = File(...), session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     get_owned_notebook(notebook_id, session, current_user)
-    name = Path(file.filename or "").name
+    name = Path((file.filename or "").replace("\\", "/")).name
     extension = Path(name).suffix.lower()
     if extension not in (".pdf", ".docx", ".txt"): raise HTTPException(422, "ERR_FILE_FORMAT")
-    document = Document(notebook_id=notebook_id, file_name=name)
-    document.storage_key = f"{notebook_id}/{document.document_id}{extension}"
-    path = source_path(document.storage_key)
-    path.parent.mkdir(parents=True, exist_ok=True)
     size, digest = 0, hashlib.sha256()
     try:
-        with path.open("wb") as stream:
-            while data := await file.read(1024 * 1024):
-                size += len(data)
-                if size > settings.MAX_UPLOAD_BYTES: raise HTTPException(413, "ERR_FILE_TOO_LARGE")
-                stream.write(data); digest.update(data)
-        if size == 0: raise HTTPException(422, "ERR_EMPTY_DOCUMENT")
-        with path.open("rb") as stream: signature = stream.read(5)
-        if (extension == ".pdf" and signature != b"%PDF-") or (extension == ".docx" and not signature.startswith(b"PK")):
-            raise HTTPException(422, "ERR_FILE_FORMAT")
-        document.checksum = digest.hexdigest()
-        notebook = lock_notebook(session, notebook_id)
-        session.add(document); session.flush()
-        enqueue_ingest(document, notebook, session)
-        session.commit(); session.refresh(document)
-    except Exception:
-        session.rollback()
-        path.unlink(missing_ok=True)
-        raise
+        with tempfile.TemporaryDirectory(prefix="documind-upload-") as directory:
+            path = Path(directory) / ("upload" + extension)
+            with path.open("wb") as stream:
+                while data := await file.read(1024 * 1024):
+                    size += len(data)
+                    if size > settings.MAX_UPLOAD_BYTES: raise HTTPException(413, "ERR_FILE_TOO_LARGE")
+                    stream.write(data); digest.update(data)
+            if size == 0: raise HTTPException(422, "ERR_EMPTY_DOCUMENT")
+            with path.open("rb") as stream: signature = stream.read(5)
+            if (extension == ".pdf" and signature != b"%PDF-") or (extension == ".docx" and not signature.startswith(b"PK")):
+                raise HTTPException(422, "ERR_FILE_FORMAT")
+            return save_upload(notebook_id, name, path, size, digest.hexdigest(), session, current_user)
     finally:
         await file.close()
-    return document_response(document, session)
 
 class TextDocumentCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
@@ -87,18 +110,11 @@ def create_document_from_text(notebook_id: uuid.UUID, request: TextDocumentCreat
     if not request.title.strip() or not request.content.strip(): raise HTTPException(422, "ERR_EMPTY_DOCUMENT")
     title = request.title.strip()
     if not title.lower().endswith(".txt"): title += ".txt"
-    document = Document(notebook_id=notebook_id, file_name=title)
-    document.storage_key = f"{notebook_id}/{document.document_id}.txt"
-    path = source_path(document.storage_key); path.parent.mkdir(parents=True, exist_ok=True)
-    try:
+    with tempfile.TemporaryDirectory(prefix="documind-note-") as directory:
+        path = Path(directory) / "note.txt"
         path.write_bytes(request.content.encode("utf-8"))
-        document.checksum = hashlib.sha256(request.content.encode()).hexdigest()
-        notebook = lock_notebook(session, notebook_id)
-        session.add(document); session.flush(); enqueue_ingest(document, notebook, session)
-        session.commit(); session.refresh(document)
-    except Exception:
-        session.rollback(); path.unlink(missing_ok=True); raise
-    return document_response(document, session)
+        return save_upload(notebook_id, title, path, path.stat().st_size,
+                           hashlib.sha256(request.content.encode()).hexdigest(), session, current_user)
 
 @router.post("/documents/{document_id}/reprocess", response_model=DocumentResponse, status_code=202)
 def reprocess_document(document_id: uuid.UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
@@ -109,9 +125,10 @@ def reprocess_document(document_id: uuid.UUID, session: Session = Depends(get_se
     active = session.exec(select(Job).where(Job.document_id == document_id, Job.kind == "ingest", Job.status.in_(["queued", "running"]))).first()
     if not active:
         if not document.storage_key: document.storage_key = f"{document.notebook_id}/{document.document_id}{Path(document.file_name).suffix.lower()}"
-        if not source_path(document.storage_key).is_file(): raise HTTPException(404, "ERR_SOURCE_MISSING")
+        storage = get_storage(document.storage_backend)
+        if not storage.exists(document.storage_key): raise HTTPException(404, "ERR_SOURCE_MISSING")
         digest = hashlib.sha256()
-        with source_path(document.storage_key).open("rb") as stream:
+        with storage.open(document.storage_key) as stream:
             while block := stream.read(1024 * 1024): digest.update(block)
         document.checksum = digest.hexdigest()
         enqueue_ingest(document, notebook, session); session.commit(); session.refresh(document)
@@ -142,9 +159,37 @@ def delete_document(document_id: uuid.UUID, session: Session = Depends(get_sessi
     job_service.cancel(session, document.notebook_id, document_id)
     invalidate_summary_jobs(session, document.notebook_id)
     key = document.storage_key or f"{document.notebook_id}/{document.document_id}{Path(document.file_name).suffix.lower()}"
+    from backend.app.services.history import preserve_document_history
+    preserve_document_history(session, document)
+    queue_cleanup(session, document.storage_backend, key, document.file_size_bytes or 0)
     session.delete(document); session.commit()
-    try: source_path(key).unlink(missing_ok=True)
-    except OSError: pass
+    cleanup_pending(session)
+
+
+@router.get("/storage/usage")
+def storage_usage(session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    used = usage(session, current_user.user_id)
+    return {"used_bytes": used, "limit_bytes": settings.MAX_USER_STORAGE_BYTES,
+            "max_file_bytes": settings.MAX_UPLOAD_BYTES}
+
+
+@router.get("/documents/{document_id}/download")
+def download_document(document_id: uuid.UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    document = get_owned_document(document_id, session, current_user)
+    if not document.storage_key: raise HTTPException(404, "ERR_SOURCE_MISSING")
+    try:
+        storage = get_storage(document.storage_backend)
+        if not storage.exists(document.storage_key): raise HTTPException(404, "ERR_SOURCE_MISSING")
+        body = storage.open(document.storage_key)
+    except HTTPException: raise
+    except Exception: raise HTTPException(503, "ERR_STORAGE_UNAVAILABLE") from None
+    def content():
+        try:
+            while block := body.read(64 * 1024): yield block
+        finally: body.close()
+    return StreamingResponse(content(), media_type="application/octet-stream", headers={
+        "Content-Disposition": "attachment; filename*=UTF-8''" + quote(document.file_name, safe=""),
+        "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
 
 @router.get("/documents/{document_id}/chunks", response_model=list[DocumentChunkResponse])
 def get_document_chunks(document_id: uuid.UUID, version: int | None = Query(default=None, ge=1), session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):

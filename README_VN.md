@@ -1,4 +1,4 @@
-Giai đoạn 3, bước 1: quản lý sổ tay/tài liệu với AI tạm hoãn mặc định. Xem [hướng dẫn triển khai](docs/PHASE3_STEP1_IMPLEMENTATION_VI.md).
+Giai đoạn 3–4: lưu trữ Neon, đọc tài liệu/lịch sử và thẻ học trực tuyến, AI tiếp tục tạm hoãn. Xem [vận hành](docs/PHASE3_OPERATIONS_VI.md), [đọc tài liệu](docs/PHASE3_READING_VI.md), [thẻ học](docs/PHASE4_STUDY_VI.md).
 
 > Giai đoạn 1 dùng baseline Alembic mới. Trước khi chạy backend, xem [hướng dẫn giai đoạn 1](docs/PHASE1_IMPLEMENTATION_VI.md) để đặt SECRET_KEY riêng và dùng database PostgreSQL/pgvector mới. Baseline này không nâng cấp database cũ.
 

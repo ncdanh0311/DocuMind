@@ -16,7 +16,7 @@ from backend.app.services import rag_service
 from backend.app.services.features import require_ai
 
 router = APIRouter()
-from backend.app.services.storage import source_path
+from backend.app.services.storage_quota import queue_cleanup, cleanup_pending
 
 def notebook_response(notebook: Notebook, session: Session) -> NotebookResponse:
     count = session.exec(select(func.count()).select_from(Document).where(Document.notebook_id == notebook.notebook_id)).one()
@@ -46,14 +46,11 @@ def delete_notebook(notebook: Notebook = Depends(get_owned_notebook), session: S
     from backend.app.services.job_service import job_service
     lock_notebook(session, notebook.notebook_id)
     job_service.cancel(session, notebook.notebook_id)
-    notebook_upload_dir = source_path(str(notebook.notebook_id))
+    for document in session.exec(select(Document).where(Document.notebook_id == notebook.notebook_id)).all():
+        if document.storage_key: queue_cleanup(session, document.storage_backend, document.storage_key, document.file_size_bytes or 0)
     session.delete(notebook)
     session.commit()
-    if os.path.isdir(notebook_upload_dir):
-        try:
-            shutil.rmtree(notebook_upload_dir)
-        except OSError:
-            logging.getLogger(__name__).warning("Notebook file cleanup deferred")
+    cleanup_pending(session)
 
 @router.put("/{notebook_id}", response_model=NotebookResponse)
 def update_notebook(notebook_in: NotebookUpdate, notebook: Notebook = Depends(get_owned_notebook), session: Session = Depends(get_session)):

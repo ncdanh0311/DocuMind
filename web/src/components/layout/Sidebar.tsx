@@ -14,6 +14,7 @@ import {
   Brain
 } from 'lucide-react';
 import { useNotebooks } from '@/contexts/NotebookContext';
+import { useAppConfig } from '@/lib/useAppConfig';
 
 interface NavItem {
   label: string;
@@ -23,6 +24,7 @@ interface NavItem {
 }
 
 export default function Sidebar() {
+  const { aiEnabled } = useAppConfig();
   const pathname = usePathname();
   const { notebooks, openCreateModal } = useNotebooks();
 
@@ -41,7 +43,7 @@ export default function Sidebar() {
       label: 'AI Chat & Tóm tắt',
       href: '/ai-chat',
       icon: <Sparkles className="w-5 h-5 text-[#26A69A]" />,
-      badge: 'Pro',
+      badge: aiEnabled ? 'Pro' : 'Tạm hoãn',
     },
     {
       label: 'Flashcards',
@@ -60,12 +62,10 @@ export default function Sidebar() {
     },
   ];
 
-  const quotaLimit = 10;
   const currentCount = notebooks.length;
-  const percentage = Math.min(Math.round((currentCount / quotaLimit) * 100), 100);
 
   return (
-    <aside className="w-64 bg-white border-r border-[#EAEFEA] flex flex-col h-screen sticky top-0 z-30 select-none shadow-[2px_0_12px_rgba(38,166,154,0.03)]">
+    <aside className="hidden lg:flex w-64 shrink-0 bg-white border-r border-[#EAEFEA] flex-col h-screen sticky top-0 z-30 select-none shadow-[2px_0_12px_rgba(38,166,154,0.03)]">
       {/* Brand Header */}
       <div className="p-6 pb-5 flex items-center gap-3 border-b border-[#F5F8F5]">
         <div className="relative w-11 h-11 rounded-2xl overflow-hidden shadow-xs bg-[#E6F7F1] flex items-center justify-center p-1 border border-[#D2EFE6]">
@@ -138,18 +138,12 @@ export default function Sidebar() {
       <div className="p-4 border-t border-[#F5F8F5]">
         <div className="bg-[#F7FAF7] border border-[#EAEFEA] rounded-2xl p-3.5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-[#2D3E50]">Dung lượng nghiên cứu</span>
-            <span className="text-[11px] font-bold text-[#26A69A]">{currentCount} / {quotaLimit} Vở</span>
+            <span className="text-xs font-semibold text-[#2D3E50]">Sổ tay của bạn</span>
+            <span className="text-[11px] font-bold text-[#26A69A]">{currentCount} sổ tay</span>
           </div>
           {/* Progress Bar */}
-          <div className="w-full h-2 bg-[#E0E8E4] rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-[#26A69A] rounded-full transition-all duration-500" 
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
           <p className="text-[11px] text-[#8E9DAE] mt-2 flex items-center gap-1">
-            <span>💡 Mẹo: Tải PDF để AI tóm tắt tự động</span>
+            <span>{aiEnabled ? '💡 Mở nguồn để đối chiếu câu trả lời.' : '💡 Chọn đoạn trong tài liệu để tạo thẻ học.'}</span>
           </p>
         </div>
       </div>

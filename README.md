@@ -1,4 +1,4 @@
-Phase 3, step 1: notebook/document management with AI paused by default. See [implementation notes](docs/PHASE3_STEP1_IMPLEMENTATION_VI.md).
+Phases 3–4: Neon storage, document reading/history, and online flashcard review, with AI paused. See [operations](docs/PHASE3_OPERATIONS_VI.md), [reading](docs/PHASE3_READING_VI.md), and [study features](docs/PHASE4_STUDY_VI.md).
 
 > Phase 1 uses a fresh Alembic baseline. Before running the backend, follow [the Phase 1 setup guide](docs/PHASE1_IMPLEMENTATION_VI.md) to configure a unique SECRET_KEY and a new PostgreSQL/pgvector database. Existing databases are not migrated by this baseline.
 

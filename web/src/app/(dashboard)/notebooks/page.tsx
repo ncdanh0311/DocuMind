@@ -19,7 +19,7 @@ export default function NotebooksPage() {
   const handleDelete = async (e: React.MouseEvent, id: string, title: string) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!confirm(`Xóa sổ tay "${title}" và toàn bộ tài liệu bên trong?`)) return;
+    if (!confirm(`Xóa sổ tay "${title}" và toàn bộ tài liệu, thẻ học, lịch sử ôn bên trong?`)) return;
 
     try {
       await apiService.deleteNotebook(id);

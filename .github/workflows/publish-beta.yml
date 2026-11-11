@@ -1,0 +1,76 @@
+name: Publish Verified DocuMind Beta
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Successful main CI run containing the signed APK'
+        required: true
+        type: string
+      accepted_commit:
+        description: 'Full SHA verified on cloud and physical Android'
+        required: true
+        type: string
+      cloud_verified:
+        description: 'Cloud backup, migration, storage, email and redeploy checks completed'
+        required: true
+        default: false
+        type: boolean
+      android_verified:
+        description: 'Physical Android sync and in-place APK update verified'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: publish-documind-beta
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && inputs.cloud_verified && inputs.android_verified
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate Source Run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.run_id }}
+          ACCEPTED_COMMIT: ${{ inputs.accepted_commit }}
+        run: python -m scripts.publish_beta source
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.run_id }}
+          name: DocuMind-Beta-APK
+          path: release-artifacts
+      - name: Validate Artifact and Write Release Notes
+        env:
+          SOURCE_RUN_ID: ${{ inputs.run_id }}
+          ACCEPTED_COMMIT: ${{ inputs.accepted_commit }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+        run: python -m scripts.publish_beta artifact
+      - name: Publish Prerelease After Acceptance
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0-beta.1
+          target_commitish: ${{ inputs.accepted_commit }}
+          name: DocuMind 1.0.0-beta.1
+          prerelease: true
+          fail_on_unmatched_files: true
+          body_path: release-artifacts/RELEASE_NOTES.md
+          files: |
+            release-artifacts/*.apk
+            release-artifacts/SHA256SUMS
+            release-artifacts/release-manifest.json

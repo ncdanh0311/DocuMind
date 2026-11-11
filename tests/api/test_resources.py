@@ -64,13 +64,14 @@ def test_health_readiness_and_public_schema_removal(client, db_engine):
     assert client.get("/init-db").status_code == 404
     assert client.post("/init-db").status_code == 404
     with db_engine.begin() as connection:
+        original_revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
         connection.execute(text("UPDATE alembic_version SET version_num = 'not_the_head'"))
     try:
         assert client.get("/ready").status_code == 503
         assert client.get("/ready").json() == {"status": "not_ready"}
     finally:
         with db_engine.begin() as connection:
-            connection.execute(text("UPDATE alembic_version SET version_num = 'phase3_management'"))
+            connection.execute(text("UPDATE alembic_version SET version_num = :revision"), {"revision": original_revision})
 
 def test_migration_matches_metadata(db_engine):
     from alembic.autogenerate import compare_metadata

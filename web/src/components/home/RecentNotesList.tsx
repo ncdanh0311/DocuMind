@@ -4,12 +4,14 @@ import React from 'react';
 import Link from 'next/link';
 import { DocumentItem } from '@/types';
 import { ChevronRight, MessageSquare, Sparkles, CheckCircle2, Clock, UploadCloud } from 'lucide-react';
+import { documentStatusLabel } from '@/lib/management';
 
 interface RecentNotesListProps {
   documents: DocumentItem[];
+  aiEnabled?: boolean;
 }
 
-export default function RecentNotesList({ documents }: RecentNotesListProps) {
+export default function RecentNotesList({ documents, aiEnabled = false }: RecentNotesListProps) {
   const formatTime = (dateStr?: string) => {
     if (!dateStr) return '';
     try {
@@ -110,12 +112,14 @@ export default function RecentNotesList({ documents }: RecentNotesListProps) {
                     </div>
                   ) : (
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF8E1] text-[#F57F17] text-xs font-semibold">
-                      <Clock className="w-3.5 h-3.5 animate-spin" />
-                      <span>Đang phân tích</span>
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{documentStatusLabel(doc.status, aiEnabled)}</span>
                     </div>
                   )}
 
                   <div className="flex items-center gap-1.5">
+                    <Link href={`/notebooks/${doc.notebook_id}`} className="p-2 rounded-xl border text-sm">Đọc tài liệu</Link>
+                    {aiEnabled && <>
                     <Link
                       href={`/ai-chat?notebookId=${doc.notebook_id}`}
                       className="p-2 rounded-xl bg-[#F5F7F7] hover:bg-[#E6F7F1] text-[#8E9DAE] hover:text-[#26A69A] transition-all cursor-pointer"
@@ -130,6 +134,7 @@ export default function RecentNotesList({ documents }: RecentNotesListProps) {
                     >
                       <Sparkles className="w-4 h-4" />
                     </Link>
+                    </>}
                   </div>
                 </div>
               </div>

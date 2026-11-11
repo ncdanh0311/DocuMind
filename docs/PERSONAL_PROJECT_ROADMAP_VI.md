@@ -1,6 +1,6 @@
 # Hướng phát triển DocuMind cho project cá nhân
 
-Cập nhật: 2026-11-08. Đây là đề xuất điều chỉnh lộ trình sau khi làm rõ: chủ project không chuyên huấn luyện AI và không có trách nhiệm cung cấp checkpoint tự huấn luyện.
+Cập nhật: 2026-11-10. Đây là đề xuất điều chỉnh lộ trình sau khi làm rõ: chủ project không chuyên huấn luyện AI và không có trách nhiệm cung cấp checkpoint tự huấn luyện.
 
 Giữ nguyên **bốn giai đoạn** trong kế hoạch gốc. Điều chỉnh về checkpoint và quy mô đánh giá nằm trong giai đoạn 2; giai đoạn 3 và 4 tiếp tục được thực hiện theo phạm vi bên dưới.
 
@@ -24,8 +24,8 @@ Giữ backend, worker, database, nguồn có phiên bản và các kiểm thử 
 | --- | --- | --- |
 | 1. Chặn lỗi nền tảng | Token, đăng nhập/reset/refresh, phân quyền dữ liệu, contract web/mobile, migration và CI. | Đã triển khai và kiểm thử theo báo cáo giai đoạn 1. Giữ các regression test khi thực hiện những giai đoạn sau. |
 | 2. Đúng dữ liệu, nguồn và AI chạy thật | Canonical text/chunk/provenance; QA có nguồn; summary nhiều phần. Hoàn thiện chọn/tải checkpoint công khai, tokenizer và tiền xử lý, setup tự động. Agent xây bộ kiểm tra nhỏ trên 5–10 tài liệu và khoảng 20–30 câu hỏi, gồm câu không có đáp án. | Phần pipeline đã triển khai và kiểm thử kỹ thuật. Còn tích hợp/kiểm tra model thật; cần đầu ra đối chiếu được với nguồn, không bỏ phần cuối tài liệu và ghi kết quả thực tế. Bộ mẫu nhỏ không chứng minh tỷ lệ chính xác chung. |
-| 3. Beta vận hành được | Hoàn thiện worker/queue/storage/retry; giới hạn file/dung lượng/job phù hợp máy cá nhân; lưu và mở lại lịch sử; trạng thái/lỗi nhất quán trên web/mobile; cấu hình phát hành, log/health check, sao lưu/khôi phục, hướng dẫn khởi động/dừng. | Một phần worker/queue/retry đã được đưa lên giai đoạn 2 để phục vụ summary dài. Những phần vận hành còn lại chưa hoàn tất: cần kiểm tra restart không mất job, retry không trùng dữ liệu, backup khôi phục được và cài lại theo hướng dẫn. |
-| 4. Công cụ học tập | Flashcard từ nội dung thật, sửa/xóa/lưu thẻ, gắn nguồn, lịch ôn và tiến độ học; đồng bộ tiến độ giữa web/mobile; hoàn thiện responsive/accessibility. Tìm ghi chú và xuất tóm tắt là phần bổ sung sau các mục chính. | Chưa triển khai đầy đủ. Hoàn tất khi thẻ và tiến độ được lưu thật, mở lại được ở hai client, nguồn đối chiếu được và hành trình tạo thẻ → ôn tập → cập nhật tiến độ chạy được. |
+| 3. Beta vận hành được | Storage local/Neon, quota, đọc văn bản không AI, lịch sử, log/health, HTTPS email, backup/restore và công cụ chuyển dữ liệu cũ. | Đã triển khai mã nguồn và kiểm thử cô lập; PostgreSQL, migration và backup/restore chạy trong CI. Nghiệm thu cloud thực tế cần preflight trong môi trường Neon/Brevo đã cấu hình. |
+| 4. Công cụ học tập | Thẻ thủ công có nguồn, CRUD, lịch ôn, tiến độ chung web/mobile, tìm nội dung và xuất CSV/Markdown. | Đã triển khai với AI tắt; kiểm thử nguồn, lịch ôn, idempotency, conflict và UI lỗi mạng. Tạo thẻ bằng AI và ôn offline tiếp tục tạm hoãn. |
 
 Theo quyết định ngày 2026-11-08: hoãn tích hợp/chạy AI của giai đoạn 2; triển khai bước quản lý sổ tay/tài liệu của giai đoạn 3 trước. Các mục vận hành còn lại của giai đoạn 3 và toàn bộ giai đoạn 4 được giữ nguyên. Chi tiết đã triển khai: [PHASE3_STEP1_IMPLEMENTATION_VI.md](PHASE3_STEP1_IMPLEMENTATION_VI.md).
 
@@ -47,3 +47,7 @@ Hỏi đáp trích xuất hiện có phù hợp câu hỏi lấy thông tin tr�
 Hiện thực hiện quản lý sổ tay/tài liệu trong giai đoạn 3 với `AI_ENABLED=false`. Không tải model, không gọi API AI và không chạy inference. Chỉ tiếp tục phần AI khi người dùng yêu cầu mở lại.
 
 Tài liệu này là lộ trình đề xuất, chưa phải ghi nhận đã tải/nạp hoặc kiểm chứng chất lượng các checkpoint vừa nêu. Trạng thái triển khai giai đoạn 2 trước đó nằm trong `docs/PHASE2_IMPLEMENTATION_VI.md`.
+
+## 6. Triển khai giai đoạn 3–4
+
+Giữ Render + Vercel; PostgreSQL và file riêng tư dùng Neon. Không dùng Supabase. Xem [vận hành](PHASE3_OPERATIONS_VI.md), [đọc và lịch sử](PHASE3_READING_VI.md), [thẻ học](PHASE4_STUDY_VI.md). Không coi CI hoặc dịch vụ giả lập là xác nhận credential/bucket/email cloud thực tế.

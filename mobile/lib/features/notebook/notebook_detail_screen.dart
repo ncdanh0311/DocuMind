@@ -10,6 +10,11 @@ import 'package:shimmer/shimmer.dart';
 import 'package:documind_mobile/core/management.dart';
 import 'create_notebook_screen.dart';
 import 'rename_document_dialog.dart';
+import 'package:documind_mobile/features/learning/document_reader_screen.dart';
+import 'package:documind_mobile/features/learning/history_screen.dart';
+import 'package:documind_mobile/features/learning/card_editor_screen.dart';
+import 'package:documind_mobile/features/learning/flashcards_screen.dart';
+import 'package:documind_mobile/features/learning/text_search_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class NotebookDetailScreen extends StatefulWidget {
@@ -42,6 +47,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   Timer? _statusTimer;
   bool _aiEnabled = false;
   Map<String, dynamic>? _notebook;
+  Map<String, dynamic>? _storageUsage;
   late String _title;
   String _query = '', _extension = 'all', _status = 'all', _sort = 'newest';
   int _generation = 0;
@@ -84,7 +90,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
     if (_deletingNotebook) return;
     final id = widget.notebookId;
     final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(
-      title: const Text('Xóa sổ tay'), content: const Text('Xóa sổ tay và toàn bộ tài liệu bên trong? Thao tác này không thể hoàn tác.'),
+      title: const Text('Xóa sổ tay'), content: const Text('Xóa sổ tay và toàn bộ tài liệu, thẻ học, lịch sử ôn bên trong? Thao tác này không thể hoàn tác.'),
       actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Hủy')), TextButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Xóa'))],
     ));
     if (confirmed != true || !mounted || widget.notebookId != id) return;
@@ -150,6 +156,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
           if (showLoading) _isLoading = false;
         });
         _checkProcessingStatus();
+        _loadStorageUsage();
       } else {
         setState(() {
           _errorMessage = result["message"];
@@ -214,6 +221,14 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
     }
   }
 
+  Future<void> _loadStorageUsage() async {
+    final id = widget.notebookId;
+    final result = await _apiService.learningRequest('GET', '/storage/usage');
+    if (mounted && widget.notebookId == id && result['success'] == true) {
+      setState(() => _storageUsage = Map<String, dynamic>.from(result['data']));
+    }
+  }
+
   void _showAddOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -250,7 +265,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.upload_file_rounded, color: AppColors.primary),
@@ -273,7 +288,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Colors.orange.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.note_alt_rounded, color: Colors.orange),
@@ -476,12 +491,12 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
   }
 
   Future<void> _showChunksDialog(String documentId, String fileName) async {
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DocumentContentBottomSheet(documentId: documentId, fileName: fileName),
-    );
+    final selected = await Navigator.push<Map<String, dynamic>>(context, MaterialPageRoute(builder: (readerContext) => DocumentReaderScreen(documentId: documentId, title: fileName,
+      onSelectSource: (source) => Navigator.pop(readerContext, source))));
+    if (mounted && selected != null) {
+      await Navigator.push(context, MaterialPageRoute(builder: (_) => CardEditorScreen(notebookId: widget.notebookId,
+        initialSource: selected, documents: _documents.map((item) => Map<String, dynamic>.from(item)).toList())));
+    }
     if (mounted) {
       _fetchDocuments(showLoading: false);
     }
@@ -497,6 +512,11 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
           if (!_aiEnabled) const Padding(padding: EdgeInsets.all(12), child: Text('Tính năng AI đang tạm hoãn. Tài liệu mới chỉ được lưu.')),
           if ((_notebook?['description'] as String? ?? '').isNotEmpty) Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Text(_notebook!['description'], maxLines: 3, overflow: TextOverflow.ellipsis)),
           _buildActionGrid(),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (_storageUsage != null) Text('Dung lượng: ${((_storageUsage!['used_bytes'] as num) / 1048576).toStringAsFixed(1)} / ${((_storageUsage!['limit_bytes'] as num) / 1048576).toStringAsFixed(0)} MiB'),
+            TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => HistoryScreen(notebookId: widget.notebookId))), icon: const Icon(Icons.history), label: const Text('Lịch sử đã lưu')),
+            TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TextSearchScreen(notebookId: widget.notebookId, documents: _documents.map((item) => Map<String, dynamic>.from(item)).toList()))), icon: const Icon(Icons.search), label: const Text('Tìm trong nội dung')),
+          ])),
           if (_isUploading)
             LinearProgressIndicator(backgroundColor: Colors.grey.shade200, color: AppColors.primary),
           const SizedBox(height: 10),
@@ -598,7 +618,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
             icon: "assets/icons/actions/icon-actions-flashcards.png",
             color: const Color(0xFFFFF3E0),
             iconColor: const Color(0xFFEF6C00),
-            onTap: () {},
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => FlashcardsScreen(notebookId: widget.notebookId, title: _title))),
           ),
         ],
       ),
@@ -627,10 +647,10 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
-            BoxShadow(
+            const BoxShadow(
               color: Colors.white,
               blurRadius: 2,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -684,7 +704,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
         final isPdf = fileName.toString().toLowerCase().endsWith('.pdf');
 
         return GestureDetector(
-          onTap: (doc['current_version'] ?? 0) > 0 ? () => _showChunksDialog(doc['document_id'].toString(), fileName) : null,
+          onTap: () => _showChunksDialog(doc['document_id'].toString(), fileName),
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
@@ -847,7 +867,7 @@ class DocumentContentBottomSheet extends StatefulWidget {
   final String documentId;
   final String fileName;
 
-  const DocumentContentBottomSheet({required this.documentId, required this.fileName});
+  const DocumentContentBottomSheet({super.key, required this.documentId, required this.fileName});
 
   @override
   State<DocumentContentBottomSheet> createState() => _DocumentContentBottomSheetState();

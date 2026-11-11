@@ -45,6 +45,8 @@ def enqueue_summary(session: Session, notebook_id: uuid.UUID, model: str) -> tup
     if summary:
         job = session.exec(select(Job).where(Job.summary_id == summary.summary_id)).one()
         if summary.status in ("failed", "cancelled"):
+            from backend.app.services.storage_quota import check_job_quota
+            check_job_quota(session, notebook.user_id)
             job.status, job.attempt, job.progress, job.error_code = "queued", 0, 0, None
             job.available_at, job.updated_at = utc_now(), utc_now()
             job.lease_token, job.lease_until = None, None
@@ -52,6 +54,8 @@ def enqueue_summary(session: Session, notebook_id: uuid.UUID, model: str) -> tup
             summary.status, summary.error_code, summary.processed_units = "queued", None, 0
             session.add(job); session.add(summary); session.commit()
         return summary_response(summary, job), 200 if summary.status == "succeeded" else 202
+    from backend.app.services.storage_quota import check_job_quota
+    check_job_quota(session, notebook.user_id)
     summary = Summary(notebook_id=notebook_id, content=None, model_name=model,
         model_version=capability["version"], pipeline_version=PIPELINE_VERSION, cache_key=key, source_snapshot=snapshot)
     session.add(summary); session.flush()

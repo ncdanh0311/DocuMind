@@ -7,8 +7,6 @@ on:
       - master
       - 'feature/**'
       - 'feat/**'
-    tags:
-      - 'v*'
   pull_request:
     branches:
       - main
@@ -16,18 +14,13 @@ on:
       - 'feature/**'
       - 'feat/**'
   workflow_dispatch:
-    inputs:
-      tag_name:
-        description: 'Release Tag (ví dụ: v1.0.0)'
-        required: false
-        default: 'v1.0.0'
-      release_name:
-        description: 'Release Title'
-        required: false
-        default: 'DocuMind Release'
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: documind-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # ==========================================
@@ -35,7 +28,7 @@ jobs:
   # ==========================================
   backend-ci:
     name: Backend API, Contracts & Fresh Migrations
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       SECRET_KEY: ci-only-0c4edc97d6ef483ca292d019f0da7b65
       TEST_DATABASE_URL: postgresql://postgres:phase1-test@127.0.0.1:5432/documind_phase1_test
@@ -72,6 +65,12 @@ jobs:
 
       - name: Syntax Validation
         run: uv run --no-sync python -m compileall -q backend ai
+
+      - name: Install Matching PostgreSQL Client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-16
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
 
       - name: API, Security, Contracts and Migration Tests
         run: uv run --no-sync pytest
@@ -174,39 +173,72 @@ jobs:
           echo "Gradle bootstrap failed after 3 attempts."
           exit 1
 
-      - name: Build Universal Release APK
+      - name: Build Test APK (Not a Release)
         working-directory: ./mobile
-        run: flutter build apk --release
+        run: flutter build apk --debug
 
       - name: Prepare APK Artifacts
         run: |
           mkdir -p release-artifacts
-          if [ "${{ startsWith(github.ref, 'refs/tags/v') }}" = "true" ]; then
-            TAG="${{ github.ref_name }}"
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag_name }}" ]; then
-            TAG="${{ inputs.tag_name }}"
-          else
-            CLEAN_REF=$(echo "${{ github.ref_name }}" | tr '/' '-')
-            TAG="${CLEAN_REF}-${{ github.sha }}"
-          fi
-          cp mobile/build/app/outputs/flutter-apk/app-release.apk release-artifacts/DocuMind-${TAG}.apk
+          cp mobile/build/app/outputs/flutter-apk/app-debug.apk release-artifacts/DocuMind-Test-${GITHUB_SHA}.apk
 
       - name: Upload APK to Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: DocuMind-Release-APK
+          name: DocuMind-Test-APK
           path: release-artifacts/*.apk
           retention-days: 14
 
-      - name: Publish GitHub Release (Only on Tags or Manual Dispatch)
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.tag_name != '')
-        uses: softprops/action-gh-release@v2
+  android-beta:
+    name: Signed Android Beta (Main Only)
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [backend-ci, web-ci, mobile-ci]
+    runs-on: ubuntu-latest
+    env:
+      API_BASE_URL: ${{ vars.API_BASE_URL }}
+      ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
-          name: ${{ github.event_name == 'workflow_dispatch' && inputs.release_name || github.ref_name }}
-          files: release-artifacts/*.apk
-          generate_release_notes: true
-          draft: false
-          prerelease: false
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Prepare Persistent Signing and Validate Cloud URL
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: python scripts/android_release.py prepare --temporary-dir "$RUNNER_TEMP/android-signing"
+      - name: Build Signed Cloud APK
+        working-directory: mobile
+        run: >-
+          flutter build apk --release
+          --dart-define="API_BASE_URL=$API_BASE_URL"
+          --build-name="$RELEASE_VERSION"
+          --build-number="$RELEASE_BUILD_NUMBER"
+      - name: Verify Certificate, Package and Checksums
+        run: |
+          mkdir -p release-artifacts
+          cp mobile/build/app/outputs/flutter-apk/app-release.apk "release-artifacts/DocuMind-${RELEASE_VERSION}-${RELEASE_BUILD_NUMBER}.apk"
+          SDK_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          python scripts/android_release.py verify \
+            --apk "release-artifacts/DocuMind-${RELEASE_VERSION}-${RELEASE_BUILD_NUMBER}.apk" \
+            --apksigner "$SDK_TOOLS/apksigner" --aapt "$SDK_TOOLS/aapt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DocuMind-Beta-APK
+          path: release-artifacts/
+          retention-days: 30
+      - name: Remove Ephemeral Signing Files
+        if: always()
+        shell: bash
+        run: |
+          rm -f -- mobile/android/key.properties "$RUNNER_TEMP/android-signing/documind-release.jks"

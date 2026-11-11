@@ -27,7 +27,7 @@ from backend.app.core.config import settings
 target_metadata = SQLModel.metadata
 
 # Set sqlalchemy.url dynamically from config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
+config.set_main_option("sqlalchemy.url", (settings.DATABASE_DIRECT_URL or settings.DATABASE_URL).replace("%", "%%"))
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

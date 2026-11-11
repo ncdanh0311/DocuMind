@@ -8,8 +8,10 @@ import RecentNotesList from '@/components/home/RecentNotesList';
 import { apiService } from '@/lib/api';
 import { DocumentItem } from '@/types';
 import { useNotebooks } from '@/contexts/NotebookContext';
+import { useAppConfig } from '@/lib/useAppConfig';
 
 export default function DashboardHomePage() {
+  const { aiEnabled } = useAppConfig();
   const { notebooks } = useNotebooks();
   const [recentDocs, setRecentDocs] = useState<DocumentItem[]>([]);
 
@@ -28,16 +30,16 @@ export default function DashboardHomePage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
       {/* Hero Welcome Banner */}
-      <HomeBanner />
+      <HomeBanner aiEnabled={aiEnabled} />
 
       {/* 4 Quick Action 3D Cards */}
-      <QuickActions />
+      <QuickActions aiEnabled={aiEnabled} />
 
       {/* Notebooks Grid */}
       <NotebookGrid notebooks={notebooks.filter(item => item.show_on_home !== false)} />
 
       {/* Recent Notes List */}
-      <RecentNotesList documents={recentDocs} />
+      <RecentNotesList documents={recentDocs} aiEnabled={aiEnabled} />
     </div>
   );
 }

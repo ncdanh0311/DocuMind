@@ -6,17 +6,34 @@ services:
     dockerContext: .
     plan: free
     region: singapore
+    autoDeployTrigger: 'off'
     envVars:
       - key: DATABASE_URL_OVERRIDE
-        fromDatabase:
-          name: documind-db
-          property: connectionString
+        sync: false
+      - key: DATABASE_DIRECT_URL
+        sync: false
       - key: SECRET_KEY
         generateValue: true
-
-databases:
-  - name: documind-db
-    plan: free
-    region: singapore
-    databaseName: documind
-    user: documind_user
+      - key: AI_ENABLED
+        value: "false"
+      - key: STORAGE_BACKEND
+        value: neon_s3
+      - key: STORAGE_BUCKET
+        value: documind-documents
+      - key: AWS_ENDPOINT_URL_S3
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: EMAIL_PROVIDER
+        value: brevo
+      - key: EMAILS_FROM_EMAIL
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+    healthCheckPath: /health

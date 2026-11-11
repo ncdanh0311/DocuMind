@@ -7,6 +7,12 @@ import Link from 'next/link';
 import { apiService, getErrorMessage } from '@/lib/api';
 import { useNotebooks } from '@/contexts/NotebookContext';
 import CreateNotebookModal from '@/components/notebooks/CreateNotebookModal';
+import DocumentReader from '@/components/notebooks/DocumentReader';
+import NotebookHistory from '@/components/notebooks/NotebookHistory';
+import StorageUsageView from '@/components/notebooks/StorageUsageView';
+import CardEditor from '@/components/notebooks/CardEditor';
+import NotebookTextSearch from '@/components/notebooks/NotebookTextSearch';
+import type { SourceLink } from '@/lib/learning-api';
 import { useAppConfig } from '@/lib/useAppConfig';
 import { CATEGORY_LABELS, selectDocuments, type SortOrder } from '@/lib/management';
 import { Notebook, DocumentItem } from '@/types';
@@ -33,6 +39,8 @@ export default function NotebookDetailPage() {
   const { refreshNotebooks } = useNotebooks();
 
   const [notebook, setNotebook] = useState<Notebook | null>(null);
+  const [reading, setReading] = useState<DocumentItem | null>(null);
+  const [cardSource, setCardSource] = useState<SourceLink | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -85,6 +93,7 @@ export default function NotebookDetailPage() {
   useEffect(() => {
     context.current = notebookId;
     setNotebook(null); setDocuments([]); setQuery(''); setExtension('all'); setStatus('all');
+    setReading(null); setCardSource(null);
     setRenaming(null); setRenamingBusy(false); setEditingNotebook(false); setUploading(false); setNoteLoading(false);
     loadData(true);
     return invalidate;
@@ -176,7 +185,7 @@ export default function NotebookDetailPage() {
 
   // Handle Delete Notebook
   const handleDeleteNotebook = async () => {
-    if (!confirm('Xóa sổ tay và toàn bộ tài liệu bên trong? Thao tác này không thể hoàn tác.')) return;
+    if (!confirm('Xóa sổ tay và toàn bộ tài liệu, thẻ học, lịch sử ôn bên trong? Thao tác này không thể hoàn tác.')) return;
     try {
       await apiService.deleteNotebook(notebookId);
       await refreshNotebooks();
@@ -267,6 +276,12 @@ export default function NotebookDetailPage() {
       </div>
 
       {!aiEnabled && <p role="status" className="text-sm text-gray-600">Tính năng AI đang tạm hoãn. Bạn vẫn có thể quản lý sổ tay và lưu tài liệu.</p>}
+      <StorageUsageView refreshKey={documents.map(item => item.document_id).join(',')} />
+      <Link href={`/flashcards?notebookId=${notebookId}`} className="inline-block border rounded-xl p-3">Thẻ học và ôn tập</Link>
+      <NotebookHistory notebookId={notebookId} />
+      <NotebookTextSearch key={notebookId} notebookId={notebookId} onSelectSource={setCardSource} />
+      {reading && <DocumentReader id={reading.document_id} name={reading.file_name} onClose={() => { setReading(null); void loadData(false); }} onSelectSource={value => { setReading(null); setCardSource(value); }} />}
+      {cardSource && <CardEditor key={notebookId} notebookId={notebookId} initialSource={cardSource} documents={documents} onClose={() => setCardSource(null)} onSaved={() => setCardSource(null)} />}
       {error && (
         <div className="p-4 rounded-2xl bg-[#FFEBEE] border border-[#FFCDD2] text-[#C62828] text-sm flex items-start gap-3">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -397,6 +412,7 @@ export default function NotebookDetailPage() {
                   </div>
 
                   <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0">
+                    <button className="text-sm p-2 border rounded-lg" onClick={() => setReading(doc)}>Đọc tài liệu</button>
                     {doc.status === 'error' && aiEnabled ? <button className="text-xs text-red-600 p-2" onClick={async () => {
                       try { await apiService.reprocessDocument(docId); await loadData(); }
                       catch { setError('Không thể xử lý lại tài liệu.'); }
@@ -446,7 +462,7 @@ export default function NotebookDetailPage() {
                 </div>
                 <div>
                   <h3 className="font-outfit font-bold text-lg text-[#2D3E50]">Tạo ghi chú văn bản</h3>
-                  <p className="text-xs text-[#8E9DAE]">Nội dung sẽ được trích xuất và xử lý bằng AI</p>
+                  <p className="text-xs text-[#8E9DAE]">{aiEnabled ? 'Nội dung sẽ được trích xuất và xử lý bằng AI' : 'Lưu ghi chú để đọc và tạo thẻ học. AI đang tạm hoãn.'}</p>
                 </div>
               </div>
               <button

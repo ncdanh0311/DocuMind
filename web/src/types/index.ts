@@ -45,6 +45,9 @@ export interface DocumentItem {
   current_version?: number;
   error_code?: string | null;
   job_id?: string | null;
+  file_size_bytes?: number | null;
+  text_status?: 'not_started' | 'ready' | 'error';
+  text_error_code?: string | null;
 }
 
 export type QAModel = 'phobert_qa' | 'xlmroberta_qa';
