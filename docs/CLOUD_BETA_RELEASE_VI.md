@@ -22,6 +22,8 @@ Kiểm kê chỉ đọc các dịch vụ đang dùng; không giả định biế
 3. Kiểm tra production deployment Vercel. Giữ bản cũ hoạt động trong khi backend chưa nâng schema; không promote giao diện mới trước backend. Root directory là `web`, `NEXT_PUBLIC_API_URL` cùng giá trị `API_BASE_URL`; CORS chỉ cho phép origin web đã kiểm chứng.
 4. Kiểm tra `EMAIL_PROVIDER=brevo`, API key và sender đã xác minh. Chỉ gửi OTP đến tài khoản nghiệm thu được chỉ định, không reset mật khẩu tài khoản cá nhân của người dùng để thử.
 
+Trong cửa sổ chuyển đổi, `vercel.json` ở root và `web/vercel.json` đều đặt `git.deploymentEnabled.main=false`, bảo vệ cả cấu hình Vercel root cũ lẫn root `web`. Có thể merge code đã qua CI và build APK trên main mà chưa tự phát hành web. Preview của nhánh khác vẫn được tạo bình thường. Khi backend mới `/ready` đạt, xác minh URL API/CORS rồi mới triển khai/promote production qua API; chỉ gỡ chốt Git này sau khi sẵn sàng tự triển khai các commit main tiếp theo. Cấu hình theo https://vercel.com/docs/project-configuration/git-configuration.
+
 ## Backup, migration và phục hồi
 
 Tham khảo quy trình đầy đủ ở `PHASE3_OPERATIONS_VI.md`. Dừng API/worker ghi trước khi backup và trong toàn bộ cửa sổ nâng cấp. Không dùng endpoint công khai để migrate.
