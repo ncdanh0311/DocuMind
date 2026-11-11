@@ -35,3 +35,14 @@ Yêu cầu đọc đồng thời của cùng tài liệu được gộp theo phi
 Các kết quả trên không thay thế việc chạy `python -m backend.ops preflight` trong môi trường đã có credential, xác minh bucket private/Neon region, revision thực tế và gửi email giao thật. Trước khi phát hành cloud: backup, nâng schema bằng URL direct theo `PHASE3_OPERATIONS_VI.md`, chạy `/ready`, rồi kiểm tra upload/download và dùng chung tài khoản trên web/mobile. Không reset hoặc stamp database cũ để bỏ qua migration.
 
 Các server kiểm thử local phải được dừng khi kết thúc; không để Docker, worker hoặc AI service chạy nền.
+
+## Đợt hoàn tất phát hành — 2026-11-11
+
+Nhánh `feature/cloud-beta-release` bổ sung APK có application ID riêng, HTTPS/release signing bắt buộc, checksum/provenance, workflow công bố tách biệt; backup format 2 đọc schema thực tế trước migration và preflight nghiêm ngặt sau migration. Quy trình tại `CLOUD_BETA_RELEASE_VI.md`.
+
+- Kiểm thử local: 86 bài Python đạt, 35 bài PostgreSQL để CI chạy trên database riêng; Flutter 26 bài đạt và analyzer sạch. Actionlint kiểm định workflow đạt.
+- Đã đăng nhập và xác định Neon project `sparkling-band-34724718`, branch `br-falling-hat-aegv7f1c`, PostgreSQL 18, region Ohio, gói Free. Đã tạo bucket `documind-documents` private; chưa upload object để nghiệm thu truy cập thực tế.
+- Đã xác định Render service `srv-db163c60tbcc739n4r4g`, URL `https://documind-backend-dqkg.onrender.com`, code đang chạy `435a1c9`. Dashboard hiện chỉ có hai biến DATABASE_URL_OVERRIDE và SECRET_KEY; chưa thay đổi các giá trị này.
+- Đã tạo khóa ký beta cố định, lưu riêng ngoài repo tại `D:/DocuMindSecrets/android-beta` với ACL chỉ chủ máy/SYSTEM. Đã mã hóa và cấu hình bốn GitHub Secrets, hai repository variables cho API URL và fingerprint certificate. Không có secret trong commit/artifact.
+- Chưa migration database thật, chưa deploy code mới, chưa nghiệm thu email/Android vật lý hoặc công bố prerelease. Không coi việc tạo bucket hay build CI là nghiệm thu cloud hoàn tất.
+- Quyền sao chép credential Render ra local bị automatic approval review từ chối; không thử cách khác để né hạn chế. Backup/migration cần giải quyết quyền truy cập này trước. SECRET_KEY hiện tại không cần lấy ra để chạy operator.

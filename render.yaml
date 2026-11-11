@@ -6,6 +6,7 @@ services:
     dockerContext: .
     plan: free
     region: singapore
+    autoDeployTrigger: 'off'
     envVars:
       - key: DATABASE_URL_OVERRIDE
         sync: false
