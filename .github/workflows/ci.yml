@@ -177,6 +177,11 @@ jobs:
         working-directory: ./mobile
         run: flutter build apk --debug
 
+      - name: Check Android SDK Signature Verification Tool
+        run: |
+          SDK_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          "$SDK_TOOLS/apksigner" verify --verbose --print-certs mobile/build/app/outputs/flutter-apk/app-debug.apk
+
       - name: Prepare APK Artifacts
         run: |
           mkdir -p release-artifacts
