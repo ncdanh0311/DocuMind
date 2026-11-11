@@ -66,8 +66,9 @@ def test_verify_and_publish_require_the_same_binary_source_and_certificate(monke
 
 
 @pytest.mark.parametrize("label", ["Signer #1", "Signer (minSdkVersion=33, maxSdkVersion=2147483647)",
-    "Signer (minSdkVersion=28, maxSdkVersion=32)"])
-def test_certificate_verification_accepts_numbered_and_sdk_range_signers(monkeypatch, label):
+    "Signer (minSdkVersion=28, maxSdkVersion=32)", "V2 Signer:", "V3 Signer:", "V3.1 Signer:",
+    "V3 Signer (minSdkVersion=28, maxSdkVersion=32):", "V3.2 Signer #1:"])
+def test_certificate_verification_accepts_sdk_signer_labels(monkeypatch, label):
     certificate = "ab" * 32
     monkeypatch.setattr(release.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(
         returncode=0, stdout=f"{label} certificate SHA-256 digest: {certificate.upper()}\r\n"))
@@ -79,6 +80,8 @@ def test_certificate_verification_accepts_numbered_and_sdk_range_signers(monkeyp
     ("", 1, "UnsupportedClassVersionError: internal-private-path", "Java runtime"),
     ("Source Stamp Signer certificate SHA-256 digest: " + "ab" * 32, 0, "", "did not report"),
     ("Signer #1 certificate SHA-256 digest: " + "ab" * 32 + "\nSigner #2 certificate SHA-256 digest: " + "cd" * 32,
+     0, "", "signature does not match"),
+    ("V2 Signer: certificate SHA-256 digest: " + "ab" * 32 + "\nV3 Signer: certificate SHA-256 digest: " + "cd" * 32,
      0, "", "signature does not match"),
     ("Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: " + "ab" * 32
      + "\nSigner (minSdkVersion=28, maxSdkVersion=32) certificate SHA-256 digest: " + "cd" * 32,

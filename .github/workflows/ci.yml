@@ -179,8 +179,25 @@ jobs:
 
       - name: Check Android SDK Signature Verification Tool
         run: |
-          SDK_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
-          "$SDK_TOOLS/apksigner" verify --verbose --print-certs mobile/build/app/outputs/flutter-apk/app-debug.apk
+          export SDK_TOOLS=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          python3 - <<'PY'
+          import hashlib, os, subprocess
+          from pathlib import Path
+          from scripts.android_release import verify_certificate
+          # The debug key is disposable runner material, separate from release secrets.
+          certificate = subprocess.run([
+              "keytool", "-exportcert", "-keystore", str(Path.home() / ".android/debug.keystore"),
+              "-alias", "androiddebugkey", "-storepass", "android",
+          ], capture_output=True, timeout=30)
+          if certificate.returncode:
+              raise SystemExit("Cannot inspect runner debug certificate")
+          verify_certificate(
+              Path("mobile/build/app/outputs/flutter-apk/app-debug.apk"),
+              Path(os.environ["SDK_TOOLS"]) / "apksigner",
+              hashlib.sha256(certificate.stdout).hexdigest(),
+          )
+          print("Android SDK verifier and certificate parser validated against the built test APK")
+          PY
 
       - name: Prepare APK Artifacts
         run: |

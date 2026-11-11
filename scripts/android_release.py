@@ -87,10 +87,11 @@ def verify_certificate(apk, apksigner, expected):
         if "UnsupportedClassVersionError" in error:
             raise ValueError("apksigner cannot run with the configured Java runtime")
         raise ValueError(f"apksigner verification failed (exit {signed.returncode})")
-    # apksigner labels v3.1 signers by SDK range instead of 'Signer #1'. Verify
+    # SDK 37 prefixes labels with the signature scheme ('V2 Signer:'); v3.1
+    # signers may include an SDK range. Older tools use 'Signer #1'. Verify
     # every reported application signer; a source stamp is a separate identity.
     fingerprints = re.findall(
-        r"^Signer (?:#\d+|\(minSdkVersion=[^\r\n]+\)) certificate SHA-256 digest:[ \t]*([a-fA-F0-9]{64})[ \t\r]*$",
+        r"^(?:V[1-4](?:\.\d+)? )?Signer(?: #\d+| \([^\r\n]+\))?:? certificate SHA-256 digest:[ \t]*([a-fA-F0-9]{64})[ \t\r]*$",
         signed.stdout, re.MULTILINE,
     )
     if not fingerprints:
