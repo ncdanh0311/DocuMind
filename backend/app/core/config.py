@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     SMTP_SSL: bool = False
     EMAIL_PROVIDER: str = "smtp"
     BREVO_API_KEY: str = ""
+    GMAIL_SENDER_EMAIL: str = ""
+    GMAIL_CLIENT_ID: str = ""
+    GMAIL_CLIENT_SECRET: str = ""
+    GMAIL_REFRESH_TOKEN: str = ""
     
     UPLOAD_DIR: str = ".uploads"
     AI_ENABLED: bool = False
@@ -83,7 +87,7 @@ class Settings(BaseSettings):
     @field_validator("EMAIL_PROVIDER")
     @classmethod
     def validate_email_provider(cls, value: str) -> str:
-        if value not in ("smtp", "brevo"):
+        if value not in ("smtp", "brevo", "gmail_api"):
             raise ValueError("Unsupported email provider")
         return value
 
