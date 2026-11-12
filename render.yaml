@@ -31,9 +31,13 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: EMAIL_PROVIDER
-        value: brevo
-      - key: EMAILS_FROM_EMAIL
+        value: gmail_api
+      - key: GMAIL_SENDER_EMAIL
         sync: false
-      - key: BREVO_API_KEY
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_REFRESH_TOKEN
         sync: false
     healthCheckPath: /health
