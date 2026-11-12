@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chính sách quyền riêng tư — DocuMind</title>
+  <meta name="description" content="Cách DocuMind xử lý dữ liệu tài khoản, tài liệu học tập và quyền gửi email qua Gmail API.">
+  <link rel="stylesheet" href="/legal.css">
+</head>
+<body>
+  <header><a class="brand" href="/about.html">DocuMind</a><nav aria-label="Điều hướng"><a href="/about.html">Giới thiệu</a><a href="/login">Đăng nhập</a></nav></header>
+  <main>
+    <p class="eyebrow">Cập nhật ngày 12/11/2026</p>
+    <h1>Chính sách quyền riêng tư</h1>
+    <p>Chính sách này mô tả việc xử lý dữ liệu của bản beta DocuMind trên web và Android. Chủ project và đầu mối tiếp nhận yêu cầu là Danh, liên hệ <a href="mailto:ncdanhwork0311@gmail.com">ncdanhwork0311@gmail.com</a>.</p>
+    <h2>Dữ liệu được xử lý</h2>
+    <ul>
+      <li>Thông tin tài khoản: email, tên hiển thị, mật khẩu đã băm và dữ liệu xác thực phiên đăng nhập, khôi phục mật khẩu.</li>
+      <li>Nội dung bạn lưu: sổ tay, file gốc, văn bản trích xuất, nguồn trích dẫn, flashcard, lịch sử và tiến độ ôn tập.</li>
+      <li>Dữ liệu vận hành: thời gian, mã yêu cầu, trạng thái và mã lỗi; thông tin cần thiết để giới hạn yêu cầu khôi phục mật khẩu.</li>
+    </ul>
+    <p>Các dữ liệu này phục vụ đăng nhập, quản lý tài liệu, đồng bộ học tập, gửi OTP và vận hành ứng dụng. AI hiện tắt; bản beta không gửi tài liệu để tạo kết quả AI mới.</p>
+    <h2>Quyền Gmail và dữ liệu Google</h2>
+    <p>Chỉ chủ project kết nối tài khoản gửi thư với Gmail API và cấp quyền <code>https://www.googleapis.com/auth/gmail.send</code>. Quyền này dùng để gửi email OTP theo yêu cầu khôi phục mật khẩu. DocuMind không yêu cầu quyền đọc, liệt kê hoặc xóa thư trong hộp thư Gmail.</p>
+    <p>Thông tin xác thực OAuth của tài khoản gửi được giữ trong cấu hình bí mật phục vụ backend. Khi gửi thư, backend chuyển địa chỉ người nhận và nội dung email có OTP tới Google. Người dùng thông thường không cần kết nối hộp thư Gmail hoặc cung cấp mật khẩu Gmail.</p>
+    <p>Dữ liệu nhận qua Google API chỉ được dùng để cung cấp chức năng gửi email đã mô tả. DocuMind không bán dữ liệu Google, không dùng cho quảng cáo hoặc huấn luyện mô hình AI, và tuân thủ các yêu cầu Limited Use trong <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>.</p>
+    <h2>Lưu trữ và bên cung cấp dịch vụ</h2>
+    <p>DocuMind sử dụng Vercel để phục vụ web, Render để chạy backend, Neon để lưu database và file, Google Gmail API để gửi OTP. Dữ liệu cần thiết được xử lý qua các dịch vụ này để thực hiện các chức năng tương ứng. Chủ project có thể tiếp cận dữ liệu khi vận hành, sao lưu, phục hồi hoặc hỗ trợ xử lý sự cố.</p>
+    <p>Kết nối cloud sử dụng HTTPS/TLS. File gốc được lưu trong bucket riêng tư và truy cập qua API có kiểm tra quyền sở hữu. Token và OTP không được đưa vào log ứng dụng. Các biện pháp này không phải cam kết loại trừ mọi rủi ro.</p>
+    <h2>Thời gian lưu, xóa và xuất dữ liệu</h2>
+    <p>Nội dung được lưu để bạn mở lại trên các thiết bị. Bạn có thể sửa, xóa tài liệu hoặc sổ tay và xuất dữ liệu qua các chức năng hiện có. Một số nội dung nguồn đã lưu trong lịch sử hoặc thẻ có thể còn dưới dạng snapshot sau khi tài liệu gốc bị xóa.</p>
+    <p>Bản sao lưu được chủ project quản lý và luân chuyển; dữ liệu đã xóa có thể còn trong backup cho đến khi bản sao đó được loại bỏ. Để yêu cầu xóa tài khoản, xử lý dữ liệu trong bản sao lưu hoặc nhận hỗ trợ xuất dữ liệu, hãy liên hệ email ở trên bằng địa chỉ đã đăng ký. Chủ project sẽ xác minh quyền sở hữu trước khi xử lý.</p>
+    <h2>Thu hồi quyền và dữ liệu trên thiết bị</h2>
+    <p>Chủ tài khoản gửi Gmail có thể thu hồi quyền DocuMind trong <a href="https://myaccount.google.com/permissions">trang kết nối tài khoản Google</a>; khi đó chức năng gửi OTP sẽ dừng cho đến khi được cấu hình lại. Web và Android lưu thông tin phiên đăng nhập cần thiết trên thiết bị; hãy đăng xuất khi dùng thiết bị chung.</p>
+    <h2>Thay đổi chính sách</h2>
+    <p>Khi cách xử lý dữ liệu thay đổi, chính sách và ngày cập nhật trên trang này sẽ được điều chỉnh. Câu hỏi và yêu cầu quyền riêng tư gửi tới <a href="mailto:ncdanhwork0311@gmail.com">ncdanhwork0311@gmail.com</a>.</p>
+  </main>
+  <footer><a href="/about.html">Giới thiệu DocuMind</a><span>DocuMind · Danh</span></footer>
+</body>
+</html>

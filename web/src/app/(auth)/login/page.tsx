@@ -197,6 +197,11 @@ export default function LoginPage() {
                 Đăng ký ngay
               </Link>
             </div>
+            <p className="mt-4 text-center text-sm text-[#52685F]">
+              <a href="/about.html" className="underline underline-offset-4 hover:text-[#16695F]">Giới thiệu DocuMind</a>
+              {' · '}
+              <a href="/privacy.html" className="underline underline-offset-4 hover:text-[#16695F]">Chính sách quyền riêng tư</a>
+            </p>
           </div>
         </div>
       </div>
