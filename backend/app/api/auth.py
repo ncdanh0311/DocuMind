@@ -20,6 +20,7 @@ from backend.app.schemas.schemas import (
 )
 from backend.app.api.deps import get_current_user, get_current_session
 from backend.app.services.auth_service import consume_reset_rate_limit, issue_tokens, lock_user, revoke_user_credentials, same_hash
+from backend.app.services.gmail_mailer import send_gmail_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -45,6 +46,9 @@ async def send_reset_otp_email(email: str, otp: str):
     </html>
     """
     
+    if settings.EMAIL_PROVIDER == "gmail_api":
+        await send_gmail_email(email, html)
+        return
     if settings.EMAIL_PROVIDER == "brevo":
         if not settings.BREVO_API_KEY:
             raise RuntimeError("ERR_EMAIL_NOT_CONFIGURED")
